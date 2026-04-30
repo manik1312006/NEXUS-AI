@@ -62,41 +62,73 @@
       }
     };
 
-    // Phone Sign-In Step 1
-    window.sendOTP = async () => {
-      let phone = document.getElementById("phoneInput").value.trim();
+    // Email Sign Up
+    window.signUpWithEmail = async () => {
+      const email = document.getElementById("emailInput").value.trim();
+      const password = document.getElementById("passwordInput").value.trim();
 
-      // Remove spaces, dashes
-      phone = phone.replace(/\s+/g, '').replace(/-/g, '');
-
-      // Auto-add +91 if user enters Indian number
-      if (!phone.startsWith('+')) {
-        if (phone.length === 10) {
-          phone = '+91' + phone;
-        }
-      }
-
-      // Final validation
-      if (!/^\+\d{10,15}$/.test(phone)) {
-        showError("Enter valid phone number (e.g., +919876543210)");
+      if (!email || !password) {
+        showError("Enter email and password");
         return;
       }
-      if (!phone) { showError("Enter a valid phone number with country code"); return; }
+
       try {
-        showLoader("Sending OTP…");
-        if (!window.recaptchaVerifier) {
-          window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
-        }
-        const confirmation = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier);
-        window.confirmationResult = confirmation;
-        hideLoader();
-        document.getElementById("otpSection").classList.remove("hidden");
-        document.getElementById("sendOTPBtn").textContent = "Resend OTP";
-        showSuccess("OTP sent! Check your messages.");
+        showLoader("Creating account...");
+        const result = await createUserWithEmailAndPassword(auth, email, password);
+        const user = result.user;
+
+        await saveUser(user);
+        window.location.href = "pages/chat.html";
       } catch (e) {
         hideLoader();
         showError(e.message);
       }
+    };
+
+    // Email Login
+    window.loginWithEmail = async () => {
+      const email = document.getElementById("emailInput").value.trim();
+      const password = document.getElementById("passwordInput").value.trim();
+
+      if (!email || !password) {
+        showError("Enter email and password");
+        return;
+      }
+
+      try {
+        showLoader("Logging in...");
+        const result = await signInWithEmailAndPassword(auth, email, password);
+        const user = result.user;
+
+        await saveUser(user);
+        window.location.href = "pages/chat.html";
+      } catch (e) {
+        hideLoader();
+        showError(e.message);
+      }
+    };
+
+    // Final validation
+    if (!/^\+\d{10,15}$/.test(phone)) {
+      showError("Enter valid phone number (e.g., +919876543210)");
+      return;
+    }
+    if (!phone) { showError("Enter a valid phone number with country code"); return; }
+    try {
+      showLoader("Sending OTP…");
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { size: 'invisible' });
+      }
+      const confirmation = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier);
+      window.confirmationResult = confirmation;
+      hideLoader();
+      document.getElementById("otpSection").classList.remove("hidden");
+      document.getElementById("sendOTPBtn").textContent = "Resend OTP";
+      showSuccess("OTP sent! Check your messages.");
+    } catch (e) {
+      hideLoader();
+      showError(e.message);
+    }
     };
 
     // Phone Sign-In Step 2
@@ -814,7 +846,7 @@
 
           <div class="auth-tabs">
             <button class="auth-tab active" onclick="switchTab('google')">Google</button>
-            <button class="auth-tab" onclick="switchTab('phone')">Phone</button>
+            <button class="auth-tab" onclick="switchTab('email')">Email</button>
           </div>
 
           <!-- Google Tab -->
@@ -834,30 +866,21 @@
             </button>
           </div>
 
-          <!-- Phone Tab -->
-          <div class="tab-panel" id="tab-phone">
+          <!-- Email Tab -->
+          <div class="tab-panel" id="tab-email">
             <div class="input-group">
-              <label>Phone Number</label>
-              <input type="tel" id="phoneInput" class="nexus-input" placeholder="+91 9876543210" />
-            </div>
-            <button class="btn-primary" id="sendOTPBtn" onclick="sendOTP()">Send OTP</button>
-
-            <div id="otpSection" class="hidden">
-              <div class="divider"><span>enter code</span></div>
-              <div class="input-group">
-                <label>One-Time Password</label>
-                <input type="number" id="otpInput" class="nexus-input" placeholder="• • • • • •" />
-              </div>
-              <button class="btn-primary" onclick="verifyOTP()">Verify & Enter</button>
+              <label>Email</label>
+              <input type="email" id="emailInput" class="nexus-input" placeholder="you@example.com" />
             </div>
 
-            <div id="recaptcha-container"></div>
+            <div class="input-group">
+              <label>Password</label>
+              <input type="password" id="passwordInput" class="nexus-input" placeholder="••••••••" />
+            </div>
+
+            <button class="btn-primary" onclick="loginWithEmail()">Login</button>
+            <button class="btn-secondary" onclick="signUpWithEmail()">Create Account</button>
           </div>
-
-          <div class="status-msg" id="statusMsg"></div>
-        </div>
-      </div>
-    </div>
 
     <!-- Feature chips -->
     <div class="features">
@@ -883,7 +906,7 @@
     function switchTab(tab) {
       document.querySelectorAll('.auth-tab').forEach((t, i) => t.classList.toggle('active', (i === 0 && tab === 'google') || (i === 1 && tab === 'phone')));
       document.getElementById('tab-google').classList.toggle('active', tab === 'google');
-      document.getElementById('tab-phone').classList.toggle('active', tab === 'phone');
+      document.getElementById('tab-email').classList.toggle('active', tab==='email');
     }
     function showLoader(msg) {
       document.getElementById('loaderText').textContent = msg || 'Loading…';
