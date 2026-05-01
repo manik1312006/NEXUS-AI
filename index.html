@@ -348,7 +348,66 @@
     @media (max-width: 640px) {
       nav { padding: 16px 20px; }
       .auth-card { padding: 28px 24px; }
+      .about-section { padding: 40px 20px; }
+      .about-card { padding: 28px 20px; flex-direction: column; text-align: center; gap: 20px; }
+      .about-links { justify-content: center; }
     }
+
+    /* ── ABOUT SECTION ── */
+    .about-section {
+      position: relative; z-index: 1;
+      padding: 60px 48px 48px;
+      border-top: 1px solid var(--c-border);
+    }
+    .about-card {
+      max-width: 760px; margin: 0 auto;
+      background: rgba(17,17,48,0.6);
+      border: 1px solid var(--c-border);
+      border-radius: 24px;
+      padding: 36px 40px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 0 40px rgba(124,58,237,0.08);
+      transition: border-color 0.3s;
+    }
+    .about-card:hover { border-color: rgba(0,245,255,0.3); }
+    .about-avatar {
+      width: 80px; height: 80px; border-radius: 50%; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--c-neon-purple), var(--c-neon-cyan));
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Syne', sans-serif; font-weight: 800; font-size: 2rem; color: #fff;
+      box-shadow: 0 0 30px rgba(124,58,237,0.4);
+    }
+    .about-info { flex: 1; }
+    .about-label {
+      font-family: 'Space Mono', monospace; font-size: 0.62rem;
+      color: var(--c-neon-cyan); letter-spacing: 0.2em; text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+    .about-name {
+      font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.6rem;
+      color: var(--c-text); margin-bottom: 6px; line-height: 1;
+    }
+    .about-meta {
+      color: var(--c-muted); font-size: 0.85rem; line-height: 1.7;
+      display: flex; flex-wrap: wrap; gap: 4px 16px;
+    }
+    .about-meta span { display: flex; align-items: center; gap: 5px; }
+    .about-links {
+      display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap;
+    }
+    .about-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 7px 16px; border-radius: 20px; font-size: 0.8rem;
+      border: 1px solid var(--c-border); color: var(--c-muted);
+      text-decoration: none; transition: all 0.2s;
+      font-family: 'Space Mono', monospace;
+    }
+    .about-link:hover { border-color: var(--c-neon-cyan); color: var(--c-neon-cyan); background: rgba(0,245,255,0.06); }
+    .about-link.primary { border-color: rgba(124,58,237,0.5); color: var(--c-neon-purple); background: rgba(124,58,237,0.08); }
+    .about-link.primary:hover { background: rgba(124,58,237,0.15); border-color: var(--c-neon-purple); }
   </style>
 </head>
 <body>
@@ -439,6 +498,26 @@
       <div class="feature-chip"><div class="dot" style="background:var(--c-neon-green)"></div>Free to Use</div>
     </div>
   </div>
+
+  <!-- ABOUT SECTION -->
+  <footer class="about-section">
+    <div class="about-card">
+      <div class="about-avatar">M</div>
+      <div class="about-info">
+        <div class="about-label">✦ Built by</div>
+        <div class="about-name">Manik Mehta</div>
+        <div class="about-meta">
+          <span>🎓 Student</span>
+          <span>🎂 20 years old</span>
+          <span>📍 Fatehabad, Haryana, India</span>
+        </div>
+        <div class="about-links">
+          <a class="about-link primary" href="mailto:manikmehtaji@gmail.com">📧 manikmehtaji@gmail.com</a>
+          <a class="about-link" href="https://github.com/your-username" target="_blank">⌥ GitHub</a>
+        </div>
+      </div>
+    </div>
+  </footer>
 
   <script>
     function switchTab(tab) {
