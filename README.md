@@ -49,8 +49,7 @@ nexus-ai/
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/your-username/nexus-ai.git
-cd nexus-ai
+git clone https://github.com/manik1312006/NEXUS-AI.git
 npm install
 ```
 
