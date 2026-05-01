@@ -140,121 +140,53 @@
       }
     };
 
-    // ── PROMPT ENHANCER (uses Claude-compatible API or OpenAI) ──
+    // ══════════════════════════════════════════════════════════
+    //  🔐 BACKEND URL — change this after deploying to Render
+    // ══════════════════════════════════════════════════════════
+    const BACKEND = "https://nexus-ai-backend-3csk.onrender.com"; // ← UPDATE THIS after deploy
+
+    // ── PROMPT ENHANCER — calls secure backend ──
     async function enhancePrompt(prompt, targetAgent) {
-      const enhancerKey = window.API_KEYS?.openai || window.API_KEYS?.claude;
-      if (!enhancerKey) return prompt; // fallback: no enhancement without key
-
-      const systemPrompt = `You are an expert prompt engineer. Your sole job is to rewrite the user's prompt to be clearer, more specific, well-structured, and optimized for the target AI: ${getAgentName(targetAgent)}. 
-Rules:
-- Preserve the original intent 100%
-- Add context, structure, and clarity
-- Remove ambiguity
-- Return ONLY the enhanced prompt, nothing else`;
-
-      // Try OpenAI for enhancement
-      if (window.API_KEYS?.openai) {
-        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+      try {
+        const res = await fetch(`${BACKEND}/api/enhance`, {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${window.API_KEYS.openai}`, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            model: 'gpt-4o-mini',
-            messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: prompt }],
-            max_tokens: 500, temperature: 0.3
-          })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, targetAgent: getAgentName(targetAgent) })
         });
         const data = await res.json();
-        return data.choices?.[0]?.message?.content || prompt;
+        return data.result || prompt;
+      } catch (err) {
+        console.warn('Enhancer failed, using original prompt:', err);
+        return prompt; // safe fallback
       }
-      return prompt;
     }
 
     // ── AGENT ROUTER ──
     async function callAgent(agent, prompt, history) {
-      const keys = window.API_KEYS || {};
       const messages = [...history.slice(-8), { role: 'user', content: prompt }];
 
-      switch (agent) {
-        case 'openai':    return callOpenAI(prompt, messages, keys.openai);
-        case 'claude':    return callClaude(prompt, messages, keys.claude);
-        case 'gemini':    return callGemini(prompt, keys.gemini);
-        case 'mistral':   return callMistral(prompt, messages, keys.mistral);
-        case 'cohere':    return callCohere(prompt, keys.cohere);
-        case 'groq':      return callGroq(prompt, messages, keys.groq);
-        default:          throw new Error('Unknown agent selected.');
-      }
-    }
+      // All calls go to YOUR secure backend — no keys in frontend!
+      const endpointMap = {
+        openai:  { url: `${BACKEND}/api/openai`,  body: { messages } },
+        claude:  { url: `${BACKEND}/api/claude`,  body: { messages } },
+        gemini:  { url: `${BACKEND}/api/gemini`,  body: { prompt } },
+        mistral: { url: `${BACKEND}/api/mistral`, body: { messages } },
+        cohere:  { url: `${BACKEND}/api/cohere`,  body: { prompt } },
+        groq:    { url: `${BACKEND}/api/groq`,    body: { messages } },
+      };
 
-    async function callOpenAI(prompt, messages, key) {
-      if (!key) throw new Error('OpenAI API key not set. Add it in Settings (⚙).');
-      const r = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'gpt-4o', messages, max_tokens: 1500 })
-      });
-      const d = await r.json();
-      if (d.error) throw new Error(d.error.message);
-      return d.choices[0].message.content;
-    }
+      const target = endpointMap[agent];
+      if (!target) throw new Error('Unknown agent selected.');
 
-    async function callClaude(prompt, messages, key) {
-      if (!key) throw new Error('Claude API key not set. Add it in Settings (⚙).');
-      const r = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'claude-3-5-sonnet-20241022', max_tokens: 1500, messages })
-      });
-      const d = await r.json();
-      if (d.error) throw new Error(d.error.message);
-      return d.content[0].text;
-    }
-
-    async function callGemini(prompt, key) {
-      if (!key) throw new Error('Gemini API key not set. Add it in Settings (⚙).');
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+      const r = await fetch(target.url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        body: JSON.stringify(target.body)
       });
-      const d = await r.json();
-      if (d.error) throw new Error(d.error.message);
-      return d.candidates[0].content.parts[0].text;
-    }
 
-    async function callMistral(prompt, messages, key) {
-      if (!key) throw new Error('Mistral API key not set. Add it in Settings (⚙).');
-      const r = await fetch('https://api.mistral.ai/v1/chat/completions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'mistral-large-latest', messages, max_tokens: 1500 })
-      });
       const d = await r.json();
-      if (d.error) throw new Error(d.error.message);
-      return d.choices[0].message.content;
-    }
-
-    async function callCohere(prompt, key) {
-      if (!key) throw new Error('Cohere API key not set. Add it in Settings (⚙).');
-      const r = await fetch('https://api.cohere.ai/v1/generate', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'command-r-plus', prompt, max_tokens: 1500 })
-      });
-      const d = await r.json();
-      if (d.message) throw new Error(d.message);
-      return d.generations[0].text;
-    }
-
-    async function callGroq(prompt, messages, key) {
-      if (!key) throw new Error('Groq API key not set. Add it in Settings (⚙).');
-      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages, max_tokens: 1500 })
-      });
-      const d = await r.json();
-      if (d.error) throw new Error(d.error.message);
-      return d.choices[0].message.content;
+      if (d.error) throw new Error(d.error);
+      return d.result;
     }
 
     // ── UI Helpers ──
@@ -603,7 +535,7 @@ Rules:
     </div>
 
     <div class="sidebar-footer">
-      <button class="btn-settings" onclick="openSettings()">⚙ Manage API Keys</button>
+      <button class="btn-settings" onclick="showBackendStatus()">⚙ Backend Status</button>
       <div class="user-row">
         <img class="user-avatar-sm" id="userAvatar" src="" alt="avatar">
         <span class="user-name-sm" id="userName">User</span>
@@ -646,39 +578,17 @@ Rules:
     </div>
   </main>
 
-  <!-- SETTINGS MODAL -->
+  <!-- BACKEND STATUS MODAL -->
   <div class="modal-overlay" id="settingsModal">
     <div class="modal">
       <div class="modal-header">
-        <div class="modal-title">⚙ API Keys</div>
+        <div class="modal-title">⚙ Backend Status</div>
         <button class="modal-close" onclick="closeSettings()">✕</button>
       </div>
-      <div class="key-group">
-        <label>OpenAI (GPT-4o) — <a href="https://platform.openai.com/api-keys" target="_blank" style="color:var(--c-neon-cyan)">Get key</a></label>
-        <input type="password" class="key-input" id="key-openai" placeholder="sk-...">
+      <div id="backendStatusBody" style="color:var(--c-muted);font-size:0.9rem;line-height:2">
+        <div style="text-align:center;padding:20px">Checking backend…</div>
       </div>
-      <div class="key-group">
-        <label>Anthropic (Claude) — <a href="https://console.anthropic.com/" target="_blank" style="color:var(--c-neon-cyan)">Get key</a></label>
-        <input type="password" class="key-input" id="key-claude" placeholder="sk-ant-...">
-      </div>
-      <div class="key-group">
-        <label>Google AI (Gemini) — <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color:var(--c-neon-cyan)">Get key</a></label>
-        <input type="password" class="key-input" id="key-gemini" placeholder="AIza...">
-      </div>
-      <div class="key-group">
-        <label>Mistral AI — <a href="https://console.mistral.ai/" target="_blank" style="color:var(--c-neon-cyan)">Get key</a></label>
-        <input type="password" class="key-input" id="key-mistral" placeholder="...">
-      </div>
-      <div class="key-group">
-        <label>Groq (LLaMA) — <a href="https://console.groq.com/" target="_blank" style="color:var(--c-neon-cyan)">Get key (FREE)</a></label>
-        <input type="password" class="key-input" id="key-groq" placeholder="gsk_...">
-      </div>
-      <div class="key-group">
-        <label>Cohere — <a href="https://dashboard.cohere.com/api-keys" target="_blank" style="color:var(--c-neon-cyan)">Get key (FREE trial)</a></label>
-        <input type="password" class="key-input" id="key-cohere" placeholder="...">
-      </div>
-      <button class="btn-save-keys" onclick="saveKeys()">Save API Keys</button>
-      <div class="modal-note">🔒 Keys are stored locally in your browser only — never sent to our servers. Each AI provider has a free tier. Groq's LLaMA is completely free!</div>
+      <div class="modal-note">🔒 All API keys are secured on the server. Your browser never sees them.</div>
     </div>
   </div>
 
@@ -702,54 +612,29 @@ Rules:
       document.getElementById('enhanceBadgeHeader').style.opacity = this.checked ? '1' : '0.4';
     });
 
-    // Settings modal
-    function openSettings() {
-      const keys = JSON.parse(localStorage.getItem('nexus_keys') || '{}');
-      ['openai','claude','gemini','mistral','groq','cohere'].forEach(k => {
-        const el = document.getElementById('key-'+k);
-        if (el && keys[k]) el.value = keys[k];
-      });
+    // ── Backend Status Modal ──
+    async function showBackendStatus() {
       document.getElementById('settingsModal').classList.add('show');
+      const body = document.getElementById('backendStatusBody');
+      body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--c-muted)">Checking backend…</div>';
+      try {
+        const res = await fetch(`${BACKEND}/`);
+        const data = await res.json();
+        body.innerHTML = `
+          <div style="color:var(--c-neon-green);margin-bottom:16px">✅ ${data.status}</div>
+          <div style="color:var(--c-muted);font-size:0.8rem">Version: ${data.version}</div>
+          <div style="margin-top:16px;font-size:0.82rem;color:var(--c-text)">All AI agents are powered by the secure backend. No API keys needed on your end.</div>`;
+      } catch (e) {
+        body.innerHTML = `<div style="color:var(--c-neon-pink)">❌ Backend unreachable.<br><span style="font-size:0.8rem;color:var(--c-muted)">Make sure your Render server is running.</span></div>`;
+      }
     }
+    function openSettings() { showBackendStatus(); }
     function closeSettings() { document.getElementById('settingsModal').classList.remove('show'); }
-    function saveKeys() {
-      const keys = {};
-      ['openai','claude','gemini','mistral','groq','cohere'].forEach(k => {
-        const v = document.getElementById('key-'+k).value.trim();
-        if (v) keys[k] = v;
-      });
-      localStorage.setItem('nexus_keys', JSON.stringify(keys));
-      window.API_KEYS = keys;
-      closeSettings();
-      showToast('✓ API keys saved!');
-    }
-
-    // Load saved keys
-    window.API_KEYS = JSON.parse(localStorage.getItem('nexus_keys') || '{}');
-
-    // Toast
-    function showToast(msg) {
-      const t = document.createElement('div');
-      t.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:500;background:var(--c-card);border:1px solid var(--c-neon-green);color:var(--c-neon-green);padding:12px 20px;border-radius:12px;font-size:0.85rem;animation:msgIn 0.3s ease';
-      t.textContent = msg;
-      document.body.appendChild(t);
-      setTimeout(() => t.remove(), 2500);
-    }
 
     // Close modal on backdrop click
     document.getElementById('settingsModal').addEventListener('click', function(e) {
       if (e.target === this) closeSettings();
     });
-
-    // Prompt enhancer on first load hint
-    if (!localStorage.getItem('nexus_keys') || Object.keys(JSON.parse(localStorage.getItem('nexus_keys')||'{}')).length === 0) {
-      setTimeout(() => {
-        const hint = document.createElement('div');
-        hint.style.cssText = 'position:fixed;bottom:100px;right:24px;z-index:400;background:var(--c-card);border:1px solid var(--c-neon-amber);padding:14px 18px;border-radius:14px;max-width:260px;font-size:0.82rem;box-shadow:0 8px 30px rgba(0,0,0,0.4)';
-        hint.innerHTML = `<strong style="color:var(--c-neon-amber)">👋 Welcome!</strong><p style="margin-top:6px;color:var(--c-muted);line-height:1.5">Add your API keys in <span style="color:var(--c-text)">⚙ Settings</span> to start chatting. Groq is FREE!</p><button onclick="this.parentElement.remove()" style="margin-top:8px;background:none;border:none;color:var(--c-neon-cyan);cursor:pointer;font-size:0.8rem">Got it →</button>`;
-        document.body.appendChild(hint);
-      }, 1500);
-    }
   </script>
 </body>
 </html>
