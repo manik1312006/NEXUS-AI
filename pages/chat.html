@@ -144,6 +144,7 @@
     //  🔐 BACKEND URL — change this after deploying to Render
     // ══════════════════════════════════════════════════════════
     const BACKEND = "https://nexus-ai-backend-3csk.onrender.com";
+    window.BACKEND = BACKEND; // expose to global scope for status checker
 
     // ── PROMPT ENHANCER — calls secure backend ──
     async function enhancePrompt(prompt, targetAgent) {
@@ -616,9 +617,10 @@
     async function showBackendStatus() {
       document.getElementById('settingsModal').classList.add('show');
       const body = document.getElementById('backendStatusBody');
+      const backendUrl = window.BACKEND || "https://nexus-ai-backend-3csk.onrender.com";
       body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--c-muted)">Checking backend…</div>';
       try {
-        const res = await fetch(`${BACKEND}/`);
+        const res = await fetch(backendUrl + "/");
         const data = await res.json();
         body.innerHTML = `
           <div style="color:var(--c-neon-green);margin-bottom:16px">✅ ${data.status}</div>
