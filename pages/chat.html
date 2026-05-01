@@ -70,7 +70,7 @@
           const el = document.createElement('button');
           el.className = 'session-item';
           el.innerHTML = `<span class="session-icon">💬</span><span class="session-title">${s.title || 'New Chat'}</span>`;
-          el.onclick = () => loadSession(id, s);
+          el.onclick = () => { loadSession(id, s); if(window.innerWidth <= 768) closeSidebar(); };
           list.appendChild(el);
         });
       });
@@ -487,17 +487,92 @@
 
     @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
 
-    /* Mobile */
-    @media(max-width:768px) {
-      .sidebar { position:fixed; left:-260px; z-index:150; transition:left 0.3s; }
-      .sidebar.open { left:0; }
-      .menu-toggle { display:flex; }
-    }
-    .menu-toggle { display:none; background:none; border:none; color:var(--c-text); font-size:1.4rem; cursor:pointer; }
+    /* ── MENU TOGGLE (hidden on desktop) ── */
+    .menu-toggle { display:none; background:none; border:none; color:var(--c-text); font-size:1.4rem; cursor:pointer; padding:4px 8px; border-radius:8px; transition:background 0.2s; }
+    .menu-toggle:hover { background:rgba(255,255,255,0.08); }
+
+    /* ── SIDEBAR OVERLAY (mobile tap-outside backdrop) ── */
+    .sidebar-overlay { display:none; position:fixed; inset:0; z-index:140; background:rgba(5,5,16,0.7); backdrop-filter:blur(4px); }
+    .sidebar-overlay.show { display:block; }
+
     .hidden { display:none !important; }
+
+    /* ════════════════════════════════════════
+       MOBILE — up to 768px
+    ════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      .sidebar {
+        position: fixed;
+        left: -280px;
+        top: 0; bottom: 0;
+        width: 280px;
+        z-index: 150;
+        transition: left 0.3s cubic-bezier(0.4,0,0.2,1);
+        box-shadow: 4px 0 40px rgba(0,0,0,0.6);
+      }
+      .sidebar.open { left: 0; }
+      .menu-toggle { display: flex; align-items: center; justify-content: center; }
+
+      .main-header { padding: 12px 16px; }
+      .enhance-badge-header { font-size: 0.65rem; padding: 3px 8px; }
+
+      .chat-area { padding: 16px 12px; gap: 14px; }
+
+      .message-bubble { max-width: 88%; padding: 11px 14px; }
+      .message-content { font-size: 0.875rem; }
+      .agent-label { font-size: 0.6rem; }
+
+      .msg-avatar { width: 30px; height: 30px; flex-shrink: 0; }
+      .message-wrap { gap: 8px; }
+
+      .input-area {
+        padding: 10px 12px 12px;
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+      }
+      .input-box { padding: 10px 12px; gap: 8px; border-radius: 14px; }
+      #userInput { font-size: 0.9rem; }
+      .send-btn { width: 36px; height: 36px; border-radius: 10px; font-size: 1rem; flex-shrink: 0; }
+
+      .input-meta { margin-top: 6px; }
+      .input-hint { font-size: 0.65rem; }
+
+      .welcome-state { padding: 40px 16px; }
+      .welcome-state h2 { font-size: 1.5rem; }
+      .welcome-state p { font-size: 0.875rem; }
+      .welcome-icon { font-size: 2.2rem; }
+
+      .enhanced-badge { font-size: 0.78rem; padding: 10px 12px; }
+      .typing-status { font-size: 0.7rem; }
+
+      .modal { border-radius: 16px 16px 0 0; padding: 24px 20px; width: 100%; position: fixed; bottom: 0; left: 0; right: 0; margin: 0; }
+      .modal-overlay { align-items: flex-end; }
+    }
+
+    /* ════════════════════════════════════════
+       SMALL PHONES — up to 400px
+    ════════════════════════════════════════ */
+    @media (max-width: 400px) {
+      .message-bubble { max-width: 93%; padding: 10px 12px; }
+      .agent-grid { grid-template-columns: 1fr 1fr 1fr; }
+      .agent-btn { padding: 6px 4px; font-size: 0.7rem; }
+      .agent-btn .a-emoji { font-size: 0.95rem; }
+      .main-header { padding: 10px 12px; }
+      .chat-area { padding: 12px 8px; }
+    }
+
+    /* ════════════════════════════════════════
+       TABLET — 769px to 1024px
+    ════════════════════════════════════════ */
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .sidebar { width: 220px; min-width: 220px; }
+      .message-bubble { max-width: 80%; }
+    }
   </style>
 </head>
 <body>
+
+  <!-- Mobile sidebar backdrop -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
   <!-- SIDEBAR -->
   <aside class="sidebar" id="sidebar">
@@ -549,7 +624,7 @@
   <main class="main">
     <div class="main-header">
       <div style="display:flex;align-items:center;gap:12px">
-        <button class="menu-toggle" onclick="document.getElementById('sidebar').classList.toggle('open')">☰</button>
+        <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
         <div class="agent-indicator">
           <div class="agent-dot"></div>
           <span class="agent-current" id="agentLabel">GPT-4o</span>
@@ -594,6 +669,19 @@
   </div>
 
   <script>
+    // ── Sidebar open/close (mobile) ──
+    function toggleSidebar() {
+      const sb = document.getElementById('sidebar');
+      const ov = document.getElementById('sidebarOverlay');
+      const isOpen = sb.classList.contains('open');
+      if (isOpen) { closeSidebar(); } else { sb.classList.add('open'); ov.classList.add('show'); document.body.style.overflow = 'hidden'; }
+    }
+    function closeSidebar() {
+      document.getElementById('sidebar').classList.remove('open');
+      document.getElementById('sidebarOverlay').classList.remove('show');
+      document.body.style.overflow = '';
+    }
+
     // Agent selection
     window.selectedAgent = 'openai';
     document.querySelector('.agent-btn').classList.add('active'); // default first
@@ -605,6 +693,7 @@
       const names = {openai:'GPT-4o',claude:'Claude 3.5',gemini:'Gemini Flash',mistral:'Mistral Large',groq:'LLaMA 3.3',cohere:'Cohere R+'};
       document.getElementById('agentLabel').textContent = names[id];
       document.getElementById('agentHint2').textContent = names[id];
+      if (window.innerWidth <= 768) closeSidebar();
     }
 
     // Enhance toggle header badge
