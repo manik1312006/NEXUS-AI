@@ -807,23 +807,43 @@
       return english[0] || voices[0] || null;
     }
 
-    function loadVoices() {
-      const voices = synth.getVoices();
-      if (voices.length === 0) return;
+    function applyVoice(voices) {
       selectedVoice = pickVoice(voices);
       const label = document.getElementById('ttsVoiceLabel');
-      if (label && selectedVoice) {
-        label.textContent = '🎙 ' + (selectedVoice.name.length > 22
-          ? selectedVoice.name.slice(0, 22) + '…'
-          : selectedVoice.name);
-      } else if (label) {
+      if (!label) return;
+      if (selectedVoice) {
+        const name = selectedVoice.name;
+        label.textContent = '🎙 ' + (name.length > 22 ? name.slice(0, 22) + '…' : name);
+      } else {
         label.textContent = '⚠ No voice found';
       }
     }
 
-    // Voices load asynchronously on most browsers
-    synth.onvoiceschanged = loadVoices;
-    loadVoices(); // immediate attempt (works in Firefox)
+    function loadVoices() {
+      const voices = synth.getVoices();
+      if (voices.length > 0) { applyVoice(voices); return true; }
+      return false;
+    }
+
+    // Robust cross-browser voice loading:
+    // 1. Try immediately (Firefox resolves synchronously)
+    // 2. Hook onvoiceschanged (Chrome fires this once voices load)
+    // 3. Poll every 100ms for up to 3 seconds as a universal fallback
+    if (!loadVoices()) {
+      synth.onvoiceschanged = () => loadVoices();
+
+      let _pollCount = 0;
+      const _pollTimer = setInterval(() => {
+        _pollCount++;
+        if (loadVoices() || _pollCount >= 30) {
+          clearInterval(_pollTimer);
+          if (_pollCount >= 30 && !selectedVoice) {
+            const label = document.getElementById('ttsVoiceLabel');
+            if (label) label.textContent = '⚠ No voice found';
+          }
+        }
+      }, 100);
+    }
 
     function updatePlayer(speaking, paused, label) {
       const player    = document.getElementById('ttsPlayer');
@@ -970,7 +990,7 @@
       speak(text, btn);
     }
 
-    return { speak, stop, togglePause, handleSpeakClick, loadVoices };
+    return { speak, stop, togglePause, handleSpeakClick };
   })();
 
   // ══════════════════════════════════════════════
@@ -1559,9 +1579,6 @@
     });
 
     renderMemoryPanel();
-
-    // Trigger voice loading with a slight delay as a fallback for Chrome
-    setTimeout(() => NexusTTS.loadVoices(), 500);
   });
 </script>
 </body>
