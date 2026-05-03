@@ -62,46 +62,58 @@
         document.getElementById('userName').textContent = user.displayName || 'User';
       }
 
+      // ── FIX: session list race condition ──
       const sessRef = ref(db, `sessions/${user.uid}`);
       onValue(sessRef, (snap) => {
         const data = snap.val() || {};
-        const list = document.getElementById('sessionList');
-        list.innerHTML = '';
-        const sessions = Object.entries(data)
-          .sort((a, b) => b[1].createdAt - a[1].createdAt)
-          .slice(0, 20);
-        if (sessions.length === 0) {
-          list.innerHTML = '<div style="color:var(--c-muted);font-size:0.78rem;text-align:center;padding:20px">No chats yet</div>';
-          return;
+
+        const renderSessions = () => {
+          const list = document.getElementById('sessionList');
+          if (!list) return;
+          list.innerHTML = '';
+          const sessions = Object.entries(data)
+            .sort((a, b) => b[1].createdAt - a[1].createdAt)
+            .slice(0, 20);
+          if (sessions.length === 0) {
+            list.innerHTML = '<div style="color:var(--c-muted);font-size:0.78rem;text-align:center;padding:20px">No chats yet</div>';
+            return;
+          }
+          sessions.forEach(([id, s]) => {
+            const el = document.createElement('div');
+            el.className = 'session-item-wrap';
+            el.dataset.sessionId = id;
+
+            const btn = document.createElement('button');
+            btn.className = 'session-item';
+            btn.innerHTML = `<span class="session-icon">💬</span><span class="session-title">${s.title || 'New Chat'}</span>`;
+            btn.addEventListener('click', () => {
+              window._nexus.loadSession(id, s);
+              document.querySelectorAll('.session-item-wrap').forEach(w => w.classList.remove('active-session'));
+              el.classList.add('active-session');
+              if (window.innerWidth <= 768) closeSidebar();
+            });
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'session-delete-btn';
+            delBtn.title = 'Delete chat';
+            delBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
+            delBtn.addEventListener('click', (e) => {
+              e.stopPropagation();
+              showDeleteConfirm(id, s.title || 'New Chat');
+            });
+
+            el.appendChild(btn);
+            el.appendChild(delBtn);
+            list.appendChild(el);
+          });
+        };
+
+        // Render immediately if DOM is ready, otherwise wait
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', renderSessions, { once: true });
+        } else {
+          renderSessions();
         }
-        sessions.forEach(([id, s]) => {
-          const el = document.createElement('div');
-          el.className = 'session-item-wrap';
-          el.dataset.sessionId = id;
-
-          const btn = document.createElement('button');
-          btn.className = 'session-item';
-          btn.innerHTML = `<span class="session-icon">💬</span><span class="session-title">${s.title || 'New Chat'}</span>`;
-          btn.addEventListener('click', () => {
-            window._nexus.loadSession(id, s);
-            document.querySelectorAll('.session-item-wrap').forEach(w => w.classList.remove('active-session'));
-            el.classList.add('active-session');
-            if (window.innerWidth <= 768) closeSidebar();
-          });
-
-          const delBtn = document.createElement('button');
-          delBtn.className = 'session-delete-btn';
-          delBtn.title = 'Delete chat';
-          delBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
-          delBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            showDeleteConfirm(id, s.title || 'New Chat');
-          });
-
-          el.appendChild(btn);
-          el.appendChild(delBtn);
-          list.appendChild(el);
-        });
       });
 
       if (!user.isAnonymous) {
@@ -559,9 +571,7 @@
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════
-       🎙 TTS SECTION
-  ══════════════════════════════════════ -->
+  <!-- TTS SECTION -->
   <div class="tts-section">
     <div class="tts-row">
       <div class="tts-info">
@@ -620,7 +630,7 @@
       <div id="enhanceBadgeHeader" class="enhance-badge-header">✨ Enhancer ON</div>
       <div id="memoryBadgeHeader" class="memory-badge-header" style="display:none">🧠 Memory</div>
 
-      <!-- 🎙 TTS MINI-PLAYER -->
+      <!-- TTS MINI-PLAYER -->
       <div class="tts-player" id="ttsPlayer">
         <div class="tts-waveform">
           <div class="tts-bar"></div>
@@ -631,9 +641,7 @@
         </div>
         <span class="tts-player-label" id="ttsPlayerLabel">Speaking…</span>
         <button class="tts-ctrl-btn" id="ttsPauseResumeBtn" onclick="NexusTTS.togglePause()" title="Pause / Resume">
-          <!-- Pause icon -->
           <svg id="ttsPauseIcon" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
-          <!-- Resume icon (hidden by default) -->
           <svg id="ttsResumeIcon" viewBox="0 0 24 24" fill="currentColor" style="display:none"><polygon points="5,3 19,12 5,21"/></svg>
         </button>
         <button class="tts-ctrl-btn" onclick="NexusTTS.stop()" title="Stop">
@@ -736,35 +744,27 @@
   const BACKEND = "https://nexus-ai-backend-3csk.onrender.com";
 
   // ══════════════════════════════════════════════════════════════════════
-  //  🎙 NEXUS TTS ENGINE — Sol-style voice tuning
-  //  Target profile: ChatGPT Sol — warm, natural, female, mid-high pitch,
-  //  moderate pace (~185 wpm), clear enunciation, slight breathiness.
-  //  We use Web Speech API and pick the best available system voice.
+  //  🎙 NEXUS TTS ENGINE
+  //  FIX: applyVoice now guards against DOM not being ready yet
   // ══════════════════════════════════════════════════════════════════════
   const NexusTTS = (() => {
     const synth = window.speechSynthesis;
 
-    // Sol voice profile — tuned parameters
     const SOL_PROFILE = {
-      // Rate: 1.0 = default (≈180 wpm native). Sol is slightly brisk but clear.
       rate: 1.08,
-      // Pitch: Sol sits in a warm mid-high range (not quite soprano, not neutral).
       pitch: 1.12,
-      // Volume: full
       volume: 1.0,
     };
 
-    // Priority-ordered voice name fragments to match Sol's characteristics.
-    // We prefer: Samantha (macOS/iOS), Zira (Windows), Google US English female.
     const PREFERRED_VOICES = [
-      'samantha',     // macOS/iOS — closest natural female, warm tone
-      'karen',        // macOS Australian — clear, pleasant
-      'moira',        // macOS Irish — melodic
-      'zira',         // Windows — clear female
-      'hazel',        // Windows UK — natural
+      'samantha',
+      'karen',
+      'moira',
+      'zira',
+      'hazel',
       'google us english',
       'google uk english female',
-      'en-us',        // generic US English fallback
+      'en-us',
       'en-gb',
     ];
 
@@ -774,11 +774,10 @@
     let activeSpeakBtn = null;
     let currentText = '';
 
-    // Strip markdown/code to get clean speakable text
     function stripMarkdown(text) {
       return text
         .replace(/```[\s\S]*?```/g, 'code block omitted.')
-        .replace(/`[^`]+`/g, (m) => m.slice(1, -1)) // inline code — speak literally
+        .replace(/`[^`]+`/g, (m) => m.slice(1, -1))
         .replace(/#{1,6}\s+/g, '')
         .replace(/\*\*(.+?)\*\*/g, '$1')
         .replace(/\*(.+?)\*/g, '$1')
@@ -794,28 +793,33 @@
     }
 
     function pickVoice(voices) {
-      // Filter to English voices only
       const english = voices.filter(v => v.lang.startsWith('en'));
-      // Score each voice by preferred order
       for (const frag of PREFERRED_VOICES) {
         const match = english.find(v =>
           v.name.toLowerCase().includes(frag) || v.lang.toLowerCase().includes(frag)
         );
         if (match) return match;
       }
-      // Last resort: any English voice
       return english[0] || voices[0] || null;
     }
 
+    // ── FIX: guard label update against DOM not ready ──
     function applyVoice(voices) {
       selectedVoice = pickVoice(voices);
-      const label = document.getElementById('ttsVoiceLabel');
-      if (!label) return;
-      if (selectedVoice) {
-        const name = selectedVoice.name;
-        label.textContent = '🎙 ' + (name.length > 22 ? name.slice(0, 22) + '…' : name);
-      } else {
-        label.textContent = '⚠ No voice found';
+      function updateLabel() {
+        const label = document.getElementById('ttsVoiceLabel');
+        if (!label) return false;
+        if (selectedVoice) {
+          const name = selectedVoice.name;
+          label.textContent = '🎙 ' + (name.length > 22 ? name.slice(0, 22) + '…' : name);
+        } else {
+          label.textContent = '⚠ No voice found';
+        }
+        return true;
+      }
+      // Try immediately; if DOM not ready yet, wait for DOMContentLoaded
+      if (!updateLabel()) {
+        document.addEventListener('DOMContentLoaded', updateLabel, { once: true });
       }
     }
 
@@ -825,10 +829,6 @@
       return false;
     }
 
-    // Robust cross-browser voice loading:
-    // 1. Try immediately (Firefox resolves synchronously)
-    // 2. Hook onvoiceschanged (Chrome fires this once voices load)
-    // 3. Poll every 100ms for up to 3 seconds as a universal fallback
     if (!loadVoices()) {
       synth.onvoiceschanged = () => loadVoices();
 
@@ -873,7 +873,6 @@
 
     function speak(text, btn) {
       if (!synth) return;
-      // Stop any current speech
       stop();
 
       const clean = stripMarkdown(text);
@@ -892,7 +891,6 @@
       utter.volume = SOL_PROFILE.volume;
       utter.lang   = selectedVoice?.lang || 'en-US';
 
-      // Short snippet for mini-player label
       const snippet = clean.length > 30 ? clean.slice(0, 30) + '…' : clean;
 
       utter.onstart = () => {
@@ -940,12 +938,9 @@
       };
 
       synth.speak(utter);
-
-      // Chrome bug workaround: speech stops after ~15s without this
       _chromeKeepAlive();
     }
 
-    // Chrome-specific: resume every 10s to prevent silent cutoff on long texts
     let _keepAliveTimer = null;
     function _chromeKeepAlive() {
       clearInterval(_keepAliveTimer);
@@ -979,14 +974,11 @@
       isPaused = false;
     }
 
-    // Called when a speak button is clicked — toggles speak/pause/resume
     function handleSpeakClick(text, btn) {
-      // If THIS button is already speaking or paused — toggle pause
       if (activeSpeakBtn === btn && synth.speaking) {
         togglePause();
         return;
       }
-      // If a DIFFERENT button — stop current, start new
       speak(text, btn);
     }
 
@@ -1273,9 +1265,6 @@
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
   }
 
-  // ══════════════════════════════════════════════
-  //  appendMessage — now includes 🎙 Speak button on AI messages
-  // ══════════════════════════════════════════════
   function appendMessage(role, content, animate) {
     const safeContent = (typeof content === 'string' && content) ? content : '';
     const container   = document.getElementById('chatMessages');
@@ -1295,23 +1284,19 @@
       ? escapeHTML(safeContent)
       : (safeContent ? marked.parse(safeContent) : '');
 
-    // Build action buttons row for assistant messages
     let actionsHTML = '';
     if (role === 'assistant') {
       actionsHTML = `
         <div class="bubble-actions">
           <button class="speak-btn" onclick="handleSpeakBtnClick(this, event)">
-            <!-- Speaker icon -->
             <svg class="icon-speak" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
               <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
               <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
             </svg>
-            <!-- Pause icon -->
             <svg class="icon-pause" viewBox="0 0 24 24" fill="currentColor">
               <rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>
             </svg>
-            <!-- Resume icon -->
             <svg class="icon-resume" viewBox="0 0 24 24" fill="currentColor">
               <polygon points="5,3 19,12 5,21"/>
             </svg>
@@ -1330,7 +1315,6 @@
         ${actionsHTML}
       </div>`;
 
-    // Store raw text on the speak button for retrieval
     if (role === 'assistant') {
       const speakBtn = wrap.querySelector('.speak-btn');
       if (speakBtn) speakBtn._rawText = safeContent;
@@ -1342,7 +1326,6 @@
     return wrap;
   }
 
-  // Called from speak button click
   function handleSpeakBtnClick(btn, event) {
     event.stopPropagation();
     const text = btn._rawText || btn.closest('.message-bubble')?.querySelector('.message-content')?.innerText || '';
@@ -1443,9 +1426,6 @@
     return d.result;
   }
 
-  // ══════════════════════════════════════════════
-  //  sendMessage — auto-speak if TTS toggle ON
-  // ══════════════════════════════════════════════
   async function sendMessage() {
     const input     = document.getElementById('userInput');
     const rawPrompt = input.value.trim();
@@ -1457,7 +1437,6 @@
     const agent   = nx.selectedAgent;
     const enhance = document.getElementById('enhanceToggle').checked;
 
-    // Stop any current TTS before new message
     NexusTTS.stop();
 
     const userBubbleNode = appendMessage('user', rawPrompt, true);
@@ -1486,11 +1465,9 @@
 
       nx.chatHistory.push({ role:'assistant', content: safeResponse });
 
-      // 🎙 Auto-speak if TTS toggle is enabled
       if (document.getElementById('ttsToggle').checked) {
         const speakBtn = msgNode?.querySelector('.speak-btn');
         if (speakBtn) {
-          // Small delay so bubble animation finishes first
           setTimeout(() => NexusTTS.handleSpeakClick(safeResponse, speakBtn), 400);
         }
       }
@@ -1560,7 +1537,6 @@
       badge.style.opacity = this.checked ? '1' : '0.4';
     });
 
-    // Stop TTS when TTS toggle is turned off
     document.getElementById('ttsToggle').addEventListener('change', function() {
       if (!this.checked) NexusTTS.stop();
     });
