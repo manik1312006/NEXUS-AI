@@ -33,13 +33,23 @@
 
     window.doSignOut = () => signOut(auth).then(() => { window.location.href = '../index.html'; });
 
+    // ── Chat sessions ──
     window._saveSession = async function(uid, sessionId, payload) {
       await set(ref(db, `sessions/${uid}/${sessionId}`), payload);
     };
-
-    // ── NEW: Delete a session from Firebase ──
     window._deleteSession = async function(uid, sessionId) {
       await remove(ref(db, `sessions/${uid}/${sessionId}`));
+    };
+
+    // ── 🧠 Memory CRUD ──
+    window._saveMemory = async function(uid, memId, mem) {
+      await set(ref(db, `memories/${uid}/${memId}`), mem);
+    };
+    window._deleteMemory = async function(uid, memId) {
+      await remove(ref(db, `memories/${uid}/${memId}`));
+    };
+    window._clearAllMemories = async function(uid) {
+      await remove(ref(db, `memories/${uid}`));
     };
 
     onAuthStateChanged(auth, async (user) => {
@@ -56,6 +66,7 @@
         document.getElementById('userName').textContent = user.displayName || 'User';
       }
 
+      // ── Load chat sessions ──
       const sessRef = ref(db, `sessions/${user.uid}`);
       onValue(sessRef, (snap) => {
         const data = snap.val() || {};
@@ -78,13 +89,11 @@
           btn.innerHTML = `<span class="session-icon">💬</span><span class="session-title">${s.title || 'New Chat'}</span>`;
           btn.addEventListener('click', () => {
             window._nexus.loadSession(id, s);
-            // highlight active
             document.querySelectorAll('.session-item-wrap').forEach(w => w.classList.remove('active-session'));
             el.classList.add('active-session');
             if (window.innerWidth <= 768) closeSidebar();
           });
 
-          // ── Delete button ──
           const delBtn = document.createElement('button');
           delBtn.className = 'session-delete-btn';
           delBtn.title = 'Delete chat';
@@ -99,6 +108,19 @@
           list.appendChild(el);
         });
       });
+
+      // ── 🧠 Load memories from Firebase (real-time) ──
+      if (!user.isAnonymous) {
+        const memRef = ref(db, `memories/${user.uid}`);
+        onValue(memRef, (snap) => {
+          window._nexus.memories = snap.val() || {};
+          if (typeof renderMemoryPanel === 'function') renderMemoryPanel();
+        });
+      } else {
+        // Guest: empty ephemeral memory, show sign-in prompt
+        window._nexus.memories = {};
+        if (typeof renderMemoryPanel === 'function') renderMemoryPanel();
+      }
 
       window._nexus.newChat();
     });
@@ -147,25 +169,210 @@
     input:checked + .slider { background:var(--c-neon-purple); border-color:var(--c-neon-purple); }
     input:checked + .slider::before { left:23px; }
 
+    /* ══════════════════════════════════════
+       🧠 MEMORY SECTION — sidebar
+    ══════════════════════════════════════ */
+    .memory-section { border-bottom: 1px solid var(--c-border); flex-shrink: 0; }
+
+    .memory-section-header {
+      padding: 12px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; user-select: none; transition: background 0.2s;
+    }
+    .memory-section-header:hover { background: rgba(0,245,255,0.03); }
+    .memory-section-left { display: flex; align-items: center; gap: 8px; }
+
+    .memory-count-pill {
+      display: none;
+      background: rgba(0,245,255,0.12);
+      color: var(--c-neon-cyan);
+      border: 1px solid rgba(0,245,255,0.25);
+      border-radius: 10px;
+      font-size: 0.62rem; padding: 1px 7px;
+      font-family: 'Space Mono', monospace;
+      line-height: 1.4;
+    }
+    .memory-section-right { display: flex; align-items: center; gap: 4px; }
+
+    .memory-manage-btn {
+      background: none; border: none;
+      color: var(--c-muted); cursor: pointer; font-size: 0.88rem;
+      padding: 3px 5px; border-radius: 5px; transition: color 0.2s; line-height: 1;
+    }
+    .memory-manage-btn:hover { color: var(--c-neon-amber); }
+
+    .memory-chevron {
+      color: var(--c-muted); font-size: 1.1rem;
+      transition: transform 0.3s; line-height: 1;
+    }
+    .memory-chevron.open { transform: rotate(90deg); }
+
+    .memory-panel {
+      overflow: hidden; max-height: 0;
+      transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .memory-panel.open { max-height: 320px; overflow-y: auto; }
+    .memory-panel.open::-webkit-scrollbar { width: 3px; }
+    .memory-panel.open::-webkit-scrollbar-thumb { background: var(--c-border); border-radius:2px; }
+
+    .memory-preview-item {
+      padding: 7px 16px;
+      display: flex; align-items: flex-start; gap: 8px;
+      font-size: 0.77rem; color: var(--c-muted);
+      border-top: 1px solid rgba(255,255,255,0.03); line-height: 1.4;
+      transition: background 0.2s;
+    }
+    .memory-preview-item:hover { background: rgba(255,255,255,0.02); }
+    .mem-cat-icon { flex-shrink: 0; font-size: 0.85rem; margin-top: 1px; }
+    .memory-preview-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+
+    .memory-guest-notice {
+      padding: 12px 16px 14px;
+      font-size: 0.75rem; color: var(--c-muted);
+      text-align: center; line-height: 1.6;
+    }
+
+    .memory-view-all-btn {
+      display: block; width: calc(100% - 24px); margin: 8px 12px 10px;
+      padding: 8px; border-radius: 8px;
+      border: 1px solid var(--c-border); background: transparent;
+      color: var(--c-muted); font-size: 0.75rem; cursor: pointer;
+      text-align: center; transition: all 0.2s; font-family: 'DM Sans', sans-serif;
+    }
+    .memory-view-all-btn:hover { border-color: var(--c-neon-cyan); color: var(--c-neon-cyan); background: rgba(0,245,255,0.04); }
+
+    /* ══════════════════════════════════════
+       🧠 MEMORY MODAL
+    ══════════════════════════════════════ */
+    .mem-modal-top {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 4px;
+    }
+    .mem-modal-badge {
+      font-family: 'Space Mono', monospace; font-size: 0.65rem;
+      padding: 3px 10px; border-radius: 20px;
+      background: rgba(0,245,255,0.1); border: 1px solid rgba(0,245,255,0.25);
+      color: var(--c-neon-cyan);
+    }
+    .mem-modal-desc {
+      font-size: 0.78rem; color: var(--c-muted); margin-bottom: 16px; line-height: 1.6;
+    }
+
+    .mem-stats { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+    .mem-stat {
+      padding: 4px 10px; border-radius: 8px; font-size: 0.7rem;
+      border: 1px solid var(--c-border); color: var(--c-muted);
+      font-family: 'Space Mono', monospace;
+    }
+
+    .mem-modal-tabs { display: flex; gap: 5px; margin-bottom: 14px; flex-wrap: wrap; }
+    .mem-tab {
+      padding: 5px 12px; border-radius: 20px;
+      border: 1px solid var(--c-border); background: transparent;
+      color: var(--c-muted); font-size: 0.76rem;
+      cursor: pointer; transition: all 0.2s; font-family: 'DM Sans', sans-serif;
+    }
+    .mem-tab:hover { border-color: rgba(255,255,255,0.2); color: var(--c-text); }
+    .mem-tab.active {
+      background: rgba(0,245,255,0.1); border-color: rgba(0,245,255,0.4);
+      color: var(--c-neon-cyan);
+    }
+
+    .mem-grid {
+      display: flex; flex-direction: column; gap: 7px;
+      max-height: 46vh; overflow-y: auto;
+    }
+    .mem-grid::-webkit-scrollbar { width: 4px; }
+    .mem-grid::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 2px; }
+
+    .mem-card {
+      border-radius: 12px; padding: 11px 14px;
+      display: flex; align-items: flex-start; gap: 10px;
+      border: 1px solid var(--c-border);
+      transition: border-color 0.2s, transform 0.15s;
+      animation: memCardIn 0.3s ease;
+    }
+    @keyframes memCardIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .mem-card:hover { transform: translateX(2px); }
+    .mem-card-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+    .mem-card-body { flex: 1; min-width: 0; }
+    .mem-card-cat {
+      font-family: 'Space Mono', monospace; font-size: 0.59rem;
+      text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px;
+    }
+    .mem-card-content { font-size: 0.84rem; color: var(--c-text); line-height: 1.55; }
+    .mem-card-time { font-size: 0.68rem; color: var(--c-muted); margin-top: 5px; }
+    .mem-card-del {
+      flex-shrink: 0; background: none; border: none;
+      color: var(--c-muted); cursor: pointer; font-size: 0.9rem;
+      padding: 4px 6px; border-radius: 6px; transition: all 0.2s;
+      opacity: 0; line-height: 1; align-self: flex-start;
+    }
+    .mem-card:hover .mem-card-del { opacity: 1; }
+    .mem-card-del:hover { background: rgba(255,45,120,0.15); color: var(--c-neon-pink); }
+
+    .mem-empty {
+      text-align: center; padding: 36px 20px;
+      color: var(--c-muted); font-size: 0.85rem; line-height: 1.8;
+    }
+    .mem-empty-icon { font-size: 2.2rem; margin-bottom: 10px; }
+
+    .mem-clear-btn {
+      margin-top: 12px; width: 100%; padding: 11px;
+      border-radius: 10px; border: 1px solid rgba(255,45,120,0.3);
+      background: transparent; color: var(--c-neon-pink);
+      font-size: 0.82rem; font-family: 'DM Sans', sans-serif;
+      cursor: pointer; transition: all 0.2s; text-align: center;
+    }
+    .mem-clear-btn:hover { background: rgba(255,45,120,0.08); border-color: rgba(255,45,120,0.5); }
+
+    /* ══════════════════════════════════════
+       🧠 MEMORY TOAST
+    ══════════════════════════════════════ */
+    .memory-toast {
+      position: fixed; bottom: 76px; right: 18px; z-index: 400;
+      background: var(--c-card);
+      border: 1px solid rgba(0,245,255,0.3);
+      border-radius: 12px; padding: 10px 14px;
+      display: flex; align-items: center; gap: 10px;
+      max-width: 270px; min-width: 200px;
+      transform: translateX(130%);
+      transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5), 0 0 20px rgba(0,245,255,0.1);
+      pointer-events: none;
+    }
+    .memory-toast.show { transform: translateX(0); }
+    .memory-toast-icon { font-size: 1.15rem; }
+    .memory-toast-body { flex: 1; min-width: 0; }
+    .memory-toast-title { font-size: 0.78rem; font-weight: 600; color: var(--c-neon-cyan); margin-bottom: 2px; }
+    .memory-toast-text { font-size: 0.72rem; color: var(--c-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── header memory badge ── */
+    .memory-badge-header {
+      padding: 4px 12px; border-radius: 20px;
+      background: rgba(0,245,255,0.08);
+      border: 1px solid rgba(0,245,255,0.25);
+      color: var(--c-neon-cyan); font-size: 0.72rem;
+      font-family: 'Space Mono', monospace;
+      animation: fadeIn 0.4s ease;
+    }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+
     /* ── SESSION LIST ── */
     .session-list { flex:1; min-height:0; overflow-y:auto; padding:12px; }
     .session-list::-webkit-scrollbar { width:4px; }
     .session-list::-webkit-scrollbar-thumb { background:var(--c-border); border-radius:2px; }
 
-    /* Session item wrapper — holds the chat button + delete button */
     .session-item-wrap {
       display:flex; align-items:center; gap:4px;
       border-radius:10px; overflow:hidden;
-      transition:background 0.2s;
-      position:relative;
+      transition:background 0.2s; position:relative;
     }
     .session-item-wrap:hover { background:rgba(255,255,255,0.04); }
     .session-item-wrap:hover .session-delete-btn { opacity:1; }
     .session-item-wrap.active-session { background:rgba(0,245,255,0.06); border:1px solid rgba(0,245,255,0.15); }
 
     .session-item {
-      flex:1; min-width:0;
-      padding:10px 12px; border-radius:10px; border:none;
+      flex:1; min-width:0; padding:10px 12px; border-radius:10px; border:none;
       background:transparent; color:var(--c-muted); text-align:left;
       display:flex; align-items:center; gap:8px;
       cursor:pointer; transition:color 0.2s;
@@ -176,23 +383,14 @@
     .session-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .session-icon { flex-shrink:0; font-size:0.9rem; }
 
-    /* Delete button — hidden until hover */
     .session-delete-btn {
-      flex-shrink:0;
-      width:28px; height:28px;
-      border:none; border-radius:8px;
-      background:transparent;
-      color:var(--c-muted);
-      cursor:pointer;
+      flex-shrink:0; width:28px; height:28px;
+      border:none; border-radius:8px; background:transparent;
+      color:var(--c-muted); cursor:pointer;
       display:flex; align-items:center; justify-content:center;
-      opacity:0;
-      transition:all 0.2s;
-      margin-right:6px;
+      opacity:0; transition:all 0.2s; margin-right:6px;
     }
-    .session-delete-btn:hover {
-      background:rgba(255,45,120,0.15);
-      color:var(--c-neon-pink);
-    }
+    .session-delete-btn:hover { background:rgba(255,45,120,0.15); color:var(--c-neon-pink); }
 
     .sidebar-footer { padding:14px 16px; padding-bottom:max(14px,env(safe-area-inset-bottom,14px)); border-top:1px solid var(--c-border); flex-shrink:0; }
     .user-row { display:flex; align-items:center; gap:10px; }
@@ -210,6 +408,7 @@
     .agent-dot { width:8px; height:8px; border-radius:50%; background:var(--c-neon-cyan); box-shadow:0 0 8px var(--c-neon-cyan); animation:pulse 2s infinite; }
     @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.6;transform:scale(0.8)} }
     .agent-current { font-family:'Syne',sans-serif; font-weight:700; color:var(--c-text); font-size:1rem; }
+    .header-badges { display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
     .enhance-badge-header { padding:4px 12px; border-radius:20px; background:rgba(255,190,0,0.1); border:1px solid rgba(255,190,0,0.3); color:var(--c-neon-amber); font-size:0.72rem; font-family:'Space Mono',monospace; }
 
     /* ── CHAT ── */
@@ -280,69 +479,20 @@
     .modal-note { font-size:0.75rem; color:var(--c-muted); margin-top:12px; line-height:1.5; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px; }
 
     /* ── DELETE CONFIRM MODAL ── */
-    #deleteModal .modal {
-      border-color: rgba(255,45,120,0.3);
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(255,45,120,0.08);
-    }
-    .delete-icon {
-      width: 56px; height: 56px; border-radius: 50%;
-      background: rgba(255,45,120,0.12);
-      border: 1px solid rgba(255,45,120,0.3);
-      display: flex; align-items: center; justify-content: center;
-      margin: 0 auto 20px;
-      font-size: 1.5rem;
-    }
-    .delete-modal-title {
-      font-family:'Syne',sans-serif; font-weight:800; font-size:1.25rem;
-      text-align:center; margin-bottom:8px; color:var(--c-text);
-    }
-    .delete-modal-desc {
-      text-align:center; color:var(--c-muted); font-size:0.88rem;
-      line-height:1.6; margin-bottom:8px;
-    }
-    .delete-chat-name {
-      text-align:center;
-      font-family:'Space Mono',monospace; font-size:0.8rem;
-      color:var(--c-neon-pink);
-      background:rgba(255,45,120,0.08);
-      border:1px solid rgba(255,45,120,0.2);
-      border-radius:8px; padding:8px 16px;
-      margin:12px 0 24px;
-      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
-    }
-    .delete-actions {
-      display:flex; gap:10px;
-    }
-    .btn-cancel-delete {
-      flex:1; padding:13px; border-radius:12px;
-      border:1px solid var(--c-border); background:transparent;
-      color:var(--c-muted); font-family:'DM Sans',sans-serif;
-      font-size:0.9rem; cursor:pointer; transition:all 0.2s;
-    }
+    #deleteModal .modal { border-color:rgba(255,45,120,0.3); box-shadow:0 20px 60px rgba(0,0,0,0.5),0 0 40px rgba(255,45,120,0.08); }
+    .delete-icon { width:56px; height:56px; border-radius:50%; background:rgba(255,45,120,0.12); border:1px solid rgba(255,45,120,0.3); display:flex; align-items:center; justify-content:center; margin:0 auto 20px; font-size:1.5rem; }
+    .delete-modal-title { font-family:'Syne',sans-serif; font-weight:800; font-size:1.25rem; text-align:center; margin-bottom:8px; color:var(--c-text); }
+    .delete-modal-desc { text-align:center; color:var(--c-muted); font-size:0.88rem; line-height:1.6; margin-bottom:8px; }
+    .delete-chat-name { text-align:center; font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--c-neon-pink); background:rgba(255,45,120,0.08); border:1px solid rgba(255,45,120,0.2); border-radius:8px; padding:8px 16px; margin:12px 0 24px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .delete-actions { display:flex; gap:10px; }
+    .btn-cancel-delete { flex:1; padding:13px; border-radius:12px; border:1px solid var(--c-border); background:transparent; color:var(--c-muted); font-family:'DM Sans',sans-serif; font-size:0.9rem; cursor:pointer; transition:all 0.2s; }
     .btn-cancel-delete:hover { border-color:rgba(255,255,255,0.2); color:var(--c-text); }
-    .btn-confirm-delete {
-      flex:1; padding:13px; border-radius:12px;
-      border:none;
-      background:linear-gradient(135deg, #ff2d78, #c0185a);
-      color:#fff; font-family:'Syne',sans-serif;
-      font-weight:700; font-size:0.9rem;
-      cursor:pointer; transition:all 0.2s;
-      box-shadow: 0 4px 20px rgba(255,45,120,0.3);
-      display:flex; align-items:center; justify-content:center; gap:8px;
-    }
+    .btn-confirm-delete { flex:1; padding:13px; border-radius:12px; border:none; background:linear-gradient(135deg,#ff2d78,#c0185a); color:#fff; font-family:'Syne',sans-serif; font-weight:700; font-size:0.9rem; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 20px rgba(255,45,120,0.3); display:flex; align-items:center; justify-content:center; gap:8px; }
     .btn-confirm-delete:hover { transform:translateY(-1px); box-shadow:0 8px 30px rgba(255,45,120,0.45); }
-    .btn-confirm-delete:active { transform:translateY(0); }
     .btn-confirm-delete.deleting { opacity:0.7; pointer-events:none; }
 
-    /* delete animation on session item */
-    @keyframes slideOut {
-      from { opacity:1; max-height:60px; transform:translateX(0); }
-      to   { opacity:0; max-height:0;   transform:translateX(-20px); }
-    }
-    .session-item-wrap.deleting-anim {
-      animation: slideOut 0.3s ease forwards;
-      overflow:hidden;
-    }
+    @keyframes slideOut { from{opacity:1;max-height:60px;transform:translateX(0)} to{opacity:0;max-height:0;transform:translateX(-20px)} }
+    .session-item-wrap.deleting-anim { animation:slideOut 0.3s ease forwards; overflow:hidden; }
 
     .menu-toggle { display:none; background:none; border:none; color:var(--c-text); font-size:1.4rem; cursor:pointer; padding:4px 8px; border-radius:8px; transition:background 0.2s; }
     .menu-toggle:hover { background:rgba(255,255,255,0.08); }
@@ -367,8 +517,10 @@
       .welcome-state h2 { font-size:1.5rem; }
       .modal { border-radius:16px 16px 0 0; padding:24px 20px; width:100%; position:fixed; bottom:0; left:0; right:0; margin:0; }
       .modal-overlay { align-items:flex-end; }
-      /* Always show delete btn on mobile (no hover) */
       .session-delete-btn { opacity:1; }
+      .mem-card-del { opacity:1; }
+      .memory-toast { bottom: 70px; right: 10px; max-width: 240px; }
+      .header-badges { gap:5px; }
     }
     @media (max-width:400px) {
       .message-bubble { max-width:93%; }
@@ -438,6 +590,26 @@
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════
+       🧠 MEMORY SECTION
+  ══════════════════════════════════════ -->
+  <div class="memory-section" id="memorySection">
+    <div class="memory-section-header" onclick="toggleMemoryPanel()">
+      <div class="memory-section-left">
+        <span style="font-size:1rem">🧠</span>
+        <span class="section-label" style="margin:0;color:var(--c-text);font-size:0.65rem;letter-spacing:0.12em">MEMORY</span>
+        <span class="memory-count-pill" id="memoryCountPill">0</span>
+      </div>
+      <div class="memory-section-right">
+        <button class="memory-manage-btn" onclick="event.stopPropagation(); openMemoryModal()" title="Manage all memories">⚙</button>
+        <span class="memory-chevron" id="memChevron">›</span>
+      </div>
+    </div>
+    <div class="memory-panel" id="memoryPanel">
+      <!-- Populated by renderMemoryPanel() -->
+    </div>
+  </div>
+
   <div class="session-list" id="sessionList">
     <div style="color:var(--c-muted);font-size:0.78rem;text-align:center;padding:20px">No chats yet</div>
   </div>
@@ -462,7 +634,10 @@
         <span class="agent-current" id="agentLabel">GPT-OSS 20B</span>
       </div>
     </div>
-    <div id="enhanceBadgeHeader" class="enhance-badge-header">✨ Enhancer ON</div>
+    <div class="header-badges">
+      <div id="enhanceBadgeHeader" class="enhance-badge-header">✨ Enhancer ON</div>
+      <div id="memoryBadgeHeader" class="memory-badge-header" style="display:none">🧠 Memory</div>
+    </div>
   </div>
 
   <div class="chat-area" id="chatMessages">
@@ -516,19 +691,352 @@
   </div>
 </div>
 
+<!-- ══════════════════════════════════════
+     🧠 MEMORY MANAGEMENT MODAL
+══════════════════════════════════════ -->
+<div class="modal-overlay" id="memoryModal" onclick="handleMemModalOverlayClick(event)">
+  <div class="modal" style="max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
+    <div class="modal-header" style="flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="modal-title">🧠 Memory</div>
+        <span class="mem-modal-badge">AUTO-EXTRACT</span>
+      </div>
+      <button class="modal-close" onclick="closeMemoryModal()">✕</button>
+    </div>
+
+    <div style="flex-shrink:0">
+      <p class="mem-modal-desc">Facts I've learned about you are stored here and silently injected as context into every conversation — so I remember you across sessions.</p>
+      <div class="mem-stats" id="memStats"></div>
+      <div class="mem-modal-tabs">
+        <button class="mem-tab active" data-filter="all" onclick="setMemFilter('all')">All</button>
+        <button class="mem-tab" data-filter="personal" onclick="setMemFilter('personal')">👤 Personal</button>
+        <button class="mem-tab" data-filter="preference" onclick="setMemFilter('preference')">❤️ Prefs</button>
+        <button class="mem-tab" data-filter="project" onclick="setMemFilter('project')">🚀 Projects</button>
+        <button class="mem-tab" data-filter="context" onclick="setMemFilter('context')">💡 Context</button>
+      </div>
+    </div>
+
+    <div class="mem-grid" id="memGrid" style="flex:1;overflow-y:auto"></div>
+
+    <div style="flex-shrink:0">
+      <button class="mem-clear-btn" id="memClearBtn" onclick="confirmClearAllMemories()">🗑 Clear All Memories</button>
+      <div class="modal-note" style="margin-top:10px">🤖 Memories are auto-extracted from your conversations using LLaMA via Groq (free). They're stored privately in Firebase under your account and injected as context for richer, personalized responses.</div>
+    </div>
+  </div>
+</div>
+
+<!-- 🧠 Memory toast notification -->
+<div class="memory-toast" id="memoryToast">
+  <span class="memory-toast-icon">🧠</span>
+  <div class="memory-toast-body">
+    <div class="memory-toast-title">Memory saved</div>
+    <div class="memory-toast-text" id="memToastText"></div>
+  </div>
+</div>
+
 <script>
   const BACKEND = "https://nexus-ai-backend-3csk.onrender.com";
 
+  // ══════════════════════════════════════════════
+  //  🧠 MEMORY SYSTEM — constants & helpers
+  // ══════════════════════════════════════════════
+  const MEMORY_EMOJI = { personal:'👤', preference:'❤️', project:'🚀', context:'💡' };
+  const MEMORY_CAT_STYLE = {
+    personal:   { color:'var(--c-neon-cyan)',  border:'rgba(0,245,255,0.3)',  bg:'rgba(0,245,255,0.06)'  },
+    preference: { color:'var(--c-neon-pink)',  border:'rgba(255,45,120,0.3)', bg:'rgba(255,45,120,0.06)' },
+    project:    { color:'var(--c-neon-amber)', border:'rgba(255,190,0,0.3)',  bg:'rgba(255,190,0,0.06)'  },
+    context:    { color:'var(--c-neon-green)', border:'rgba(0,255,157,0.3)',  bg:'rgba(0,255,157,0.06)'  },
+  };
+
+  function getMemStyle(cat) { return MEMORY_CAT_STYLE[cat] || MEMORY_CAT_STYLE.context; }
+
+  function timeAgo(ts) {
+    const d = Date.now() - ts;
+    if (d < 60000)     return 'just now';
+    if (d < 3600000)   return Math.floor(d/60000) + 'm ago';
+    if (d < 86400000)  return Math.floor(d/3600000) + 'h ago';
+    if (d < 604800000) return Math.floor(d/86400000) + 'd ago';
+    return new Date(ts).toLocaleDateString();
+  }
+
+  // Simple word-overlap similarity to avoid storing near-duplicate facts
+  function isSimilarMemory(a, b) {
+    const words = s => new Set(s.toLowerCase().split(/\W+/).filter(w => w.length > 3));
+    const wa = words(a), wb = words(b);
+    const inter = [...wa].filter(w => wb.has(w));
+    const uni   = new Set([...wa, ...wb]);
+    return uni.size > 0 && inter.length / uni.size > 0.55;
+  }
+
+  // ── Render memory panel in sidebar ──
+  function renderMemoryPanel() {
+    const nx = window._nexus;
+    const panel = document.getElementById('memoryPanel');
+    if (!panel) return;
+
+    const isGuest = nx.currentUser?.isAnonymous;
+    const mems    = Object.values(nx.memories || {}).sort((a,b) => b.createdAt - a.createdAt);
+    const count   = mems.length;
+
+    // Count pill
+    const pill = document.getElementById('memoryCountPill');
+    if (pill) {
+      pill.textContent = count;
+      pill.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+
+    // Header badge in main area
+    const badge = document.getElementById('memoryBadgeHeader');
+    if (badge) badge.style.display = (count > 0 && !isGuest) ? 'block' : 'none';
+
+    if (isGuest) {
+      panel.innerHTML = `<div class="memory-guest-notice">🔒 Sign in to enable<br>persistent cross-session memory</div>`;
+      return;
+    }
+
+    if (count === 0) {
+      panel.innerHTML = `<div class="memory-guest-notice">No memories yet.<br>Chat to build your profile!</div>`;
+      return;
+    }
+
+    const preview = mems.slice(0, 3);
+    let html = preview.map(m => `
+      <div class="memory-preview-item">
+        <span class="mem-cat-icon">${m.emoji || MEMORY_EMOJI[m.category] || '💡'}</span>
+        <span class="memory-preview-text" title="${escapeHTML(m.content)}">${escapeHTML(m.content)}</span>
+      </div>`).join('');
+
+    if (count > 3) {
+      html += `<button class="memory-view-all-btn" onclick="openMemoryModal()">View all ${count} memories →</button>`;
+    }
+
+    panel.innerHTML = html;
+  }
+
+  // ── Toggle memory panel ──
+  let memPanelOpen = false;
+  function toggleMemoryPanel() {
+    memPanelOpen = !memPanelOpen;
+    document.getElementById('memoryPanel')?.classList.toggle('open', memPanelOpen);
+    const chev = document.getElementById('memChevron');
+    if (chev) chev.classList.toggle('open', memPanelOpen);
+  }
+
+  // ══════════════════════════════════════════════
+  //  🧠 MEMORY MODAL
+  // ══════════════════════════════════════════════
+  let memFilter = 'all';
+
+  function openMemoryModal() {
+    document.getElementById('memoryModal').classList.add('show');
+    renderMemoryModal();
+  }
+  function closeMemoryModal() {
+    document.getElementById('memoryModal').classList.remove('show');
+  }
+  function handleMemModalOverlayClick(e) {
+    if (e.target === document.getElementById('memoryModal')) closeMemoryModal();
+  }
+  function setMemFilter(f) {
+    memFilter = f;
+    renderMemoryModal();
+  }
+
+  function renderMemoryModal() {
+    const nx    = window._nexus;
+    const all   = Object.values(nx.memories || {}).sort((a,b) => b.createdAt - a.createdAt);
+    const shown = memFilter === 'all' ? all : all.filter(m => m.category === memFilter);
+
+    // Tabs active state
+    document.querySelectorAll('.mem-tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.filter === memFilter);
+    });
+
+    // Stats row
+    const cats = ['personal','preference','project','context'];
+    const statsEl = document.getElementById('memStats');
+    if (statsEl) {
+      statsEl.innerHTML = [
+        `<div class="mem-stat">🧠 ${all.length} total</div>`,
+        ...cats
+          .filter(c => all.filter(m => m.category === c).length > 0)
+          .map(c => {
+            const s = getMemStyle(c);
+            return `<div class="mem-stat" style="border-color:${s.border};color:${s.color};background:${s.bg}">${MEMORY_EMOJI[c]} ${all.filter(m=>m.category===c).length} ${c}</div>`;
+          })
+      ].join('');
+    }
+
+    // Clear button visibility
+    const clearBtn = document.getElementById('memClearBtn');
+    if (clearBtn) clearBtn.style.display = all.length > 0 ? 'block' : 'none';
+
+    // Grid
+    const grid = document.getElementById('memGrid');
+    if (!grid) return;
+
+    if (shown.length === 0) {
+      grid.innerHTML = `<div class="mem-empty">
+        <div class="mem-empty-icon">🧠</div>
+        ${all.length === 0
+          ? 'No memories yet.<br>Start chatting and I\'ll automatically<br>learn things about you!'
+          : `No <strong>${memFilter}</strong> memories yet.`}
+      </div>`;
+      return;
+    }
+
+    grid.innerHTML = shown.map(m => {
+      const cat = m.category || 'context';
+      const s   = getMemStyle(cat);
+      return `<div class="mem-card" id="memcard_${m.id}" style="border-color:${s.border};background:${s.bg}">
+        <div class="mem-card-icon">${m.emoji || MEMORY_EMOJI[cat] || '💡'}</div>
+        <div class="mem-card-body">
+          <div class="mem-card-cat" style="color:${s.color}">${cat}</div>
+          <div class="mem-card-content">${escapeHTML(m.content)}</div>
+          <div class="mem-card-time">Saved ${timeAgo(m.createdAt)}</div>
+        </div>
+        <button class="mem-card-del" onclick="deleteMemory('${m.id}')" title="Delete memory">✕</button>
+      </div>`;
+    }).join('');
+  }
+
+  // Delete single memory
+  async function deleteMemory(memId) {
+    const nx  = window._nexus;
+    const uid = nx.currentUser?.uid;
+    if (!uid || !memId) return;
+
+    const card = document.getElementById('memcard_' + memId);
+    if (card) {
+      card.style.transition = 'opacity 0.2s, transform 0.2s';
+      card.style.opacity = '0';
+      card.style.transform = 'translateX(-10px)';
+      await new Promise(r => setTimeout(r, 200));
+    }
+
+    delete nx.memories[memId];
+    if (typeof window._deleteMemory === 'function') {
+      await window._deleteMemory(uid, memId).catch(() => {});
+    }
+    renderMemoryPanel();
+    renderMemoryModal();
+  }
+
+  // Clear all memories
+  async function confirmClearAllMemories() {
+    const nx  = window._nexus;
+    const uid = nx.currentUser?.uid;
+    if (!uid) return;
+    if (!confirm('Clear ALL memories? This cannot be undone.')) return;
+
+    nx.memories = {};
+    if (typeof window._clearAllMemories === 'function') {
+      await window._clearAllMemories(uid).catch(() => {});
+    }
+    renderMemoryPanel();
+    renderMemoryModal();
+  }
+
+  // ══════════════════════════════════════════════
+  //  🧠 MEMORY EXTRACTION (background, non-blocking)
+  // ══════════════════════════════════════════════
+  let _memExtracting = false;
+
+  async function maybeExtractMemories() {
+    const nx = window._nexus;
+    if (_memExtracting)                          return; // Already running
+    if (!nx.currentUser || nx.currentUser.isAnonymous) return; // No memory for guests
+    if (nx.chatHistory.length < 2)               return; // Need at least 1 exchange
+    // Extract after 1st exchange, then every 2nd exchange (every 4 messages)
+    if (nx.chatHistory.length !== 2 && nx.chatHistory.length % 4 !== 0) return;
+    if (Object.keys(nx.memories || {}).length >= 50) return; // Memory cap
+
+    _memExtracting = true;
+    try {
+      const res = await fetch(`${BACKEND}/api/extract-memory`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: nx.chatHistory.slice(-4) })
+      });
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const newMems = Array.isArray(data.memories) ? data.memories : [];
+      let addedCount = 0;
+
+      for (const mem of newMems) {
+        if (!mem?.content?.trim()) continue;
+        // Dedup check against all existing memories
+        const isDup = Object.values(nx.memories || {}).some(ex => isSimilarMemory(mem.content, ex.content));
+        if (isDup) continue;
+
+        const memId  = 'mem_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+        const validCats = ['personal','preference','project','context'];
+        const memObj = {
+          id:        memId,
+          content:   mem.content.trim(),
+          category:  validCats.includes(mem.category) ? mem.category : 'context',
+          emoji:     MEMORY_EMOJI[mem.category] || '💡',
+          createdAt: Date.now(),
+          sessionId: nx.currentSessionId || ''
+        };
+
+        nx.memories = nx.memories || {};
+        nx.memories[memId] = memObj;
+
+        if (typeof window._saveMemory === 'function') {
+          await window._saveMemory(nx.currentUser.uid, memId, memObj).catch(() => {});
+        }
+
+        if (addedCount === 0) showMemoryToast(memObj); // Toast for first new memory
+        addedCount++;
+      }
+
+      if (addedCount > 0) {
+        renderMemoryPanel();
+        if (document.getElementById('memoryModal').classList.contains('show')) renderMemoryModal();
+      }
+    } catch {
+      // Silent fail — memory is non-critical background feature
+    } finally {
+      _memExtracting = false;
+    }
+  }
+
+  // ── Memory toast ──
+  let _toastTimer = null;
+  function showMemoryToast(mem) {
+    const toast   = document.getElementById('memoryToast');
+    const textEl  = document.getElementById('memToastText');
+    if (!toast || !textEl) return;
+    textEl.textContent = mem.content.length > 55 ? mem.content.slice(0, 55) + '…' : mem.content;
+    toast.classList.add('show');
+    clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => toast.classList.remove('show'), 3800);
+  }
+
+  // ── Get active memories for context injection ──
+  function getActiveMemories() {
+    const nx = window._nexus;
+    if (nx.currentUser?.isAnonymous) return [];
+    return Object.values(nx.memories || {})
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 10);
+  }
+
+  // ══════════════════════════════════════════════
+  //  CORE APP
+  // ══════════════════════════════════════════════
   window._nexus = {
     currentUser:      null,
     currentSessionId: null,
     chatHistory:      [],
     selectedAgent:    'openai',
+    memories:         {},   // 🧠 memory store
 
     newChat() {
       this.currentSessionId = 'session_' + Date.now();
       this.chatHistory = [];
-      // Remove active highlight from all session items
       document.querySelectorAll('.session-item-wrap').forEach(w => w.classList.remove('active-session'));
       document.getElementById('chatMessages').innerHTML = `
         <div class="welcome-state">
@@ -546,7 +1054,7 @@
     }
   };
 
-  // ── Delete modal state ──
+  // ── Delete chat modal state ──
   let _pendingDeleteId    = null;
   let _pendingDeleteTitle = null;
 
@@ -562,8 +1070,7 @@
 
   function closeDeleteModal() {
     document.getElementById('deleteModal').classList.remove('show');
-    _pendingDeleteId    = null;
-    _pendingDeleteTitle = null;
+    _pendingDeleteId = _pendingDeleteTitle = null;
   }
 
   function handleDeleteOverlayClick(e) {
@@ -581,24 +1088,15 @@
     btn.innerHTML = `<span style="display:inline-block;animation:wspin 0.8s linear infinite">⟳</span> Deleting…`;
 
     try {
-      // Animate the sidebar item out
       const itemWrap = document.querySelector(`.session-item-wrap[data-session-id="${_pendingDeleteId}"]`);
       if (itemWrap) {
         itemWrap.classList.add('deleting-anim');
-        // Wait for animation before Firebase delete (visual feedback feels snappy)
         await new Promise(r => setTimeout(r, 250));
       }
-
-      // Remove from Firebase
       if (typeof window._deleteSession === 'function') {
         await window._deleteSession(uid, _pendingDeleteId);
       }
-
-      // If the deleted session is the currently loaded one → start a new chat
-      if (nx.currentSessionId === _pendingDeleteId) {
-        nx.newChat();
-      }
-
+      if (nx.currentSessionId === _pendingDeleteId) nx.newChat();
       closeDeleteModal();
     } catch (err) {
       btn.classList.remove('deleting');
@@ -622,7 +1120,9 @@
 
   function escapeHTML(s) {
     if (!s) return '';
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+    return String(s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/\n/g,'<br>');
   }
 
   function appendMessage(role, content, animate) {
@@ -634,9 +1134,9 @@
     wrap.className = 'message-wrap ' + role;
     if (animate) wrap.style.animation = 'msgIn 0.3s ease';
 
-    const user = window._nexus.currentUser;
+    const user      = window._nexus.currentUser;
     const avatarSrc = user?.photoURL || 'https://ui-avatars.com/api/?name=U&background=7c3aed&color=fff';
-    const avatar = role === 'user'
+    const avatar    = role === 'user'
       ? `<img src="${avatarSrc}" class="msg-avatar">`
       : `<div class="msg-avatar agent-avatar">${agentEmoji(window._nexus.selectedAgent)}</div>`;
 
@@ -717,19 +1217,40 @@
     } catch { return prompt; }
   }
 
-  async function callAgent(agent, prompt, history) {
-    const messages = [...history.slice(-8), { role:'user', content: prompt }];
+  // ══════════════════════════════════════════════
+  //  callAgent — 🧠 memory-aware
+  // ══════════════════════════════════════════════
+  async function callAgent(agent, prompt, history, memories = []) {
+    // Filter out any accidental system messages from stored history
+    const recentHistory = history.slice(-8).filter(m => m.role !== 'system');
+    const userMsg       = { role: 'user', content: prompt };
+
+    let messages;
+    let promptWithContext = prompt;
+
+    if (memories.length > 0) {
+      // Build a system message with memory context
+      const memLines = memories.slice(0, 8).map(m => `• ${m.content}`).join('\n');
+      const sysContent = `You are a helpful AI assistant. The following is relevant context about the user, learned from previous conversations:\n${memLines}\n\nUse this context naturally and helpfully when relevant. Do not explicitly tell the user that you have a stored memory system — just respond in a personalized, aware way.`;
+      messages = [{ role: 'system', content: sysContent }, ...recentHistory, userMsg];
+      // For prompt-only agents (Gemini, Cohere): prepend a lightweight context prefix
+      promptWithContext = `[User background: ${memories.slice(0,5).map(m=>m.content).join('. ')}]\n\n${prompt}`;
+    } else {
+      messages = [...recentHistory, userMsg];
+    }
+
     const map = {
       openai:          { url:`${BACKEND}/api/openai`,          body:{ messages } },
       'nvidia-llama':  { url:`${BACKEND}/api/nvidia-llama`,    body:{ messages } },
       'nvidia-mixtral':{ url:`${BACKEND}/api/nvidia-mixtral`,  body:{ messages } },
       'nvidia-gemma':  { url:`${BACKEND}/api/nvidia-gemma`,    body:{ messages } },
-      claude:          { url:`${BACKEND}/api/claude`,          body:{ messages } },
-      gemini:          { url:`${BACKEND}/api/gemini`,          body:{ prompt } },
+      claude:          { url:`${BACKEND}/api/claude`,          body:{ messages } },            // system extracted server-side
+      gemini:          { url:`${BACKEND}/api/gemini`,          body:{ prompt: promptWithContext } },
       mistral:         { url:`${BACKEND}/api/mistral`,         body:{ messages } },
-      cohere:          { url:`${BACKEND}/api/cohere`,          body:{ prompt } },
+      cohere:          { url:`${BACKEND}/api/cohere`,          body:{ prompt: promptWithContext } },
       groq:            { url:`${BACKEND}/api/groq`,            body:{ messages } },
     };
+
     const target = map[agent];
     if (!target) throw new Error('Unknown agent.');
     const r = await fetch(target.url, {
@@ -742,6 +1263,9 @@
     return d.result;
   }
 
+  // ══════════════════════════════════════════════
+  //  sendMessage — 🧠 memory-enhanced
+  // ══════════════════════════════════════════════
   async function sendMessage() {
     const input     = document.getElementById('userInput');
     const rawPrompt = input.value.trim();
@@ -769,8 +1293,13 @@
         }
       }
 
-      updateTyping(typingId, '🤖 Asking ' + agentName(agent) + '…');
-      const response = await callAgent(agent, finalPrompt, nx.chatHistory.slice(-10));
+      // 🧠 Inject memories into context
+      const activeMemories = getActiveMemories();
+      const memLabel = activeMemories.length > 0 ? `🧠 Using ${activeMemories.length} memor${activeMemories.length===1?'y':'ies'}…` : '';
+
+      updateTyping(typingId, (memLabel ? memLabel + ' · ' : '') + '🤖 Asking ' + agentName(agent) + '…');
+
+      const response = await callAgent(agent, finalPrompt, nx.chatHistory.slice(-10), activeMemories);
       removeTyping(typingId);
 
       const safeResponse = (typeof response === 'string' && response.trim())
@@ -779,15 +1308,16 @@
       appendMessage('assistant', safeResponse, true);
       nx.chatHistory.push({ role:'assistant', content: safeResponse });
 
+      // Save session to Firebase
       if (nx.currentUser && nx.currentSessionId && typeof window._saveSession === 'function') {
         const title = nx.chatHistory[0]?.content?.slice(0, 60) || 'Chat';
         window._saveSession(nx.currentUser.uid, nx.currentSessionId, {
-          title,
-          messages:  nx.chatHistory,
-          createdAt: Date.now(),
-          agent
+          title, messages: nx.chatHistory, createdAt: Date.now(), agent
         });
       }
+
+      // 🧠 Trigger background memory extraction (fire-and-forget)
+      maybeExtractMemories();
 
     } catch (err) {
       removeTyping(typingId);
@@ -824,10 +1354,12 @@
     try {
       const res  = await fetch(BACKEND + '/');
       const data = await res.json();
+      const memCount = Object.keys(window._nexus.memories || {}).length;
       body.innerHTML = `
         <div style="color:var(--c-neon-green);margin-bottom:16px">✅ ${data.status}</div>
         <div style="color:var(--c-muted);font-size:0.8rem">Version: ${data.version}</div>
-        <div style="margin-top:16px;font-size:0.82rem;color:var(--c-text)">All AI agents are powered by the secure backend.</div>`;
+        <div style="margin-top:12px;font-size:0.82rem;color:var(--c-text)">All AI agents are powered by the secure backend.</div>
+        <div style="margin-top:8px;font-size:0.8rem;color:var(--c-neon-cyan)">🧠 ${memCount} memor${memCount===1?'y':'ies'} loaded in this session.</div>`;
     } catch {
       body.innerHTML = `<div style="color:var(--c-neon-pink)">❌ Backend unreachable.</div>`;
     }
@@ -855,6 +1387,9 @@
     document.getElementById('settingsModal').addEventListener('click', e => {
       if (e.target === document.getElementById('settingsModal')) closeSettings();
     });
+
+    // Initialize memory panel on load
+    renderMemoryPanel();
   });
 </script>
 </body>
