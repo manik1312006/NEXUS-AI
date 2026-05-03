@@ -12,15 +12,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
 
-  <!-- ══════════════════════════════════════════════════════════
-       FIREBASE MODULE — only auth + DB live here.
-       Everything else is in the plain <script> below the body
-       so it is synchronously available before any interaction.
-  ══════════════════════════════════════════════════════════ -->
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { getDatabase, ref, set, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBYqYSWd1-DOB5O6gkixbRibtuJI66QkjE",
@@ -36,21 +31,22 @@
     const auth = getAuth(app);
     const db   = getDatabase(app);
 
-    // Expose sign-out globally
     window.doSignOut = () => signOut(auth).then(() => { window.location.href = '../index.html'; });
 
-    // Expose session-save so the plain script can call it
     window._saveSession = async function(uid, sessionId, payload) {
       await set(ref(db, `sessions/${uid}/${sessionId}`), payload);
+    };
+
+    // ── NEW: Delete a session from Firebase ──
+    window._deleteSession = async function(uid, sessionId) {
+      await remove(ref(db, `sessions/${uid}/${sessionId}`));
     };
 
     onAuthStateChanged(auth, async (user) => {
       if (!user) { window.location.href = '../index.html'; return; }
 
-      // Push user into the shared state the plain script reads
       window._nexus.currentUser = user;
 
-      // Update avatar / name
       if (user.isAnonymous) {
         document.getElementById('userAvatar').src = 'https://ui-avatars.com/api/?name=G&background=0d0d2b&color=00f5ff';
         document.getElementById('userName').textContent = 'Guest';
@@ -60,7 +56,6 @@
         document.getElementById('userName').textContent = user.displayName || 'User';
       }
 
-      // Load sidebar session list
       const sessRef = ref(db, `sessions/${user.uid}`);
       onValue(sessRef, (snap) => {
         const data = snap.val() || {};
@@ -74,18 +69,37 @@
           return;
         }
         sessions.forEach(([id, s]) => {
-          const el = document.createElement('button');
-          el.className = 'session-item';
-          el.innerHTML = `<span class="session-icon">💬</span><span class="session-title">${s.title || 'New Chat'}</span>`;
-          el.addEventListener('click', () => {
+          const el = document.createElement('div');
+          el.className = 'session-item-wrap';
+          el.dataset.sessionId = id;
+
+          const btn = document.createElement('button');
+          btn.className = 'session-item';
+          btn.innerHTML = `<span class="session-icon">💬</span><span class="session-title">${s.title || 'New Chat'}</span>`;
+          btn.addEventListener('click', () => {
             window._nexus.loadSession(id, s);
+            // highlight active
+            document.querySelectorAll('.session-item-wrap').forEach(w => w.classList.remove('active-session'));
+            el.classList.add('active-session');
             if (window.innerWidth <= 768) closeSidebar();
           });
+
+          // ── Delete button ──
+          const delBtn = document.createElement('button');
+          delBtn.className = 'session-delete-btn';
+          delBtn.title = 'Delete chat';
+          delBtn.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
+          delBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showDeleteConfirm(id, s.title || 'New Chat');
+          });
+
+          el.appendChild(btn);
+          el.appendChild(delBtn);
           list.appendChild(el);
         });
       });
 
-      // Start fresh chat after auth resolves
       window._nexus.newChat();
     });
   </script>
@@ -133,13 +147,52 @@
     input:checked + .slider { background:var(--c-neon-purple); border-color:var(--c-neon-purple); }
     input:checked + .slider::before { left:23px; }
 
+    /* ── SESSION LIST ── */
     .session-list { flex:1; min-height:0; overflow-y:auto; padding:12px; }
     .session-list::-webkit-scrollbar { width:4px; }
     .session-list::-webkit-scrollbar-thumb { background:var(--c-border); border-radius:2px; }
-    .session-item { width:100%; padding:10px 12px; border-radius:10px; border:none; background:transparent; color:var(--c-muted); text-align:left; display:flex; align-items:center; gap:8px; cursor:pointer; transition:all 0.2s; font-size:0.82rem; font-family:'DM Sans',sans-serif; }
-    .session-item:hover { background:rgba(255,255,255,0.05); color:var(--c-text); }
+
+    /* Session item wrapper — holds the chat button + delete button */
+    .session-item-wrap {
+      display:flex; align-items:center; gap:4px;
+      border-radius:10px; overflow:hidden;
+      transition:background 0.2s;
+      position:relative;
+    }
+    .session-item-wrap:hover { background:rgba(255,255,255,0.04); }
+    .session-item-wrap:hover .session-delete-btn { opacity:1; }
+    .session-item-wrap.active-session { background:rgba(0,245,255,0.06); border:1px solid rgba(0,245,255,0.15); }
+
+    .session-item {
+      flex:1; min-width:0;
+      padding:10px 12px; border-radius:10px; border:none;
+      background:transparent; color:var(--c-muted); text-align:left;
+      display:flex; align-items:center; gap:8px;
+      cursor:pointer; transition:color 0.2s;
+      font-size:0.82rem; font-family:'DM Sans',sans-serif;
+    }
+    .session-item:hover { color:var(--c-text); }
+    .session-item-wrap.active-session .session-item { color:var(--c-neon-cyan); }
     .session-title { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .session-icon { flex-shrink:0; font-size:0.9rem; }
+
+    /* Delete button — hidden until hover */
+    .session-delete-btn {
+      flex-shrink:0;
+      width:28px; height:28px;
+      border:none; border-radius:8px;
+      background:transparent;
+      color:var(--c-muted);
+      cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      opacity:0;
+      transition:all 0.2s;
+      margin-right:6px;
+    }
+    .session-delete-btn:hover {
+      background:rgba(255,45,120,0.15);
+      color:var(--c-neon-pink);
+    }
 
     .sidebar-footer { padding:14px 16px; padding-bottom:max(14px,env(safe-area-inset-bottom,14px)); border-top:1px solid var(--c-border); flex-shrink:0; }
     .user-row { display:flex; align-items:center; gap:10px; }
@@ -192,7 +245,6 @@
     .copy-btn { margin-top:10px; padding:4px 12px; border-radius:6px; border:1px solid var(--c-border); background:transparent; color:var(--c-muted); font-size:0.72rem; cursor:pointer; transition:all 0.2s; font-family:'Space Mono',monospace; }
     .copy-btn:hover { color:var(--c-neon-cyan); border-color:var(--c-neon-cyan); }
 
-    /* ── PROMPT ENHANCEMENT ANIMATION ── */
     @keyframes blurOut { 0%{filter:blur(0);opacity:1} 100%{filter:blur(6px);opacity:0} }
     @keyframes sparkleIn { 0%{filter:blur(8px);opacity:0;transform:scale(0.97)} 60%{filter:blur(1px);opacity:0.9;transform:scale(1.01)} 100%{filter:blur(0);opacity:1;transform:scale(1)} }
     .message-content.prompt-enhancing { animation:blurOut 0.35s ease forwards; }
@@ -217,7 +269,7 @@
     .input-meta { display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding:0 4px; }
     .input-hint { font-size:0.72rem; color:var(--c-muted); font-family:'Space Mono',monospace; }
 
-    /* ── MODAL ── */
+    /* ── MODALS ── */
     .modal-overlay { position:fixed; inset:0; z-index:200; background:rgba(5,5,16,0.85); backdrop-filter:blur(10px); display:none; align-items:center; justify-content:center; }
     .modal-overlay.show { display:flex; }
     .modal { background:var(--c-card); border:1px solid var(--c-border); border-radius:24px; padding:32px; width:min(520px,90vw); box-shadow:0 20px 60px rgba(0,0,0,0.5); }
@@ -226,6 +278,71 @@
     .modal-close { background:none; border:none; color:var(--c-muted); font-size:1.3rem; cursor:pointer; }
     .modal-close:hover { color:var(--c-text); }
     .modal-note { font-size:0.75rem; color:var(--c-muted); margin-top:12px; line-height:1.5; padding:10px; background:rgba(0,0,0,0.2); border-radius:8px; }
+
+    /* ── DELETE CONFIRM MODAL ── */
+    #deleteModal .modal {
+      border-color: rgba(255,45,120,0.3);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 40px rgba(255,45,120,0.08);
+    }
+    .delete-icon {
+      width: 56px; height: 56px; border-radius: 50%;
+      background: rgba(255,45,120,0.12);
+      border: 1px solid rgba(255,45,120,0.3);
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+      font-size: 1.5rem;
+    }
+    .delete-modal-title {
+      font-family:'Syne',sans-serif; font-weight:800; font-size:1.25rem;
+      text-align:center; margin-bottom:8px; color:var(--c-text);
+    }
+    .delete-modal-desc {
+      text-align:center; color:var(--c-muted); font-size:0.88rem;
+      line-height:1.6; margin-bottom:8px;
+    }
+    .delete-chat-name {
+      text-align:center;
+      font-family:'Space Mono',monospace; font-size:0.8rem;
+      color:var(--c-neon-pink);
+      background:rgba(255,45,120,0.08);
+      border:1px solid rgba(255,45,120,0.2);
+      border-radius:8px; padding:8px 16px;
+      margin:12px 0 24px;
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
+    .delete-actions {
+      display:flex; gap:10px;
+    }
+    .btn-cancel-delete {
+      flex:1; padding:13px; border-radius:12px;
+      border:1px solid var(--c-border); background:transparent;
+      color:var(--c-muted); font-family:'DM Sans',sans-serif;
+      font-size:0.9rem; cursor:pointer; transition:all 0.2s;
+    }
+    .btn-cancel-delete:hover { border-color:rgba(255,255,255,0.2); color:var(--c-text); }
+    .btn-confirm-delete {
+      flex:1; padding:13px; border-radius:12px;
+      border:none;
+      background:linear-gradient(135deg, #ff2d78, #c0185a);
+      color:#fff; font-family:'Syne',sans-serif;
+      font-weight:700; font-size:0.9rem;
+      cursor:pointer; transition:all 0.2s;
+      box-shadow: 0 4px 20px rgba(255,45,120,0.3);
+      display:flex; align-items:center; justify-content:center; gap:8px;
+    }
+    .btn-confirm-delete:hover { transform:translateY(-1px); box-shadow:0 8px 30px rgba(255,45,120,0.45); }
+    .btn-confirm-delete:active { transform:translateY(0); }
+    .btn-confirm-delete.deleting { opacity:0.7; pointer-events:none; }
+
+    /* delete animation on session item */
+    @keyframes slideOut {
+      from { opacity:1; max-height:60px; transform:translateX(0); }
+      to   { opacity:0; max-height:0;   transform:translateX(-20px); }
+    }
+    .session-item-wrap.deleting-anim {
+      animation: slideOut 0.3s ease forwards;
+      overflow:hidden;
+    }
 
     .menu-toggle { display:none; background:none; border:none; color:var(--c-text); font-size:1.4rem; cursor:pointer; padding:4px 8px; border-radius:8px; transition:background 0.2s; }
     .menu-toggle:hover { background:rgba(255,255,255,0.08); }
@@ -250,6 +367,8 @@
       .welcome-state h2 { font-size:1.5rem; }
       .modal { border-radius:16px 16px 0 0; padding:24px 20px; width:100%; position:fixed; bottom:0; left:0; right:0; margin:0; }
       .modal-overlay { align-items:flex-end; }
+      /* Always show delete btn on mobile (no hover) */
+      .session-delete-btn { opacity:1; }
     }
     @media (max-width:400px) {
       .message-bubble { max-width:93%; }
@@ -380,24 +499,37 @@
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════════════
-     PLAIN SCRIPT — runs synchronously, always available.
-     Firebase module above populates window._nexus.currentUser
-     and calls window._nexus.newChat() once auth resolves.
-══════════════════════════════════════════════════════════ -->
+<!-- DELETE CONFIRM MODAL -->
+<div class="modal-overlay" id="deleteModal" onclick="handleDeleteOverlayClick(event)">
+  <div class="modal">
+    <div class="delete-icon">🗑️</div>
+    <div class="delete-modal-title">Delete this chat?</div>
+    <div class="delete-modal-desc">This conversation will be permanently removed from your history. This action cannot be undone.</div>
+    <div class="delete-chat-name" id="deleteChatName">Chat title</div>
+    <div class="delete-actions">
+      <button class="btn-cancel-delete" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn-confirm-delete" id="confirmDeleteBtn" onclick="confirmDelete()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        Delete Permanently
+      </button>
+    </div>
+  </div>
+</div>
+
 <script>
   const BACKEND = "https://nexus-ai-backend-3csk.onrender.com";
 
-  // ── Shared mutable state ──
   window._nexus = {
-    currentUser:     null,
+    currentUser:      null,
     currentSessionId: null,
-    chatHistory:     [],
-    selectedAgent:   'openai',
+    chatHistory:      [],
+    selectedAgent:    'openai',
 
     newChat() {
       this.currentSessionId = 'session_' + Date.now();
       this.chatHistory = [];
+      // Remove active highlight from all session items
+      document.querySelectorAll('.session-item-wrap').forEach(w => w.classList.remove('active-session'));
       document.getElementById('chatMessages').innerHTML = `
         <div class="welcome-state">
           <div class="welcome-icon">✦</div>
@@ -414,6 +546,67 @@
     }
   };
 
+  // ── Delete modal state ──
+  let _pendingDeleteId    = null;
+  let _pendingDeleteTitle = null;
+
+  function showDeleteConfirm(sessionId, title) {
+    _pendingDeleteId    = sessionId;
+    _pendingDeleteTitle = title;
+    document.getElementById('deleteChatName').textContent = title;
+    const btn = document.getElementById('confirmDeleteBtn');
+    btn.classList.remove('deleting');
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> Delete Permanently`;
+    document.getElementById('deleteModal').classList.add('show');
+  }
+
+  function closeDeleteModal() {
+    document.getElementById('deleteModal').classList.remove('show');
+    _pendingDeleteId    = null;
+    _pendingDeleteTitle = null;
+  }
+
+  function handleDeleteOverlayClick(e) {
+    if (e.target === document.getElementById('deleteModal')) closeDeleteModal();
+  }
+
+  async function confirmDelete() {
+    if (!_pendingDeleteId) return;
+    const nx  = window._nexus;
+    const uid = nx.currentUser?.uid;
+    if (!uid) return;
+
+    const btn = document.getElementById('confirmDeleteBtn');
+    btn.classList.add('deleting');
+    btn.innerHTML = `<span style="display:inline-block;animation:wspin 0.8s linear infinite">⟳</span> Deleting…`;
+
+    try {
+      // Animate the sidebar item out
+      const itemWrap = document.querySelector(`.session-item-wrap[data-session-id="${_pendingDeleteId}"]`);
+      if (itemWrap) {
+        itemWrap.classList.add('deleting-anim');
+        // Wait for animation before Firebase delete (visual feedback feels snappy)
+        await new Promise(r => setTimeout(r, 250));
+      }
+
+      // Remove from Firebase
+      if (typeof window._deleteSession === 'function') {
+        await window._deleteSession(uid, _pendingDeleteId);
+      }
+
+      // If the deleted session is the currently loaded one → start a new chat
+      if (nx.currentSessionId === _pendingDeleteId) {
+        nx.newChat();
+      }
+
+      closeDeleteModal();
+    } catch (err) {
+      btn.classList.remove('deleting');
+      btn.innerHTML = `⚠ Failed — try again`;
+      console.error('Delete failed:', err);
+    }
+  }
+
   // ── Agent metadata ──
   const AGENT_NAMES = {
     openai:'GPT-OSS 20B', claude:'Claude 3.5', gemini:'Gemini Flash',
@@ -427,7 +620,6 @@
   function agentName(a)  { return AGENT_NAMES[a]  || 'AI'; }
   function agentEmoji(a) { return AGENT_EMOJI[a]   || '✦'; }
 
-  // ── UI helpers ──
   function escapeHTML(s) {
     if (!s) return '';
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
@@ -514,7 +706,6 @@
     el.style.height = Math.min(el.scrollHeight, 160) + 'px';
   }
 
-  // ── Network ──
   async function enhancePrompt(prompt, targetAgent) {
     try {
       const res  = await fetch(`${BACKEND}/api/enhance`, {
@@ -551,7 +742,6 @@
     return d.result;
   }
 
-  // ── SEND — the main function ──
   async function sendMessage() {
     const input     = document.getElementById('userInput');
     const rawPrompt = input.value.trim();
@@ -589,7 +779,6 @@
       appendMessage('assistant', safeResponse, true);
       nx.chatHistory.push({ role:'assistant', content: safeResponse });
 
-      // Persist session via the Firebase helper exposed by the module
       if (nx.currentUser && nx.currentSessionId && typeof window._saveSession === 'function') {
         const title = nx.chatHistory[0]?.content?.slice(0, 60) || 'Chat';
         window._saveSession(nx.currentUser.uid, nx.currentSessionId, {
@@ -606,7 +795,6 @@
     }
   }
 
-  // ── Sidebar / agent / modal controls ──
   function toggleSidebar() {
     const sb = document.getElementById('sidebar');
     const ov = document.getElementById('sidebarOverlay');
@@ -646,19 +834,15 @@
   }
   function closeSettings() { document.getElementById('settingsModal').classList.remove('show'); }
 
-  // ── Wire up inputs after DOM is ready ──
   document.addEventListener('DOMContentLoaded', () => {
-    // Set first agent button active
     document.querySelector('.agent-btn').classList.add('active');
 
-    // Enhance toggle badge
     document.getElementById('enhanceToggle').addEventListener('change', function() {
       const badge = document.getElementById('enhanceBadgeHeader');
       badge.textContent = this.checked ? '✨ Enhancer ON' : '⬜ Enhancer OFF';
       badge.style.opacity = this.checked ? '1' : '0.4';
     });
 
-    // Textarea + send button
     const userInput = document.getElementById('userInput');
     const sendBtn   = document.getElementById('sendBtn');
 
@@ -668,7 +852,6 @@
     userInput.addEventListener('input', () => autoResize(userInput));
     sendBtn.addEventListener('click', sendMessage);
 
-    // Modal close on backdrop
     document.getElementById('settingsModal').addEventListener('click', e => {
       if (e.target === document.getElementById('settingsModal')) closeSettings();
     });
