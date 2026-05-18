@@ -1097,22 +1097,31 @@
       };
 
       r.onresult = (e) => {
-        interim = '';
-        for (let i = e.resultIndex; i < e.results.length; i++) {
+        // ── Rebuild BOTH final and interim from scratch on every event ──
+        // Iterating from e.resultIndex only and accumulating into finalTranscript
+        // causes duplicates because the browser re-sends earlier results.
+        // The correct pattern: loop ALL results[0..length] every time.
+        let newFinal  = '';
+        let newInterim = '';
+        let lastConf  = 0;
+
+        for (let i = 0; i < e.results.length; i++) {
           const res = e.results[i];
           if (res.isFinal) {
-            finalTranscript += res[0].transcript;
-            const conf = Math.round((res[0].confidence || 0) * 100);
-            if (conf > 0) confidenceBadge.textContent = `${conf}% confidence`;
-            else confidenceBadge.textContent = '';
+            newFinal += res[0].transcript;
+            lastConf  = Math.round((res[0].confidence || 0) * 100);
           } else {
-            interim += res[0].transcript;
+            newInterim += res[0].transcript;
           }
         }
-        // Show live interim in transcript box while recording
-        if (interim || finalTranscript) {
-          transcriptBox.textContent = finalTranscript + interim;
-        }
+
+        finalTranscript = newFinal;
+        interim         = newInterim;
+
+        if (lastConf > 0) confidenceBadge.textContent = `${lastConf}% confidence`;
+
+        // Live preview while user is still speaking
+        transcriptBox.textContent = (finalTranscript + interim).trim();
       };
 
       r.onspeechend = () => {
