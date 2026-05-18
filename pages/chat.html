@@ -1019,10 +1019,12 @@
     let state           = STATES.IDLE;
     let recognition     = null;
     let finalTranscript = '';
+    let lastMergedTranscript = '';
     let timerInterval   = null;
     let elapsedSeconds  = 0;
     let isEditing       = false;
     let supported       = false;
+    let pendingPreview  = false;
 
     // ── DOM refs (populated on init) ──
     let micBtn, recIndicator, transcriptPreview,
@@ -1079,49 +1081,86 @@
       timerInterval = null;
     }
 
+    function normalizeTranscript(text) {
+      return (text || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function mergeByWordOverlap(base, next) {
+      const a = normalizeTranscript(base);
+      const b = normalizeTranscript(next);
+      if (!a) return b;
+      if (!b) return a;
+
+      const aLower = a.toLowerCase();
+      const bLower = b.toLowerCase();
+
+      if (aLower === bLower) return a;
+      if (bLower.startsWith(aLower + ' ')) return b;
+      if (aLower.startsWith(bLower + ' ')) return a;
+
+      const aw = a.split(' ');
+      const bw = b.split(' ');
+      const awLower = aw.map(w => w.toLowerCase());
+      const bwLower = bw.map(w => w.toLowerCase());
+
+      const maxOverlap = Math.min(aw.length, bw.length);
+      for (let k = maxOverlap; k >= 1; k--) {
+        let match = true;
+        for (let i = 0; i < k; i++) {
+          if (awLower[awLower.length - k + i] !== bwLower[i]) { match = false; break; }
+        }
+        if (match) {
+          return normalizeTranscript(aw.concat(bw.slice(k)).join(' '));
+        }
+      }
+
+      return normalizeTranscript(a + ' ' + b);
+    }
+
+    function mergeSegments(segments) {
+      let merged = '';
+      for (const seg of segments) merged = mergeByWordOverlap(merged, seg);
+      return merged;
+    }
+
     // ── Build SpeechRecognition instance ──
     function buildRecognition() {
       const r = new SpeechRecognition();
-      r.continuous       = true;
-      r.interimResults   = true;
-      r.maxAlternatives  = 3;
+      // Final-only mode for stability across desktop + mobile
+      r.continuous       = false;
+      r.interimResults   = false;
+      r.maxAlternatives  = 1;
       r.lang             = navigator.language || 'en-US';
 
-      let interim = '';
-
       r.onstart = () => {
-        interim = '';
         finalTranscript = '';
+        lastMergedTranscript = '';
+        pendingPreview = false;
         setState(STATES.RECORDING);
         startTimer();
       };
 
       r.onresult = (e) => {
-        // ── Rebuild BOTH final and interim from scratch on every event ──
-        // Iterating from e.resultIndex only and accumulating into finalTranscript
-        // causes duplicates because the browser re-sends earlier results.
-        // The correct pattern: loop ALL results[0..length] every time.
-        let newFinal  = '';
-        let newInterim = '';
-        let lastConf  = 0;
+        const segments = [];
+        let lastConf = 0;
 
         for (let i = 0; i < e.results.length; i++) {
           const res = e.results[i];
-          if (res.isFinal) {
-            newFinal += res[0].transcript;
-            lastConf  = Math.round((res[0].confidence || 0) * 100);
-          } else {
-            newInterim += res[0].transcript;
-          }
+          const t = res?.[0]?.transcript || '';
+          if (t.trim()) segments.push(t);
+          const conf = res?.[0]?.confidence;
+          if (typeof conf === 'number' && conf > 0) lastConf = Math.round(conf * 100);
         }
 
-        finalTranscript = newFinal;
-        interim         = newInterim;
+        const merged = mergeSegments(segments);
+        if (!merged || merged.toLowerCase() === lastMergedTranscript.toLowerCase()) return;
 
+        lastMergedTranscript = merged;
+        finalTranscript = merged;
         if (lastConf > 0) confidenceBadge.textContent = `${lastConf}% confidence`;
 
-        // Live preview while user is still speaking
-        transcriptBox.textContent = (finalTranscript + interim).trim();
+        // While recording (final-only), keep showing the best merged text so far
+        transcriptBox.textContent = finalTranscript;
       };
 
       r.onspeechend = () => {
@@ -1144,10 +1183,8 @@
 
       r.onend = () => {
         stopTimer();
-        if (state === STATES.RECORDING) {
-          // Ended without explicit stop — show preview if we have content
-          showPreview();
-        }
+        if (pendingPreview || state === STATES.RECORDING) showPreview();
+        pendingPreview = false;
       };
 
       return r;
@@ -1207,6 +1244,8 @@
       transcriptBox.textContent = '';
       confidenceBadge.textContent = '';
       finalTranscript = '';
+      lastMergedTranscript = '';
+      pendingPreview = false;
 
       try {
         recognition = buildRecognition();
@@ -1221,7 +1260,7 @@
         try { recognition.stop(); } catch (_) {}
       }
       stopTimer();
-      showPreview();
+      pendingPreview = true;
     }
 
     function cancel() {
@@ -1230,8 +1269,11 @@
         recognition = null;
       }
       stopTimer();
+      pendingPreview = false;
       finalTranscript = '';
+      lastMergedTranscript = '';
       transcriptBox.textContent = '';
+      confidenceBadge.textContent = '';
       setState(STATES.IDLE);
     }
 
