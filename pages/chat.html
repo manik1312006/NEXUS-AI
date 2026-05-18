@@ -139,14 +139,51 @@
 
     /* ── SIDEBAR ── */
     .sidebar { width:280px; min-width:280px; height:100vh; height:100dvh; background:var(--c-sidebar); border-right:1px solid var(--c-border); display:flex; flex-direction:column; overflow:hidden; }
-    .sidebar-header { padding:20px; border-bottom:1px solid var(--c-border); display:flex; align-items:center; justify-content:space-between; }
+    .sidebar-header { padding:20px; border-bottom:1px solid var(--c-border); display:flex; align-items:center; justify-content:space-between; flex-shrink: 0; }
+    
+    /* Scrollable content area */
+    .sidebar-content { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+    .sidebar-content::-webkit-scrollbar { width: 4px; }
+    .sidebar-content::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 2px; }
     .logo-img { height:34px; width:auto; object-fit:contain; filter:drop-shadow(0 0 8px rgba(0,245,255,0.35)); }
     .btn-new { padding:7px 14px; border-radius:8px; border:1px solid var(--c-neon-purple); background:rgba(124,58,237,0.1); color:var(--c-neon-purple); font-size:0.8rem; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; }
     .btn-new:hover { background:rgba(124,58,237,0.2); }
 
-    .agent-section { padding:16px; border-bottom:1px solid var(--c-border); }
-    .section-label { font-family:'Space Mono',monospace; font-size:0.6rem; color:var(--c-muted); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:10px; }
-    .agent-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; }
+    /* ══════════════════════════════════════
+       AGENT SECTION — COLLAPSIBLE
+    ══════════════════════════════════════ */
+    .agent-section { border-bottom: 1px solid var(--c-border); flex-shrink: 0; }
+
+    .agent-section-header {
+      padding: 12px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; user-select: none; transition: background 0.2s;
+    }
+    .agent-section-header:hover { background: rgba(0,245,255,0.03); }
+    .agent-section-left { display: flex; align-items: center; gap: 8px; }
+    .agent-section-right { display: flex; align-items: center; gap: 4px; }
+
+    .agent-chevron {
+      color: var(--c-muted); font-size: 1.1rem;
+      transition: transform 0.3s; line-height: 1;
+    }
+    .agent-chevron.open { transform: rotate(90deg); }
+
+    .agent-panel {
+      overflow: hidden;
+      transition: max-height 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      border-top: 1px solid rgba(255,255,255,0.03);
+      max-height: 0;
+    }
+    .agent-panel.open {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .agent-panel.open::-webkit-scrollbar { width: 4px; }
+    .agent-panel.open::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 2px; }
+
+    .section-label { font-family:'Space Mono',monospace; font-size:0.6rem; color:var(--c-muted); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:0; }
+    .agent-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; padding: 12px; }
     .agent-btn { padding:8px 4px; border-radius:10px; border:1px solid var(--c-border); background:rgba(0,0,0,0.3); color:var(--c-muted); font-size:0.72rem; cursor:pointer; text-align:center; transition:all 0.2s; font-family:'DM Sans',sans-serif; }
     .agent-btn:hover { border-color:rgba(255,255,255,0.2); color:var(--c-text); }
     .agent-btn.active { border-color:var(--c-neon-cyan); color:var(--c-neon-cyan); background:rgba(0,245,255,0.08); box-shadow:0 0 12px rgba(0,245,255,0.15); }
@@ -358,9 +395,7 @@
     @keyframes fadeIn { from{opacity:0} to{opacity:1} }
 
     /* ── SESSION LIST ── */
-    .session-list { flex:1; min-height:0; overflow-y:auto; padding:12px; }
-    .session-list::-webkit-scrollbar { width:4px; }
-    .session-list::-webkit-scrollbar-thumb { background:var(--c-border); border-radius:2px; }
+    .session-list { flex:1; min-height:0; overflow:visible; padding:12px; }
 
     .session-item-wrap {
       display:flex; align-items:center; gap:4px;
@@ -521,11 +556,14 @@
       .mem-card-del { opacity:1; }
       .memory-toast { bottom: 70px; right: 10px; max-width: 240px; }
       .header-badges { gap:5px; }
+      .agent-grid { grid-template-columns: 1fr 1fr; gap: 4px; padding: 10px; }
+      .agent-btn { padding: 7px 3px; font-size: 0.68rem; }
     }
     @media (max-width:400px) {
       .message-bubble { max-width:93%; }
       .agent-btn { padding:6px 3px; font-size:0.65rem; }
       .agent-btn .a-emoji { font-size:0.85rem; }
+      .agent-grid { grid-template-columns: 1fr 1fr; }
     }
     @media (min-width:769px) and (max-width:1024px) {
       .sidebar { width:240px; min-width:240px; }
@@ -544,36 +582,52 @@
     <button class="btn-new" onclick="_nexus.newChat()">+ New</button>
   </div>
 
-  <div class="agent-section">
-    <div class="section-label">Choose Agent</div>
-    <div class="agent-grid">
-      <button class="agent-btn nvidia-agent" onclick="selectAgent('openai',this)">
-        <span class="a-emoji">⬡</span><span class="a-name">GPT-OSS<br>20B</span><span class="nvidia-tag">NIM</span>
-      </button>
-      <button class="agent-btn nvidia-agent" onclick="selectAgent('nvidia-llama',this)">
-        <span class="a-emoji">🦙</span><span class="a-name">LLaMA<br>3.3 70B</span><span class="nvidia-tag">NIM</span>
-      </button>
-      <button class="agent-btn nvidia-agent" onclick="selectAgent('nvidia-mixtral',this)">
-        <span class="a-emoji">🌀</span><span class="a-name">Mixtral<br>8x7B</span><span class="nvidia-tag">NIM</span>
-      </button>
-      <button class="agent-btn nvidia-agent" onclick="selectAgent('nvidia-gemma',this)">
-        <span class="a-emoji">💎</span><span class="a-name">Gemma 2<br>2B</span><span class="nvidia-tag">NIM</span>
-      </button>
-      <button class="agent-btn" onclick="selectAgent('claude',this)">
-        <span class="a-emoji">◈</span><span class="a-name">Claude</span>
-      </button>
-      <button class="agent-btn" onclick="selectAgent('gemini',this)">
-        <span class="a-emoji">◉</span><span class="a-name">Gemini</span>
-      </button>
-      <button class="agent-btn" onclick="selectAgent('mistral',this)">
-        <span class="a-emoji">⬢</span><span class="a-name">Mistral</span>
-      </button>
-      <button class="agent-btn" onclick="selectAgent('groq',this)">
-        <span class="a-emoji">⊕</span><span class="a-name">LLaMA<br>Groq</span>
-      </button>
-      <button class="agent-btn" onclick="selectAgent('cohere',this)">
-        <span class="a-emoji">⊗</span><span class="a-name">Cohere</span>
-      </button>
+  <!-- Scrollable content area -->
+  <div class="sidebar-content">
+
+  <!-- ══════════════════════════════════════
+       AGENT SECTION — COLLAPSIBLE
+  ══════════════════════════════════════ -->
+  <div class="agent-section" id="agentSection">
+    <div class="agent-section-header" onclick="toggleAgentPanel()">
+      <div class="agent-section-left">
+        <span style="font-size:1rem">⚙️</span>
+        <span class="section-label" style="margin:0;color:var(--c-text);font-size:0.65rem;letter-spacing:0.12em">AGENTS</span>
+      </div>
+      <div class="agent-section-right">
+        <span class="agent-chevron" id="agentChevron">›</span>
+      </div>
+    </div>
+    <div class="agent-panel" id="agentPanel">
+      <div class="agent-grid">
+        <button class="agent-btn nvidia-agent" onclick="selectAgent('openai',this)">
+          <span class="a-emoji">⬡</span><span class="a-name">GPT-OSS<br>20B</span><span class="nvidia-tag">NIM</span>
+        </button>
+        <button class="agent-btn nvidia-agent" onclick="selectAgent('nvidia-llama',this)">
+          <span class="a-emoji">🦙</span><span class="a-name">LLaMA<br>3.3 70B</span><span class="nvidia-tag">NIM</span>
+        </button>
+        <button class="agent-btn nvidia-agent" onclick="selectAgent('nvidia-mixtral',this)">
+          <span class="a-emoji">🌀</span><span class="a-name">Mixtral<br>8x7B</span><span class="nvidia-tag">NIM</span>
+        </button>
+        <button class="agent-btn nvidia-agent" onclick="selectAgent('nvidia-gemma',this)">
+          <span class="a-emoji">💎</span><span class="a-name">Gemma 2<br>2B</span><span class="nvidia-tag">NIM</span>
+        </button>
+        <button class="agent-btn" onclick="selectAgent('claude',this)">
+          <span class="a-emoji">◈</span><span class="a-name">Claude</span>
+        </button>
+        <button class="agent-btn" onclick="selectAgent('gemini',this)">
+          <span class="a-emoji">◉</span><span class="a-name">Gemini</span>
+        </button>
+        <button class="agent-btn" onclick="selectAgent('mistral',this)">
+          <span class="a-emoji">⬢</span><span class="a-name">Mistral</span>
+        </button>
+        <button class="agent-btn" onclick="selectAgent('groq',this)">
+          <span class="a-emoji">⊕</span><span class="a-name">LLaMA<br>Groq</span>
+        </button>
+        <button class="agent-btn" onclick="selectAgent('cohere',this)">
+          <span class="a-emoji">⊗</span><span class="a-name">Cohere</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -613,6 +667,8 @@
   <div class="session-list" id="sessionList">
     <div style="color:var(--c-muted);font-size:0.78rem;text-align:center;padding:20px">No chats yet</div>
   </div>
+
+  </div><!-- End of sidebar-content -->
 
   <div class="sidebar-footer">
     <button class="btn-settings" onclick="showBackendStatus()">⚙ Backend Status</button>
@@ -736,6 +792,20 @@
 
 <script>
   const BACKEND = "https://nexus-ai-backend-3csk.onrender.com";
+
+  // ══════════════════════════════════════════════
+  //  ⚙️ AGENT PANEL TOGGLE
+  // ══════════════════════════════════════════════
+  let agentPanelOpen = false;  // Start COLLAPSED
+
+  function toggleAgentPanel() {
+    agentPanelOpen = !agentPanelOpen;
+    const panel = document.getElementById('agentPanel');
+    const chev = document.getElementById('agentChevron');
+
+    panel.classList.toggle('open', agentPanelOpen);
+    chev.classList.toggle('open', agentPanelOpen);
+  }
 
   // ══════════════════════════════════════════════
   //  🧠 MEMORY SYSTEM — constants & helpers
