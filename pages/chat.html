@@ -547,6 +547,406 @@
       .sidebar { width:240px; min-width:240px; }
       .message-bubble { max-width:80%; }
     }
+
+    /* 🔬 DEEP RESEARCH ENGINE GRAPHICS */
+    .toggle-research input:checked + .slider-research {
+      background: linear-gradient(135deg, var(--c-neon-green), var(--c-neon-cyan));
+      border-color: var(--c-neon-green);
+      box-shadow: 0 0 10px rgba(0, 255, 157, 0.4);
+    }
+    .research-dashboard {
+      background: rgba(13, 13, 43, 0.6);
+      border: 1px solid var(--c-border);
+      border-radius: 16px;
+      padding: 20px;
+      margin: 10px 0;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), inset 0 0 16px rgba(124, 58, 237, 0.05);
+      animation: msgIn 0.4s ease;
+    }
+    .research-status-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .research-spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(0, 245, 255, 0.1);
+      border-top-color: var(--c-neon-cyan);
+      border-radius: 50%;
+      animation: wspin 1s linear infinite;
+    }
+    .research-spinner-done {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: rgba(0, 255, 157, 0.12);
+      border: 1px solid rgba(0, 255, 157, 0.35);
+      color: var(--c-neon-green);
+      box-shadow: 0 0 8px rgba(0, 255, 157, 0.2);
+    }
+    .research-status-text {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.85rem;
+      color: var(--c-neon-cyan);
+      text-shadow: 0 0 8px rgba(0, 245, 255, 0.3);
+    }
+    .research-progress-bar-wrap {
+      width: 100%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 2px;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .research-progress-bar {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--c-neon-purple), var(--c-neon-cyan), var(--c-neon-green));
+      transition: width 0.4s ease;
+      box-shadow: 0 0 8px var(--c-neon-cyan);
+    }
+    .tree-container {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      position: relative;
+      padding-left: 10px;
+    }
+    .tree-topic-node {
+      background: rgba(124, 58, 237, 0.12);
+      border: 1px solid var(--c-neon-purple);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-weight: bold;
+      color: var(--c-text);
+      display: inline-block;
+      max-width: max-content;
+      box-shadow: 0 0 10px rgba(124, 58, 237, 0.2);
+      font-size: 0.85rem;
+    }
+    .tree-branches {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-left: 20px;
+      border-left: 2px dashed rgba(120, 80, 255, 0.2);
+      margin-left: 14px;
+    }
+    .tree-branch-item {
+      position: relative;
+    }
+    .tree-branch-item::before {
+      content: '';
+      position: absolute;
+      left: -20px;
+      top: 18px;
+      width: 16px;
+      height: 2px;
+      border-top: 2px dashed rgba(120, 80, 255, 0.2);
+    }
+    .tree-branch-node {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--c-border);
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      transition: all 0.3s ease;
+    }
+    .tree-branch-node.active {
+      border-color: var(--c-neon-cyan);
+      background: rgba(0, 245, 255, 0.05);
+      box-shadow: 0 0 12px rgba(0, 245, 255, 0.2);
+      animation: branchPulse 1.5s infinite alternate;
+    }
+    .tree-branch-node.completed {
+      border-color: var(--c-neon-green);
+      background: rgba(0, 255, 157, 0.05);
+      box-shadow: 0 0 12px rgba(0, 255, 157, 0.2);
+    }
+    @keyframes branchPulse {
+      0% { box-shadow: 0 0 4px rgba(0, 245, 255, 0.1); }
+      100% { box-shadow: 0 0 16px rgba(0, 245, 255, 0.4); }
+    }
+    .tree-branch-name {
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+    .tree-branch-status {
+      font-size: 0.72rem;
+      font-family: 'Space Mono', monospace;
+    }
+    .tree-branch-status.pending { color: var(--c-muted); }
+    .tree-branch-status.active { color: var(--c-neon-cyan); }
+    .tree-branch-status.completed { color: var(--c-neon-green); }
+    .tree-possibilities {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 6px;
+      padding-left: 12px;
+    }
+    .tree-possibility-node {
+      font-size: 0.68rem;
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      padding: 4px 8px;
+      color: var(--c-muted);
+      transition: all 0.3s ease;
+    }
+    .tree-branch-node.active + .tree-possibilities .tree-possibility-node {
+      color: var(--c-text);
+      border-color: rgba(0, 245, 255, 0.2);
+    }
+    .tree-branch-node.completed + .tree-possibilities .tree-possibility-node {
+      color: var(--c-neon-green);
+      border-color: rgba(0, 255, 157, 0.2);
+      background: rgba(0, 255, 157, 0.02);
+    }
+
+    /* 💎 ARTIFACT PANEL SLIDER */
+    .artifact-panel {
+      position: fixed;
+      top: 0;
+      right: -100%;
+      width: 50%;
+      min-width: 500px;
+      height: 100vh;
+      height: 100dvh;
+      background: var(--c-bg);
+      border-left: 1px solid var(--c-border);
+      z-index: 300;
+      transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+      box-shadow: -10px 0 40px rgba(0, 0, 0, 0.8);
+    }
+    @media (max-width: 992px) {
+      .artifact-panel {
+        width: 100%;
+        min-width: 100%;
+      }
+    }
+    .artifact-panel.open {
+      right: 0;
+    }
+    .artifact-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--c-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--c-sidebar);
+      flex-shrink: 0;
+    }
+    .artifact-title-area {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .artifact-title-icon {
+      font-size: 1.4rem;
+    }
+    .artifact-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.15rem;
+      color: var(--c-text);
+    }
+    .artifact-close-btn {
+      background: none;
+      border: none;
+      color: var(--c-muted);
+      font-size: 1.4rem;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .artifact-close-btn:hover {
+      color: var(--c-text);
+    }
+    .artifact-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 30px 40px;
+      line-height: 1.8;
+      color: var(--c-text);
+    }
+    .artifact-body::-webkit-scrollbar {
+      width: 6px;
+    }
+    .artifact-body::-webkit-scrollbar-thumb {
+      background: var(--c-border);
+      border-radius: 3px;
+    }
+    .artifact-body h1, .artifact-body h2, .artifact-body h3 {
+      font-family: 'Syne', sans-serif;
+      color: var(--c-text);
+      margin-top: 24px;
+      margin-bottom: 12px;
+    }
+    .artifact-body h1 {
+      font-size: 1.6rem;
+      border-bottom: 1px solid var(--c-border);
+      padding-bottom: 8px;
+    }
+    .artifact-body h2 {
+      font-size: 1.3rem;
+    }
+    .artifact-body h3 {
+      font-size: 1.1rem;
+    }
+    .artifact-body p {
+      margin-bottom: 16px;
+    }
+    .artifact-body ul, .artifact-body ol {
+      padding-left: 24px;
+      margin-bottom: 16px;
+    }
+    .artifact-body pre {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--c-border);
+      border-radius: 12px;
+      padding: 16px;
+      overflow-x: auto;
+      margin-bottom: 20px;
+    }
+    .artifact-body code {
+      font-family: 'Space Mono', monospace;
+      font-size: 0.88em;
+    }
+    .artifact-body pre code {
+      background: transparent;
+      padding: 0;
+    }
+    .artifact-body blockquote {
+      border-left: 4px solid var(--c-neon-purple);
+      padding-left: 16px;
+      color: var(--c-muted);
+      margin-bottom: 20px;
+      font-style: italic;
+    }
+    .artifact-actions-bar {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      gap: 8px;
+      z-index: 310;
+    }
+    .artifact-action-btn {
+      padding: 10px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--c-border);
+      background: var(--c-card);
+      color: var(--c-text);
+      font-size: 0.82rem;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      transition: all 0.2s;
+    }
+    .artifact-action-btn:hover {
+      border-color: var(--c-neon-cyan);
+      color: var(--c-neon-cyan);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 245, 255, 0.25);
+    }
+    .artifact-action-btn.primary {
+      background: linear-gradient(135deg, var(--c-neon-purple), var(--c-neon-cyan));
+      border: none;
+      color: #fff;
+    }
+    .artifact-action-btn.primary:hover {
+      box-shadow: 0 6px 20px rgba(0, 245, 255, 0.4);
+    }
+
+    /* 🧠 CHAIN-OF-THOUGHT ACCORDIONS */
+    .cot-accordion {
+      background: rgba(124, 58, 237, 0.04);
+      border: 1px dashed rgba(124, 58, 237, 0.3);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin: 16px 0;
+      transition: all 0.3s ease;
+    }
+    .cot-accordion[open] {
+      background: rgba(124, 58, 237, 0.08);
+      border-color: var(--c-neon-purple);
+      box-shadow: 0 4px 16px rgba(124, 58, 237, 0.1);
+    }
+    .cot-accordion summary {
+      cursor: pointer;
+      font-weight: bold;
+      color: var(--c-neon-purple);
+      font-family: 'Space Mono', monospace;
+      font-size: 0.82rem;
+      user-select: none;
+      outline: none;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .cot-accordion summary:hover {
+      color: var(--c-neon-cyan);
+    }
+    .cot-content {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 0.85rem;
+      color: var(--c-muted);
+      line-height: 1.7;
+    }
+
+    /* Elegant PDF / Print Formatting Rules */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      .artifact-panel, .artifact-panel * {
+        visibility: visible;
+      }
+      .artifact-panel {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: auto;
+        border: none;
+        box-shadow: none;
+        background: white !important;
+        color: black !important;
+      }
+      .artifact-body {
+        overflow: visible;
+        padding: 0;
+      }
+      .artifact-header, .artifact-actions-bar, .copy-btn {
+        display: none !important;
+      }
+      h1, h2, h3 {
+        color: black !important;
+        font-family: serif !important;
+        page-break-after: avoid;
+      }
+      pre {
+        background: #f4f4f4 !important;
+        color: black !important;
+        border: 1px solid #ccc !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -609,6 +1009,19 @@
     </div>
   </div>
 
+  <div class="research-toggle-section" style="padding:14px 16px; border-bottom:1px solid var(--c-border);">
+    <div class="enhance-row">
+      <div class="enhance-info">
+        <div class="enhance-title" style="color:var(--c-neon-green)">🔬 Deep Research</div>
+        <div class="enhance-sub">Multi-branch possibilities & step-by-step logic</div>
+      </div>
+      <label class="toggle toggle-research">
+        <input type="checkbox" id="researchToggle">
+        <span class="slider slider-research"></span>
+      </label>
+    </div>
+  </div>
+
   <div class="memory-section" id="memorySection">
     <div class="memory-section-header" onclick="toggleMemoryPanel()">
       <div class="memory-section-left">
@@ -653,6 +1066,7 @@
     <div class="header-badges">
       <div id="enhanceBadgeHeader" class="enhance-badge-header">✨ Enhancer ON</div>
       <div id="memoryBadgeHeader" class="memory-badge-header" style="display:none">🧠 Memory</div>
+      <div id="researchBadgeHeader" class="research-badge-header" style="display:none; padding:4px 12px; border-radius:20px; background:rgba(0,255,157,0.1); border:1px solid rgba(0,255,157,0.3); color:var(--c-neon-green); font-size:0.72rem; font-family:'Space Mono',monospace;">🔬 Research ON</div>
     </div>
   </div>
 
@@ -711,6 +1125,22 @@
     </div>
   </div>
 </main>
+
+<!-- RESEARCH ARTIFACT PANEL -->
+<div class="artifact-panel" id="researchArtifactPanel">
+  <div class="artifact-header">
+    <div class="artifact-title-area">
+      <span class="artifact-title-icon">🔬</span>
+      <span class="artifact-title" id="artifactTopic">Research Report</span>
+    </div>
+    <button class="artifact-close-btn" onclick="closeArtifactPanel()">✕</button>
+  </div>
+  <div class="artifact-body" id="artifactBody"></div>
+  <div class="artifact-actions-bar">
+    <button class="artifact-action-btn" onclick="printReport()">🖨 Print / PDF</button>
+    <button class="artifact-action-btn primary" onclick="downloadMarkdownReport()">📥 Download MD</button>
+  </div>
+</div>
 
 <!-- BACKEND STATUS MODAL -->
 <div class="modal-overlay" id="settingsModal">
@@ -1215,6 +1645,7 @@
           <h2>What can I help you with?</h2>
           <p>Your prompt will be <span class="highlight">auto-enhanced</span> before reaching the AI.</p>
         </div>`;
+      if (typeof closeArtifactPanel === 'function') closeArtifactPanel();
     },
 
     loadSession(id, session) {
@@ -1403,6 +1834,14 @@
     autoResize(input);
     const nx      = window._nexus;
     const agent   = nx.selectedAgent;
+    
+    // INTERCEPT DEEP RESEARCH MODE
+    const isResearch = document.getElementById('researchToggle')?.checked;
+    if (isResearch) {
+      await runDeepResearch(rawPrompt, agent);
+      return;
+    }
+    
     const enhance = document.getElementById('enhanceToggle').checked;
     const userBubbleNode = appendMessage('user', rawPrompt, true);
     nx.chatHistory.push({ role:'user', content: rawPrompt });
@@ -1475,6 +1914,239 @@
   function closeSettings() { document.getElementById('settingsModal').classList.remove('show'); }
 
   // ══════════════════════════════════════════════
+  //  🔬 DEEP RESEARCH MODE CONTROLLERS
+  // ══════════════════════════════════════════════
+  function openArtifactPanel() {
+    document.getElementById('researchArtifactPanel').classList.add('open');
+  }
+
+  function closeArtifactPanel() {
+    document.getElementById('researchArtifactPanel').classList.remove('open');
+  }
+
+  function printReport() {
+    window.print();
+  }
+
+  function downloadMarkdownReport() {
+    const report = window._nexus.activeResearchReport;
+    if (!report) return;
+    const blob = new Blob([report], { type: "text/markdown;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const filename = (window._nexus.activeResearchTopic || "research-report")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-") + ".md";
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function formatResearchMarkdown(md) {
+    let processed = md;
+    const regex = /### Chain-of-Thought Reasoning([\s\S]*?)(?=### Key Findings & Analytical Synthesis)/g;
+    processed = processed.replace(regex, (match, cotContent) => {
+      const parsedContent = marked.parse(cotContent.trim());
+      return `<details class="cot-accordion">
+        <summary>🧠 View Chain-of-Thought Reasoning</summary>
+        <div class="cot-content">
+          ${parsedContent}
+        </div>
+      </details>\n\n`;
+    });
+    return processed;
+  }
+
+  async function runDeepResearch(prompt, agent) {
+    const nx = window._nexus;
+    const container = document.getElementById('chatMessages');
+    
+    container.querySelector('.welcome-state')?.remove();
+    appendMessage('user', prompt, true);
+    
+    const wrap = document.createElement('div');
+    wrap.className = 'message-wrap assistant';
+    wrap.style.animation = 'msgIn 0.3s ease';
+    
+    const avatar = `<div class="msg-avatar agent-avatar">${agentEmoji(agent)}</div>`;
+    
+    wrap.innerHTML = `
+      ${avatar}
+      <div class="message-bubble assistant" style="width: 100%; max-width: 100%;">
+        <div class="agent-label">${agentName(agent)} 🔬 Deep Research</div>
+        <div class="message-content" id="researchDashboardContainer">
+          <div class="research-dashboard">
+            <div class="research-status-container">
+              <div class="research-spinner" id="researchSpinner"></div>
+              <div class="research-status-text" id="researchStatusText">Initializing Deep Research Mode...</div>
+            </div>
+            <div class="research-progress-bar-wrap">
+              <div class="research-progress-bar" id="researchProgressBar" style="width: 5%;"></div>
+            </div>
+            <div class="tree-container" id="researchTree" style="display:none;"></div>
+          </div>
+        </div>
+      </div>`;
+    
+    container.appendChild(wrap);
+    container.scrollTop = container.scrollHeight;
+
+    const statusText = wrap.querySelector('#researchStatusText');
+    const progressBar = wrap.querySelector('#researchProgressBar');
+    const treeContainer = wrap.querySelector('#researchTree');
+    const spinner = wrap.querySelector('#researchSpinner');
+    
+    try {
+      const res = await fetch(`${BACKEND}/api/deep-research`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, agent })
+      });
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: 'Unknown server error' }));
+        throw new Error(errData.error || `Server responded with ${res.status}`);
+      }
+      
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let plan = null;
+      let completedBranches = 0;
+      let totalBranches = 0;
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop();
+        
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          if (line.startsWith("data: ")) {
+            const jsonStr = line.slice(6).trim();
+            if (!jsonStr) continue;
+            try {
+              const event = JSON.parse(jsonStr);
+              
+              if (event.type === 'status') {
+                statusText.textContent = event.message;
+              } else if (event.type === 'plan') {
+                plan = event.data;
+                window._nexus.activeResearchTopic = plan.topic;
+                totalBranches = plan.branches.length;
+                
+                treeContainer.style.display = 'block';
+                treeContainer.innerHTML = `
+                  <div class="tree-topic-node">📌 ${escapeHTML(plan.topic)}</div>
+                  <div class="tree-branches">
+                    ${plan.branches.map(b => {
+                      const safeBranchId = b.name.replace(/[^a-zA-Z0-9]/g, '_');
+                      return `
+                        <div class="tree-branch-item" id="item_${safeBranchId}">
+                          <div class="tree-branch-node" id="node_${safeBranchId}">
+                            <span class="tree-branch-name">${escapeHTML(b.name)}</span>
+                            <span class="tree-branch-status pending" id="status_${safeBranchId}">Pending</span>
+                          </div>
+                          <div class="tree-possibilities">
+                            ${b.possibilities.map(p => `
+                              <span class="tree-possibility-node">${escapeHTML(p)}</span>
+                            `).join('')}
+                          </div>
+                        </div>
+                      `;
+                    }).join('')}
+                  </div>
+                `;
+                progressBar.style.width = '15%';
+              } else if (event.type === 'branch_start') {
+                const safeBranchId = event.branch.replace(/[^a-zA-Z0-9]/g, '_');
+                const node = treeContainer.querySelector(`#node_${safeBranchId}`);
+                const statusEl = treeContainer.querySelector(`#status_${safeBranchId}`);
+                if (node && statusEl) {
+                  node.classList.remove('completed');
+                  node.classList.add('active');
+                  statusEl.className = 'tree-branch-status active';
+                  statusEl.textContent = 'Analyzing...';
+                }
+                const percent = 15 + Math.floor((completedBranches / totalBranches) * 70);
+                progressBar.style.width = `${percent}%`;
+              } else if (event.type === 'branch_end') {
+                completedBranches++;
+                const safeBranchId = event.branch.replace(/[^a-zA-Z0-9]/g, '_');
+                const node = treeContainer.querySelector(`#node_${safeBranchId}`);
+                const statusEl = treeContainer.querySelector(`#status_${safeBranchId}`);
+                if (node && statusEl) {
+                  node.classList.remove('active');
+                  node.classList.add('completed');
+                  statusEl.className = 'tree-branch-status completed';
+                  statusEl.textContent = '✓ Done';
+                }
+                const percent = 15 + Math.floor((completedBranches / totalBranches) * 70);
+                progressBar.style.width = `${percent}%`;
+              } else if (event.type === 'completed') {
+                progressBar.style.width = '100%';
+                statusText.textContent = 'Research Completed!';
+                statusText.style.color = 'var(--c-neon-green)';
+                
+                if (spinner) {
+                  spinner.className = 'research-spinner-done';
+                  spinner.innerHTML = '✓';
+                }
+                
+                window._nexus.activeResearchReport = event.result;
+                
+                const processedMd = formatResearchMarkdown(event.result);
+                document.getElementById('artifactTopic').textContent = plan ? plan.topic : 'Research Report';
+                document.getElementById('artifactBody').innerHTML = marked.parse(processedMd);
+                
+                document.querySelectorAll('#artifactBody pre code').forEach(block => {
+                  hljs.highlightElement(block);
+                });
+                
+                openArtifactPanel();
+                
+                const summaryP = document.createElement('p');
+                summaryP.style.marginTop = '15px';
+                summaryP.style.color = 'var(--c-neon-green)';
+                summaryP.innerHTML = `🔬 <strong>Deep Research Successful!</strong> The comprehensive analytical report has been compiled. <a href="javascript:void(0)" onclick="openArtifactPanel()" style="color:var(--c-neon-cyan);text-decoration:underline;">Click here to open the Research Panel</a>.`;
+                wrap.querySelector('.message-bubble').appendChild(summaryP);
+                
+                nx.chatHistory.push({ role: 'assistant', content: event.result });
+                
+                if (nx.currentUser && nx.currentSessionId && typeof window._saveSession === 'function') {
+                  const title = nx.chatHistory[0]?.content?.slice(0, 60) || 'Research: ' + (plan ? plan.topic : prompt);
+                  window._saveSession(nx.currentUser.uid, nx.currentSessionId, { title, messages: nx.chatHistory, createdAt: Date.now(), agent });
+                }
+              } else if (event.type === 'error') {
+                throw new Error(event.message);
+              }
+            } catch (e) {
+              console.error("Error parsing event:", e);
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Deep Research execution error:", err);
+      statusText.textContent = `❌ Research Failed: ${err.message}`;
+      statusText.style.color = 'var(--c-neon-pink)';
+      if (spinner) {
+        spinner.className = '';
+        spinner.style.width = '24px';
+        spinner.style.height = '24px';
+        spinner.innerHTML = '⚠️';
+        spinner.style.fontSize = '1.2rem';
+      }
+      appendMessage('error', `Research execution failed: ${err.message}`, true);
+    }
+  }
+
+  // ══════════════════════════════════════════════
   //  DOMContentLoaded — Init
   // ══════════════════════════════════════════════
   document.addEventListener('DOMContentLoaded', () => {
@@ -1485,6 +2157,16 @@
       badge.textContent = this.checked ? '✨ Enhancer ON' : '⬜ Enhancer OFF';
       badge.style.opacity = this.checked ? '1' : '0.4';
     });
+
+    const researchToggle = document.getElementById('researchToggle');
+    if (researchToggle) {
+      researchToggle.addEventListener('change', function() {
+        const badge = document.getElementById('researchBadgeHeader');
+        if (badge) {
+          badge.style.display = this.checked ? 'block' : 'none';
+        }
+      });
+    }
 
     const userInput = document.getElementById('userInput');
     const sendBtn   = document.getElementById('sendBtn');
