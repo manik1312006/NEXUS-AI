@@ -872,7 +872,7 @@
       box-shadow: 0 6px 20px rgba(0, 245, 255, 0.4);
     }
 
-    /* 🧠 CHAIN-OF-THOUGHT ACCORDIONS */
+    /* 🧠 DETAILED REASONING ACCORDIONS */
     .cot-accordion {
       background: rgba(124, 58, 237, 0.04);
       border: 1px dashed rgba(124, 58, 237, 0.3);
@@ -1013,7 +1013,7 @@
     <div class="enhance-row">
       <div class="enhance-info">
         <div class="enhance-title" style="color:var(--c-neon-green)">🔬 Deep Research</div>
-        <div class="enhance-sub">Multi-branch possibilities & step-by-step logic</div>
+        <div class="enhance-sub">Multi-branch exploration & step-by-step reasoning</div>
       </div>
       <label class="toggle toggle-research">
         <input type="checkbox" id="researchToggle">
@@ -1946,11 +1946,11 @@
 
   function formatResearchMarkdown(md) {
     let processed = md;
-    const regex = /### Chain-of-Thought Reasoning([\s\S]*?)(?=### Key Findings & Analytical Synthesis)/g;
+    const regex = /### Detailed Reasoning([\s\S]*?)(?=### Key Findings & Analytical Synthesis)/g;
     processed = processed.replace(regex, (match, cotContent) => {
       const parsedContent = marked.parse(cotContent.trim());
       return `<details class="cot-accordion">
-        <summary>🧠 View Chain-of-Thought Reasoning</summary>
+        <summary>🧠 View Detailed Reasoning</summary>
         <div class="cot-content">
           ${parsedContent}
         </div>
