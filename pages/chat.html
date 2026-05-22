@@ -120,6 +120,64 @@
       --c-neon-pink: #ff2d78; --c-neon-amber: #ffbe00;
       --c-neon-green: #00ff9d; --c-text: #e8e8f8; --c-muted: #6060a0;
     }
+    /* ── LIGHT MODE ── */
+    html.light {
+      --c-bg: #f0f0ff;
+      --c-sidebar: #e8e8ff;
+      --c-surface: #f5f5ff;
+      --c-card: #ffffff;
+      --c-border: rgba(109,40,217,0.18);
+      --c-neon-purple: #6d28d9;
+      --c-neon-cyan: #0284c7;
+      --c-neon-pink: #db2777;
+      --c-neon-amber: #d97706;
+      --c-neon-green: #059669;
+      --c-text: #1a1a3e;
+      --c-muted: #6060a0;
+    }
+    html.light body { background: var(--c-bg); color: var(--c-text); }
+    html.light .sidebar { background: var(--c-sidebar); }
+    html.light .main-header { background: rgba(240,240,255,0.9); }
+    html.light .input-area { background: rgba(240,240,255,0.95); }
+    html.light .input-box { background: #fff; }
+    html.light #userInput { color: var(--c-text); }
+    html.light #userInput::placeholder { color: #9090c0; }
+    html.light .message-bubble.assistant { background: #fff; }
+    html.light .agent-btn { background: rgba(255,255,255,0.6); color: var(--c-muted); }
+    html.light .agent-btn:hover { background: rgba(255,255,255,0.9); color: var(--c-text); }
+    html.light .agent-btn.active { background: rgba(2,132,199,0.08); }
+    html.light .modal { background: #fff; }
+    html.light .mem-card { background: rgba(255,255,255,0.8); }
+    html.light .artifact-panel { background: #f5f5ff; }
+    html.light .artifact-header { background: #e8e8ff; }
+    html.light .cot-accordion { background: rgba(109,40,217,0.04); }
+    html.light .cot-accordion[open] { background: rgba(109,40,217,0.08); }
+    html.light .research-dashboard { background: rgba(245,245,255,0.8); }
+    html.light .session-item { color: var(--c-muted); }
+    html.light .session-item:hover { color: var(--c-text); }
+    html.light .session-item-wrap.active-session { background: rgba(2,132,199,0.06); border-color: rgba(2,132,199,0.2); }
+    html.light .session-item-wrap.active-session .session-item { color: var(--c-neon-cyan); }
+    html.light .sidebar-overlay { background: rgba(200,200,240,0.6); }
+    html.light .modal-overlay { background: rgba(240,240,255,0.85); }
+    /* ── THEME TOGGLE BTN ── */
+    .theme-toggle-btn {
+      width: 34px; height: 34px; border-radius: 50%;
+      border: 1px solid var(--c-border);
+      background: rgba(124,58,237,0.1);
+      color: var(--c-text);
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      font-size: 1rem; transition: all 0.3s; flex-shrink: 0;
+    }
+    .theme-toggle-btn:hover {
+      background: rgba(124,58,237,0.2);
+      border-color: var(--c-neon-purple);
+      transform: rotate(20deg);
+    }
+    html.light .theme-toggle-btn {
+      background: rgba(2,132,199,0.1);
+      border-color: rgba(2,132,199,0.3);
+    }
+    html.light .theme-toggle-btn:hover { background: rgba(2,132,199,0.2); border-color: var(--c-neon-cyan); }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'DM Sans',sans-serif; background: var(--c-bg); color: var(--c-text); height: 100vh; height: 100dvh; overflow: hidden; display: flex; }
 
@@ -1067,6 +1125,7 @@
       <div id="enhanceBadgeHeader" class="enhance-badge-header">✨ Enhancer ON</div>
       <div id="memoryBadgeHeader" class="memory-badge-header" style="display:none">🧠 Memory</div>
       <div id="researchBadgeHeader" class="research-badge-header" style="display:none; padding:4px 12px; border-radius:20px; background:rgba(0,255,157,0.1); border:1px solid rgba(0,255,157,0.3); color:var(--c-neon-green); font-size:0.72rem; font-family:'Space Mono',monospace;">🔬 Research ON</div>
+      <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle light/dark mode" aria-label="Toggle theme">🌙</button>
     </div>
   </div>
 
@@ -1215,6 +1274,26 @@
 <div class="voice-error-toast" id="voiceErrorToast"></div>
 
 <script>
+  // ══════════════════════════════════════════════
+  //  🌗 THEME SYSTEM (dark / light)
+  // ══════════════════════════════════════════════
+  (function() {
+    const saved = localStorage.getItem('nexus-theme');
+    if (saved === 'light') document.documentElement.classList.add('light');
+  })();
+
+  function toggleTheme() {
+    const isLight = document.documentElement.classList.toggle('light');
+    localStorage.setItem('nexus-theme', isLight ? 'light' : 'dark');
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) btn.textContent = isLight ? '☀️' : '🌙';
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('themeToggleBtn');
+    if (btn) btn.textContent = document.documentElement.classList.contains('light') ? '☀️' : '🌙';
+  });
+
   const BACKEND = "https://nexus-ai-backend-3csk.onrender.com";
 
   // ══════════════════════════════════════════════
