@@ -1,18 +1,35 @@
 # NEXUS AI — Multi-Agent Intelligence Hub
 
-A web-based chat platform that lets you talk to six different AI models from a single interface, with a built-in Prompt Enhancer that rewrites your queries before sending them for better results.
+A web-based chat platform that lets you talk to multiple AI models from a single interface, with a built-in Prompt Enhancer that rewrites your queries before sending them for better results.
 
 ---
 
 ## Features
 
-- **6 AI Agents** — GPT-4o, Claude 3.5, Gemini 2.0 Flash, Mistral Large, LLaMA 3.3 (via Groq), and Cohere Command R+
+- **6+ AI Agents** — GPT-OSS 20B (NVIDIA NIM), LLaMA 3.3 70B (NVIDIA NIM), Gemini 2.0 Flash, Mistral Large, LLaMA 3.3 via Groq, and Cohere Command R+
 - **Prompt Enhancer** — automatically rewrites your prompt using LLaMA (free) before sending it to the chosen agent
+- **Deep Research Engine** — multi-branch exploration with step-by-step reasoning, tree visualization, and exportable Markdown reports
+- **🌗 Dark / Light Mode** — one-click theme toggle (🌙/☀️) in the top-right corner of every page; preference is saved to `localStorage` and persists across sessions and page navigations
+- **Voice Input** — speak your message with real-time waveform visualization, confidence scoring, and transcript editing before sending
+- **AI Memory** — automatically extracts and stores key facts from conversations, injected as context in future sessions (Google accounts only)
 - **Secure backend** — all API keys live on the server (Node/Express on Render), never exposed to the browser
 - **Authentication** — Google Sign-In or instant Anonymous (Guest) login via Firebase Auth
 - **Chat history** — sessions saved per user in Firebase Realtime Database, last 20 chats accessible from the sidebar
 - **Fully responsive** — works on desktop, tablet, and mobile with a slide-in sidebar and iOS safe-area support
 - **Syntax highlighting** — code blocks rendered with highlight.js and markdown parsed with marked.js
+
+---
+
+## Dark / Light Mode
+
+| Control | Location |
+|---|---|
+| Landing page toggle | Top-right of the navbar (next to BETA badge) |
+| Chat page toggle | Top-right of the main header (next to status badges) |
+
+- **Dark mode** (default) — deep navy/black background with neon purple, cyan, and pink accents
+- **Light mode** — soft lavender/white background with adjusted accent colors for readability
+- The selected theme is saved to `localStorage` under the key `nexus-theme` and automatically applied on every page load — no flash of unstyled content (FOUC)
 
 ---
 
@@ -26,7 +43,7 @@ nexus-ai/
 ├── .gitignore
 ├── index.html         # Landing page + authentication (Google / Guest)
 └── pages/
-    └── chat.html      # Main chat interface
+    └── chat.html      # Main chat interface (agents, memory, voice, research)
 ```
 
 ---
@@ -38,9 +55,10 @@ nexus-ai/
 | Frontend | Vanilla HTML/CSS/JS |
 | Backend | Node.js + Express, hosted on Render |
 | Auth | Firebase Authentication (Google + Anonymous) |
-| Database | Firebase Realtime Database (chat history) |
-| AI APIs | OpenAI, Anthropic, Google Gemini, Mistral, Groq, Cohere |
+| Database | Firebase Realtime Database (chat history + memories) |
+| AI APIs | NVIDIA NIM (OpenAI-compat), Google Gemini, Mistral, Groq, Cohere |
 | Markdown | marked.js + highlight.js |
+| Theme | CSS custom properties + `localStorage` persistence |
 
 ---
 
@@ -56,7 +74,7 @@ npm install
 ### 2. Create your `.env` file
 
 ```env
-OPENAI_API_KEY=sk-...
+OPENAI_API_KEY=sk-...          # or NVIDIA NIM key
 ANTHROPIC_API_KEY=sk-ant-...
 GEMINI_API_KEY=AIza...
 MISTRAL_API_KEY=...
@@ -102,13 +120,14 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 
 | Method | Route | Agent | Notes |
 |---|---|---|---|
-| POST | `/api/openai` | GPT-4o | Requires `{ messages }` |
-| POST | `/api/claude` | Claude 3.5 Sonnet | Requires `{ messages }` |
+| POST | `/api/openai` | GPT-OSS 20B (NVIDIA NIM) | Requires `{ messages }` |
+| POST | `/api/nvidia-llama` | LLaMA 3.3 70B (NVIDIA NIM) | Requires `{ messages }` |
 | POST | `/api/gemini` | Gemini 2.0 Flash | Requires `{ prompt }` |
 | POST | `/api/mistral` | Mistral Large | Requires `{ messages }` |
-| POST | `/api/groq` | LLaMA 3.3 70B | Requires `{ messages }` |
+| POST | `/api/groq` | LLaMA 3.3 70B (Groq) | Requires `{ messages }` |
 | POST | `/api/cohere` | Command R+ | Requires `{ prompt }` |
 | POST | `/api/enhance` | LLaMA 3.3 (Groq) | Prompt enhancer, falls back to OpenAI |
+| POST | `/api/research` | Multi-agent | Deep Research Engine |
 | GET | `/` | — | Health check |
 
 ---
@@ -118,11 +137,11 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 | Agent | Free Tier | Notes |
 |---|---|---|
 | LLaMA 3.3 via Groq | ✅ Yes | Generous free tier, also powers the Prompt Enhancer |
+| NVIDIA NIM (LLaMA 3.3 70B) | ✅ Trial credits | Free credits on sign-up |
+| NVIDIA NIM (GPT-OSS 20B) | ✅ Trial credits | OpenAI-compatible endpoint |
 | Mistral Large | ✅ Trial credits | Free trial on sign-up |
-| Cohere Command R+ | ✅ Trial credits | Migrated to v2/chat API (Sept 2025) |
+| Cohere Command R+ | ✅ Trial credits | v2/chat API |
 | Gemini 2.0 Flash | ⚠️ Daily quota | Free via AI Studio key; quota resets daily |
-| GPT-4o | ❌ Paid | Requires OpenAI billing ($5 minimum top-up) |
-| Claude 3.5 Sonnet | ❌ Paid | Requires Anthropic credits |
 
 ---
 
@@ -130,8 +149,7 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 
 | Variable | Where to get it |
 |---|---|
-| `OPENAI_API_KEY` | [platform.openai.com/api-keys](https://platform.openai.com/api-keys) |
-| `ANTHROPIC_API_KEY` | [console.anthropic.com/settings/keys](https://console.anthropic.com/settings/keys) |
+| `OPENAI_API_KEY` | [build.nvidia.com](https://build.nvidia.com) (NIM) or [platform.openai.com](https://platform.openai.com/api-keys) |
 | `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com) |
 | `MISTRAL_API_KEY` | [console.mistral.ai](https://console.mistral.ai) |
 | `GROQ_API_KEY` | [console.groq.com](https://console.groq.com) |
@@ -142,8 +160,10 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 ## Known Limitations
 
 - Anonymous (Guest) sessions are tied to the browser — clearing site data loses the session
+- AI Memory is only available for Google-authenticated users (not guests)
 - Chat history is stored unencrypted in Firebase Realtime Database
 - The Prompt Enhancer adds ~1–2 seconds of latency per message when enabled
+- The Deep Research Engine makes multiple sequential API calls — response time varies with topic complexity
 
 ---
 
@@ -154,5 +174,6 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 - 20 years old
 - 📍 Fatehabad, Haryana, India
 - 📧 manikmehtaji@gmail.com
-  
+- ⌥ [GitHub](https://github.com/manik1312006)
+
 ---
