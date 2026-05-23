@@ -962,12 +962,8 @@
   });
 
   const RENDER_BACKEND = "https://nexus-ai-backend-3csk.onrender.com";
-  const LOCAL_BACKEND = "http://localhost:4000";
-  const USE_LOCAL_BACKEND =
-    new URLSearchParams(window.location.search).get("backend") === "local" ||
-    localStorage.getItem("nexus-backend") === "local";
-  const BACKEND = USE_LOCAL_BACKEND ? LOCAL_BACKEND : RENDER_BACKEND;
-  const TTS_BACKENDS = [BACKEND];
+  const BACKEND = RENDER_BACKEND;
+  const TTS_BACKENDS = [RENDER_BACKEND];
 
   // ── AGENT PANEL TOGGLE ──
   let agentPanelOpen = false;
@@ -1871,7 +1867,7 @@
   }
 
   // ── TTS CONTROLLER ──
-  // ELEVENLABS TTS CONTROLLER
+  // Murf TTS controller
   const ttsController = (() => {
     let audioEl = null;
     let currentBtn = null;
@@ -2018,7 +2014,7 @@
         await audioEl.play();
       } catch (err) {
         if (activeRequest !== requestId || currentBtn !== btn) return;
-        console.error('ElevenLabs TTS error:', err);
+        console.error('Murf TTS error:', err);
         btn.innerHTML = '&#9888; TTS Error';
         btn.classList.remove('speaking');
         setTimeout(() => resetBtn(btn), 3000);
