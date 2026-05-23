@@ -961,7 +961,13 @@
     if (btn) btn.textContent = document.documentElement.classList.contains('light') ? '☀️' : '🌙';
   });
 
-  const BACKEND = "https://nexus-ai-backend-3csk.onrender.com";
+  const RENDER_BACKEND = "https://nexus-ai-backend-3csk.onrender.com";
+  const LOCAL_BACKEND = "http://localhost:4000";
+  const USE_LOCAL_BACKEND =
+    new URLSearchParams(window.location.search).get("backend") === "local" ||
+    localStorage.getItem("nexus-backend") === "local";
+  const BACKEND = USE_LOCAL_BACKEND ? LOCAL_BACKEND : RENDER_BACKEND;
+  const TTS_BACKENDS = [BACKEND];
 
   // ── AGENT PANEL TOGGLE ──
   let agentPanelOpen = false;
@@ -1865,101 +1871,221 @@
   }
 
   // ── TTS CONTROLLER ──
+  // ELEVENLABS TTS CONTROLLER
   const ttsController = (() => {
-    let currentUtterance = null, currentBtn = null, isSpeaking = false, isPaused = false, currentRate = 1.0, solVoice = null, voicesLoaded = false;
-    const synth = window.speechSynthesis;
-    function pickSolVoice(voices) {
-      const order = [
-        v => /Google UK English Female/i.test(v.name), v => /Microsoft Aria/i.test(v.name), v => /Microsoft Jenny/i.test(v.name),
-        v => /Microsoft Zira/i.test(v.name), v => /Microsoft Hazel/i.test(v.name), v => /Samantha/i.test(v.name),
-        v => /Google US English/i.test(v.name), v => /Karen/i.test(v.name), v => /Moira/i.test(v.name),
-        v => /en[-_](US|GB|AU)/i.test(v.lang) && /female|woman|girl/i.test(v.name),
-        v => /en/i.test(v.lang), () => true
-      ];
-      for (const m of order) { const f = voices.find(m); if (f) return f; } return null;
+    let audioEl = null;
+    let currentBtn = null;
+    let currentUrl = null;
+    let isSpeaking = false;
+    let isPaused = false;
+    let currentRate = 1.0;
+    let requestId = 0;
+
+    function getSourceText(btn) {
+      const bubble = btn.closest('.message-bubble');
+      if (!bubble) return '';
+      const el = bubble.querySelector('.message-content');
+      return el ? (el.innerText || el.textContent || '') : '';
     }
-    function loadVoices() { const v = synth.getVoices(); if (v.length > 0) { solVoice = pickSolVoice(v); voicesLoaded = true; } }
-    loadVoices();
-    if (typeof speechSynthesis !== 'undefined' && speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = loadVoices;
-    function cleanTextForSpeech(text) {
-      return text.replace(/```[\s\S]*?```/g,', code block, ').replace(/`([^`]+)`/g,'$1')
-        .replace(/([\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F700}-\u{1FAFF}]|[\u{2600}-\u{27BF}]|[\u{FE00}-\u{FE0F}]|[\u{1F1E0}-\u{1F1FF}]|\u{200D}|[\u{E0020}-\u{E007F}])/gu,'')
-        .replace(/#{1,6}\s+/g,'').replace(/\*{1,3}([^*\n]+)\*{1,3}/g,'$1').replace(/_{1,2}([^_\n]+)_{1,2}/g,'$1')
-        .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/^>\s*/gm,'').replace(/^[\s]*[-*+]\s+/gm,'')
-        .replace(/^\s*\d+\.\s+/gm,'').replace(/^[-_*]{3,}\s*$/gm,'')
-        .replace(/&amp;/g,'and').replace(/&lt;/g,'less than').replace(/&gt;/g,'greater than').replace(/&quot;/gi,'"').replace(/&apos;/gi,"'").replace(/&nbsp;/gi,' ').replace(/&#\d+;/g,'').replace(/<[^>]+>/g,'')
-        .replace(/→|←|↑|↓|↔|⇒|⇐|⟹|➜|➡|⬅/g,', ').replace(/[|\\^~<>{}[\]]/g,' ').replace(/•|·|‣|⁃/g,'')
-        .replace(/\n{2,}/g,'. ').replace(/\n/g,' ').replace(/\s{2,}/g,' ').trim();
+
+    function cleanText(raw) {
+      return raw
+        .replace(new RegExp('\\x60\\x60\\x60[\\s\\S]*?\\x60\\x60\\x60', 'g'), ', code block, ')
+        .replace(new RegExp('\\x60([^\\x60]+)\\x60', 'g'), '$1')
+        .replace(/([\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F700}-\u{1FAFF}]|[\u{2600}-\u{27BF}])/gu, '')
+        .replace(/#{1,6}\s+/g, '')
+        .replace(/\*{1,3}([^*\n]+)\*{1,3}/g, '$1')
+        .replace(/_{1,2}([^_\n]+)_{1,2}/g, '$1')
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\n{2,}/g, '. ')
+        .replace(/\n/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+        .slice(0, 5000);
     }
-    function expandAbbreviations(text) {
-      return text.replace(/\be\.g\./gi,'for example').replace(/\bi\.e\./gi,'that is').replace(/\betc\./gi,'et cetera').replace(/\bvs\./gi,'versus')
-        .replace(/\bDr\./g,'Doctor').replace(/\bMr\./g,'Mister').replace(/\bMrs\./g,'Missus').replace(/\bMs\./g,'Miss').replace(/\bProf\./g,'Professor')
-        .replace(/\bAPI\b/g,'A P I').replace(/\bURL\b/g,'U R L').replace(/\bUI\b/g,'U I').replace(/\bHTML\b/g,'H T M L').replace(/\bCSS\b/g,'C S S')
-        .replace(/\bLLM\b/g,'L L M').replace(/\bGPT\b/g,'G P T')
-        .replace(/\b(\d+)\s*km\b/gi,'$1 kilometers').replace(/\b(\d+)\s*kg\b/gi,'$1 kilograms').replace(/\b(\d+)\s*GB\b/gi,'$1 gigabytes').replace(/\b(\d+)\s*MB\b/gi,'$1 megabytes');
-    }
-    function humanizeNumbers(text) {
-      return text.replace(/\$\s?([\d,]+(?:\.\d+)?)/g,(_,n)=>n.replace(/,/g,'')+' dollars').replace(/([\d.]+)\s?%/g,'$1 percent')
-        .replace(/([\d]{1,3}(?:,[\d]{3})+)/g,m=>m.replace(/,/g,'')).replace(/(\d)\s*[-–]\s*(\d)/g,'$1 to $2').replace(/(\d+)x\b/gi,'$1 times');
-    }
-    function prepareText(raw) {
-      let t = cleanTextForSpeech(raw); t = expandAbbreviations(t); t = humanizeNumbers(t);
-      t = t.replace(/([.!?])\s*([.!?])+/g,'$1').replace(/^[,:;\-–—]+\s*/gm,'').replace(/\s{2,}/g,' ').trim();
-      return t;
-    }
-    function splitIntoSentences(text) {
-      const parts = text.split(/(?<=[.!?…])\s+(?=[A-Z"'(])/g), chunks = [];
-      for (const part of parts) {
-        const s = part.trim(); if (!s) continue;
-        if (s.length <= 220) { chunks.push(s); continue; }
-        const sub = s.split(/(?<=[,;:])\s+/g); let acc = '';
-        for (const seg of sub) { if (acc && (acc+' '+seg).length > 180) { chunks.push(acc.trim()); acc = seg; } else acc = acc ? acc+' '+seg : seg; }
-        if (acc.trim()) chunks.push(acc.trim());
+
+    function revokeCurrentUrl() {
+      if (currentUrl) {
+        URL.revokeObjectURL(currentUrl);
+        currentUrl = null;
       }
-      return chunks.filter(c => c.trim().length > 1);
     }
-    let chunkQueue = [], chunkIndex = 0, pauseTimer = null, stoppedByUser = false, savedBtn = null;
-    function makeUtterance(text) { const u = new SpeechSynthesisUtterance(text); u.rate = currentRate*0.92; u.pitch = 1.0; u.volume = 1.0; if (solVoice) u.voice = solVoice; return u; }
-    function speakNextChunk() {
-      if (stoppedByUser || chunkIndex >= chunkQueue.length) { if (!stoppedByUser) _onSpeakingDone(); return; }
-      const text = chunkQueue[chunkIndex++]; const u = makeUtterance(text); currentUtterance = u;
-      u.onend = () => { if (stoppedByUser) return; if (chunkIndex >= chunkQueue.length) _onSpeakingDone(); else pauseTimer = setTimeout(speakNextChunk, 80); };
-      u.onerror = (e) => { if (e.error === 'interrupted' || e.error === 'canceled') return; if (!stoppedByUser) pauseTimer = setTimeout(speakNextChunk, 80); };
-      synth.speak(u);
+
+    function resetBtn(btn) {
+      if (!btn) return;
+      btn.classList.remove('speaking', 'paused');
+      btn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>&#128266; Listen';
     }
-    function _onSpeakingDone() { isSpeaking = isPaused = false; chunkQueue = []; chunkIndex = 0; currentUtterance = null; resetBtn(currentBtn); currentBtn = savedBtn = null; updatePlayerState(); }
-    function getSourceText(btn) { const bubble = btn.closest('.message-bubble'); if (!bubble) return ''; const el = bubble.querySelector('.message-content'); return el ? (el.innerText||el.textContent||'') : ''; }
-    function resetBtn(btn) { if (!btn) return; btn.classList.remove('speaking','paused'); btn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>🔊 Listen'; }
+
     function updatePlayerState() {
-      const player = document.getElementById('ttsPlayer'), pauseBtn = document.getElementById('ttsPauseResumeBtn');
+      const player = document.getElementById('ttsPlayer');
+      const pauseBtn = document.getElementById('ttsPauseResumeBtn');
       if (!player) return;
-      if (isSpeaking) { player.classList.add('show'); player.classList.toggle('paused',isPaused); if (pauseBtn) pauseBtn.textContent = isPaused ? '▶' : '⏸'; }
-      else { player.classList.remove('show','paused'); }
+
+      if (isSpeaking) {
+        player.classList.add('show');
+        player.classList.toggle('paused', isPaused);
+        if (pauseBtn) pauseBtn.innerHTML = isPaused ? '&#9654;' : '&#9208;';
+      } else {
+        player.classList.remove('show', 'paused');
+      }
     }
-    function speak(btn) {
-      if (!synth) return;
-      const rawText = getSourceText(btn); if (!rawText.trim()) return;
-      if (isSpeaking && currentBtn === btn) { pauseResume(); return; }
-      stop();
-      const cleaned = prepareText(rawText); if (!cleaned) return;
-      if (!voicesLoaded) loadVoices();
-      chunkQueue = splitIntoSentences(cleaned); if (!chunkQueue.length) chunkQueue = [cleaned];
-      chunkIndex = 0; stoppedByUser = false; isSpeaking = true; isPaused = false; currentBtn = savedBtn = btn;
-      const preview = document.getElementById('ttsPlayerText'); if (preview) preview.textContent = cleaned.slice(0,60)+(cleaned.length>60?'…':'');
-      btn.classList.add('speaking'); btn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>🔊 Speaking…';
-      updatePlayerState(); speakNextChunk();
-    }
-    function pauseResume() {
-      if (!synth || !isSpeaking) return;
-      if (isPaused) { isPaused = false; clearTimeout(pauseTimer); synth.resume(); if (currentBtn) { currentBtn.classList.remove('paused'); currentBtn.classList.add('speaking'); currentBtn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>🔊 Speaking…'; } }
-      else { isPaused = true; clearTimeout(pauseTimer); synth.pause(); if (currentBtn) { currentBtn.classList.remove('speaking'); currentBtn.classList.add('paused'); currentBtn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>⏸ Paused'; } }
+
+    function onEnded() {
+      isSpeaking = false;
+      isPaused = false;
+      if (audioEl) {
+        audioEl.onended = null;
+        audioEl.onerror = null;
+      }
+      audioEl = null;
+      revokeCurrentUrl();
+      resetBtn(currentBtn);
+      currentBtn = null;
       updatePlayerState();
     }
-    function stop() { stoppedByUser = true; clearTimeout(pauseTimer); if (synth) synth.cancel(); isSpeaking = false; isPaused = false; chunkQueue = []; chunkIndex = 0; currentUtterance = null; if (currentBtn) resetBtn(currentBtn); currentBtn = null; savedBtn = null; updatePlayerState(); }
-    function setRate(val) { currentRate = parseFloat(val)||1.0; if (isSpeaking && savedBtn) { const btn = savedBtn; stop(); setTimeout(() => speak(btn), 80); } }
-    document.addEventListener('visibilitychange', () => { if (document.hidden && isSpeaking) stop(); });
+
+    async function requestAudio(text) {
+      let lastError = null;
+
+      for (const baseUrl of TTS_BACKENDS) {
+        try {
+          const res = await fetch(baseUrl + '/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text }),
+          });
+
+          if (res.ok) return res;
+
+          const err = await res.json().catch(() => ({
+            error: res.status === 404
+              ? '/api/tts is not deployed on the selected backend yet.'
+              : 'HTTP ' + res.status
+          }));
+          lastError = new Error(err.error || 'TTS request failed (' + res.status + ')');
+        } catch (err) {
+          lastError = err;
+        }
+      }
+
+      throw lastError || new Error('TTS request failed');
+    }
+
+    async function speak(btn) {
+      const rawText = getSourceText(btn);
+      if (!rawText.trim()) return;
+
+      if (isSpeaking && currentBtn === btn) {
+        pauseResume();
+        return;
+      }
+
+      stop();
+      const activeRequest = ++requestId;
+
+      const text = cleanText(rawText);
+      if (!text) return;
+
+      btn.classList.add('speaking');
+      btn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>&#9203; Loading...';
+      currentBtn = btn;
+      isSpeaking = true;
+      isPaused = false;
+      updatePlayerState();
+
+      const previewEl = document.getElementById('ttsPlayerText');
+      if (previewEl) previewEl.textContent = text.slice(0, 60) + (text.length > 60 ? '...' : '');
+
+      try {
+        const res = await requestAudio(text);
+
+        if (activeRequest !== requestId || currentBtn !== btn) return;
+
+        const blob = await res.blob();
+        if (activeRequest !== requestId || currentBtn !== btn) return;
+
+        currentUrl = URL.createObjectURL(blob);
+        audioEl = new Audio(currentUrl);
+        audioEl.playbackRate = currentRate;
+
+        audioEl.onended = onEnded;
+        audioEl.onerror = onEnded;
+
+        btn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>&#128266; Speaking...';
+        updatePlayerState();
+        await audioEl.play();
+      } catch (err) {
+        if (activeRequest !== requestId || currentBtn !== btn) return;
+        console.error('ElevenLabs TTS error:', err);
+        btn.innerHTML = '&#9888; TTS Error';
+        btn.classList.remove('speaking');
+        setTimeout(() => resetBtn(btn), 3000);
+        isSpeaking = false;
+        isPaused = false;
+        audioEl = null;
+        revokeCurrentUrl();
+        currentBtn = null;
+        updatePlayerState();
+      }
+    }
+
+    function pauseResume() {
+      if (!audioEl || !isSpeaking) return;
+
+      if (isPaused) {
+        audioEl.play();
+        isPaused = false;
+        if (currentBtn) {
+          currentBtn.classList.remove('paused');
+          currentBtn.classList.add('speaking');
+          currentBtn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>&#128266; Speaking...';
+        }
+      } else {
+        audioEl.pause();
+        isPaused = true;
+        if (currentBtn) {
+          currentBtn.classList.remove('speaking');
+          currentBtn.classList.add('paused');
+          currentBtn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>&#9208; Paused';
+        }
+      }
+
+      updatePlayerState();
+    }
+
+    function stop() {
+      requestId += 1;
+
+      if (audioEl) {
+        audioEl.pause();
+        audioEl.onended = null;
+        audioEl.onerror = null;
+        audioEl.src = '';
+        audioEl = null;
+      }
+
+      isSpeaking = false;
+      isPaused = false;
+      revokeCurrentUrl();
+      resetBtn(currentBtn);
+      currentBtn = null;
+      updatePlayerState();
+    }
+
+    function setRate(val) {
+      currentRate = parseFloat(val) || 1.0;
+      if (audioEl) audioEl.playbackRate = currentRate;
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden && isSpeaking) stop();
+    });
+
     return { speak, pauseResume, stop, setRate };
   })();
+  window.ttsController = ttsController;
 
   // ── DOMContentLoaded ──
   document.addEventListener('DOMContentLoaded', () => {
