@@ -6,9 +6,13 @@ A web-based chat platform that lets you talk to multiple AI models from a single
 
 ## Features
 
-- **6+ AI Agents** — GPT-OSS 20B (NVIDIA NIM), LLaMA 3.3 70B (NVIDIA NIM), Gemini 2.0 Flash, Mistral Large, LLaMA 3.3 via Groq, and Cohere Command R+
+- **6+ AI Agents** — GPT-OSS 120B (NVIDIA NIM), LLaMA 3.3 70B (NVIDIA NIM), Gemini Flash, Mistral Large, LLaMA 3.3 (via Groq), and Cohere Command R+
+- **Structured Pointwise Responses** — all AI agents are instructed to format responses in clear, readable bullet points or numbered lists, keeping paragraphs short and highly structured
 - **Prompt Enhancer** — automatically rewrites your prompt using LLaMA (free) before sending it to the chosen agent
-- **Deep Research Engine** — multi-branch exploration with step-by-step reasoning, tree visualization, and exportable Markdown reports
+- **Smart Web Grounding** — comprehensive regular-expression-based checker matching temporal indicators, comparisons, explicit search commands, and factual question formats to automatically fetch live context
+- **Organic DDG Scraper** — a custom backend organic HTML DuckDuckGo scraper that retrieves true URLs and rich snippets without API keys or rate limits
+- **Deep Research Engine** — multi-branch exploration with step-by-step reasoning, tree visualization, automatic branch-level web searches, synthesis grounding, and exportable structured Markdown reports
+- **Gapless Voice Narration (TTS)** — sequential 10-word chunking with an asynchronous in-memory pre-buffering queue (preloading 2 chunks ahead as local Blob URLs) for continuous zero-lag speech playback
 - **🌗 Dark / Light Mode** — one-click theme toggle (🌙/☀️) in the top-right corner of every page; preference is saved to `localStorage` and persists across sessions and page navigations
 - **Voice Input** — speak your message with real-time waveform visualization, confidence scoring, and transcript editing before sending
 - **AI Memory** — automatically extracts and stores key facts from conversations, injected as context in future sessions (Google accounts only)
@@ -118,16 +122,20 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 
 ## API Routes
 
-| Method | Route | Agent | Notes |
+| Method | Route | Agent / Feature | Notes |
 |---|---|---|---|
-| POST | `/api/openai` | GPT-OSS 20B (NVIDIA NIM) | Requires `{ messages }` |
+| POST | `/api/openai` | GPT-OSS 120B (NVIDIA NIM) | Requires `{ messages }` |
 | POST | `/api/nvidia-llama` | LLaMA 3.3 70B (NVIDIA NIM) | Requires `{ messages }` |
-| POST | `/api/gemini` | Gemini 2.0 Flash | Requires `{ prompt }` |
+| POST | `/api/gemini` | Gemini Flash | Requires `{ prompt }` |
 | POST | `/api/mistral` | Mistral Large | Requires `{ messages }` |
-| POST | `/api/groq` | LLaMA 3.3 70B (Groq) | Requires `{ messages }` |
+| POST | `/api/groq` | LLaMA 3.3 (Groq) | Requires `{ messages }` |
 | POST | `/api/cohere` | Command R+ | Requires `{ prompt }` |
 | POST | `/api/enhance` | LLaMA 3.3 (Groq) | Prompt enhancer, falls back to OpenAI |
-| POST | `/api/research` | Multi-agent | Deep Research Engine |
+| POST | `/api/deep-research` | Multi-agent | Deep Research Engine (SSE stream) |
+| POST | `/api/search` | Smart Web Search | Auto-selects Tavily ➔ SerpAPI ➔ DuckDuckGo |
+| POST | `/api/search/duckduckgo` | DuckDuckGo Search | Custom Organic HTML DDG Scraper (Free) |
+| POST | `/api/tts-script` | TTS Speech Rewriter | Adapts raw responses into vocal scripts |
+| POST | `/api/tts` | Murf AI Speech Proxy | Proxies MP3 voice generation securely |
 | GET | `/` | — | Health check |
 
 ---
@@ -136,12 +144,12 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 
 | Agent | Free Tier | Notes |
 |---|---|---|
-| LLaMA 3.3 via Groq | ✅ Yes | Generous free tier, also powers the Prompt Enhancer |
+| LLaMA 3.3 (Groq) | ✅ Yes | Generous free tier, also powers the Prompt Enhancer |
 | NVIDIA NIM (LLaMA 3.3 70B) | ✅ Trial credits | Free credits on sign-up |
-| NVIDIA NIM (GPT-OSS 20B) | ✅ Trial credits | OpenAI-compatible endpoint |
+| NVIDIA NIM (GPT-OSS 120B) | ✅ Trial credits | OpenAI-compatible endpoint |
 | Mistral Large | ✅ Trial credits | Free trial on sign-up |
 | Cohere Command R+ | ✅ Trial credits | v2/chat API |
-| Gemini 2.0 Flash | ⚠️ Daily quota | Free via AI Studio key; quota resets daily |
+| Gemini Flash | ⚠️ Daily quota | Free via AI Studio key; quota resets daily |
 
 ---
 
