@@ -679,7 +679,7 @@
       <div class="agent-panel" id="agentPanel">
         <div class="agent-grid">
           <button class="agent-btn nvidia-agent" onclick="selectAgent('openai',this)">
-            <span class="a-emoji">⬡</span><span class="a-name">GPT-OSS<br>20B</span><span class="nvidia-tag">NIM</span>
+            <span class="a-emoji">⬡</span><span class="a-name">GPT-OSS<br>120B</span><span class="nvidia-tag">NIM</span>
           </button>
           <button class="agent-btn nvidia-agent" onclick="selectAgent('nvidia-llama',this)">
             <span class="a-emoji">🦙</span><span class="a-name">LLaMA<br>3.3 70B</span><span class="nvidia-tag">NIM</span>
@@ -775,7 +775,7 @@
       <button class="menu-toggle" onclick="toggleSidebar()">☰</button>
       <div class="agent-indicator">
         <div class="agent-dot"></div>
-        <span class="agent-current" id="agentLabel">GPT-OSS 20B</span>
+        <span class="agent-current" id="agentLabel">GPT-OSS 120B</span>
       </div>
     </div>
     <div class="header-badges">
@@ -827,7 +827,7 @@
     </div>
     <div class="input-meta">
       <span class="input-hint">Enter to send · Shift+Enter for new line · Ctrl+Shift+V for voice</span>
-      <span class="input-hint">Agent: <span style="color:var(--c-neon-cyan)" id="agentHint2">GPT-OSS 20B</span></span>
+      <span class="input-hint">Agent: <span style="color:var(--c-neon-cyan)" id="agentHint2">GPT-OSS 120B</span></span>
     </div>
   </div>
 </main>
@@ -1255,7 +1255,7 @@
     } catch { btn.classList.remove('deleting'); btn.innerHTML = `⚠ Failed — try again`; }
   }
 
-  const AGENT_NAMES = { openai:'GPT-OSS 20B', gemini:'Gemini Flash', mistral:'Mistral Large', cohere:'Cohere R+', groq:'LLaMA 3.3', 'nvidia-llama':'LLaMA 3.3 70B' };
+  const AGENT_NAMES = { openai:'GPT-OSS 120B', gemini:'Gemini Flash', mistral:'Mistral Large', cohere:'Cohere R+', groq:'LLaMA 3.3', 'nvidia-llama':'LLaMA 3.3 70B' };
   const AGENT_EMOJI = { openai:'⬡', gemini:'◉', mistral:'⬢', cohere:'⊗', groq:'⊕', 'nvidia-llama':'🦙' };
   function agentName(a)  { return AGENT_NAMES[a]  || 'AI'; }
   function agentEmoji(a) { return AGENT_EMOJI[a]   || '✦'; }
@@ -1354,18 +1354,26 @@
     } catch { return prompt; }
   }
 
+  const BASE_SYSTEM_PROMPT = "You are NEXUS AI, a helpful, advanced AI assistant. IMPORTANT: Always structure your response using clear bullet points or numbered lists where appropriate, keeping paragraphs short and highly structured so that new users see an appealing, readable, and structured output. Do not output raw walls of text.";
+
   async function callAgent(agent, prompt, history, memories = []) {
     const recentHistory = history.slice(-8).filter(m => m.role !== 'system');
     const userMsg = { role: 'user', content: prompt };
     let messages, promptWithContext = prompt;
+    
+    let sysContent = BASE_SYSTEM_PROMPT;
     if (memories.length > 0) {
       const memLines   = memories.slice(0, 8).map(m => `• ${m.content}`).join('\n');
-      const sysContent = `You are a helpful AI assistant. The following is relevant context about the user, learned from previous conversations:\n${memLines}\n\nUse this context naturally and helpfully when relevant. Do not explicitly tell the user that you have a stored memory system — just respond in a personalized, aware way.`;
-      messages         = [{ role: 'system', content: sysContent }, ...recentHistory, userMsg];
-      promptWithContext = `[User background: ${memories.slice(0,5).map(m=>m.content).join('. ')}]\n\n${prompt}`;
-    } else {
-      messages = [...recentHistory, userMsg];
+      sysContent += `\n\nAdditionally, here is relevant context about the user, learned from previous conversations:\n${memLines}\n\nUse this context naturally and helpfully when relevant. Do not explicitly tell the user that you have a stored memory system — just respond in a personalized, aware way.`;
     }
+    
+    messages = [{ role: 'system', content: sysContent }, ...recentHistory, userMsg];
+    
+    const memPrefix = memories.length > 0
+      ? `[User background: ${memories.slice(0,5).map(m=>m.content).join('. ')}]\n\n`
+      : '';
+    promptWithContext = `[System Instruction: ${BASE_SYSTEM_PROMPT}]\n\n${memPrefix}${prompt}`;
+
     const map = {
       openai:         { url:`${BACKEND}/api/openai`,         body:{ messages } },
       'nvidia-llama': { url:`${BACKEND}/api/nvidia-llama`,   body:{ messages } },
@@ -1385,8 +1393,19 @@
 
   function shouldFetchWeb(prompt) {
     const text = prompt.toLowerCase().trim();
-    if (/^(hi|hello|hey|hiya|yo|sup|thanks|thank you|bye|good morning|good night)[\s!?.]*$/.test(text)) return false;
-    if (/^(what is|define|explain|how does|difference between|why is|what are)\b/.test(text) && text.length < 60) return false;
+    if (/^(hi|hello|hey|hiya|yo|sup|thanks|thank you|bye|good morning|good night|good afternoon|good evening)[\s!?.]*$/.test(text)) return false;
+    
+    // Explicit requests to search the web
+    const explicitSearchRegex = /\b(search|google|web|internet|lookup|find|browse|weather|news|stock|price|rate|crypto|btc|eth|sol|near|info|details|recent|current|latest)\b/i;
+    if (explicitSearchRegex.test(text)) return true;
+    
+    // Temporal expressions for recent or future dates
+    const temporalRegex = /\b(today|tonight|yesterday|tomorrow|this week|this month|this year|now|currently|recent|recently|upcoming|latest|newest|released|launched|announced|2024|2025|2026)\b/i;
+    if (temporalRegex.test(text)) return true;
+    
+    // Specific question patterns that usually require live info (who is/did, who won, when did, latest status of)
+    const questionPatternRegex = /\b(who is|who was|who won|who leads|who is the|what is the price of|how much is|when did|when is|where is|is there a|status of|happen to|incident at|developments in|news about|events in|versus|vs|compare|comparison between)\b/i;
+    if (questionPatternRegex.test(text)) return true;
 
     const WEB_SIGNALS = [
       'today','tonight','yesterday','this week','this month','this year',
@@ -1869,9 +1888,9 @@
   // ── TTS CONTROLLER ──
   // Murf TTS controller
   const ttsController = (() => {
-    let audioEl = null;
+    let chunks = [];
+    let currentChunkIndex = 0;
     let currentBtn = null;
-    let currentUrl = null;
     let isSpeaking = false;
     let isPaused = false;
     let currentRate = 1.0;
@@ -1901,13 +1920,6 @@
         .slice(0, 5000);
     }
 
-    function revokeCurrentUrl() {
-      if (currentUrl) {
-        URL.revokeObjectURL(currentUrl);
-        currentUrl = null;
-      }
-    }
-
     function resetBtn(btn) {
       if (!btn) return;
       btn.classList.remove('speaking', 'paused');
@@ -1928,15 +1940,44 @@
       }
     }
 
+    function splitTextIntoChunks(text, maxWords = 10) {
+      const words = text.split(/\s+/).filter(w => w.trim().length > 0);
+      const resChunks = [];
+      let currentChunk = [];
+      
+      for (const word of words) {
+        currentChunk.push(word);
+        if (currentChunk.length >= maxWords || /[.?!]$/.test(word)) {
+          resChunks.push(currentChunk.join(' '));
+          currentChunk = [];
+        } else if (/[,,;:]$/.test(word) && currentChunk.length >= 5) {
+          resChunks.push(currentChunk.join(' '));
+          currentChunk = [];
+        }
+      }
+      if (currentChunk.length > 0) {
+        resChunks.push(currentChunk.join(' '));
+      }
+      return resChunks.filter(c => c.trim().length > 0);
+    }
+
+    function isPlayingAudio(index) {
+      const chunk = chunks[index];
+      return chunk && chunk.audioEl && !chunk.audioEl.paused && !chunk.audioEl.ended;
+    }
+
     function onEnded() {
       isSpeaking = false;
       isPaused = false;
-      if (audioEl) {
-        audioEl.onended = null;
-        audioEl.onerror = null;
-      }
-      audioEl = null;
-      revokeCurrentUrl();
+      
+      chunks.forEach(chunk => {
+        if (chunk.audioUrl) {
+          URL.revokeObjectURL(chunk.audioUrl);
+        }
+      });
+      chunks = [];
+      currentChunkIndex = 0;
+      
       resetBtn(currentBtn);
       currentBtn = null;
       updatePlayerState();
@@ -1969,6 +2010,113 @@
       throw lastError || new Error('TTS request failed');
     }
 
+    function preloadChunks() {
+      const maxAhead = 2; 
+      for (let i = currentChunkIndex; i < Math.min(chunks.length, currentChunkIndex + maxAhead + 1); i++) {
+        const chunk = chunks[i];
+        if (chunk.status === 'pending') {
+          fetchChunk(i);
+        }
+      }
+    }
+
+    async function fetchChunk(index) {
+      const chunk = chunks[index];
+      if (!chunk || chunk.status !== 'pending') return;
+      
+      chunk.status = 'loading';
+      const activeRequest = requestId;
+      
+      try {
+        const res = await requestAudio(chunk.text);
+        if (activeRequest !== requestId) return;
+        
+        const blob = await res.blob();
+        if (activeRequest !== requestId) return;
+        
+        chunk.audioUrl = URL.createObjectURL(blob);
+        const audio = new Audio(chunk.audioUrl);
+        audio.playbackRate = currentRate;
+        
+        audio.onended = () => {
+          if (currentChunkIndex === index) {
+            playNextChunk();
+          }
+        };
+        audio.onerror = () => {
+          console.error("Audio chunk playback error:", index);
+          if (currentChunkIndex === index) {
+            playNextChunk();
+          }
+        };
+        
+        chunk.audioEl = audio;
+        chunk.status = 'ready';
+        
+        if (isSpeaking && !isPaused && currentChunkIndex === index && !isPlayingAudio(index)) {
+          playChunk(index);
+        }
+        
+        preloadChunks();
+      } catch (err) {
+        console.error("Failed to fetch chunk:", index, err);
+        chunk.status = 'error';
+        if (currentChunkIndex === index) {
+          playNextChunk();
+        }
+      }
+    }
+
+    async function playChunk(index) {
+      if (index >= chunks.length) {
+        onEnded();
+        return;
+      }
+      
+      const chunk = chunks[index];
+      if (chunk.status === 'ready' && chunk.audioEl) {
+        const previewEl = document.getElementById('ttsPlayerText');
+        if (previewEl) {
+          previewEl.textContent = chunk.text;
+        }
+        
+        try {
+          chunk.audioEl.playbackRate = currentRate;
+          await chunk.audioEl.play();
+          preloadChunks();
+        } catch (err) {
+          console.error("Play failed for chunk:", index, err);
+          playNextChunk();
+        }
+      } else if (chunk.status === 'error') {
+        playNextChunk();
+      } else {
+        const previewEl = document.getElementById('ttsPlayerText');
+        if (previewEl) {
+          previewEl.textContent = "Loading audio...";
+        }
+        if (chunk.status === 'pending') {
+          fetchChunk(index);
+        }
+      }
+    }
+
+    function playNextChunk() {
+      const prevChunk = chunks[currentChunkIndex];
+      if (prevChunk && prevChunk.audioEl) {
+        prevChunk.audioEl.pause();
+        prevChunk.audioEl.onended = null;
+        prevChunk.audioEl.onerror = null;
+      }
+      
+      currentChunkIndex++;
+      if (currentChunkIndex >= chunks.length) {
+        onEnded();
+      } else {
+        playChunk(currentChunkIndex);
+      }
+    }
+
     async function speak(btn) {
       const rawText = getSourceText(btn);
       if (!rawText.trim()) return;
@@ -1979,7 +2127,8 @@
       }
 
       stop();
-      const activeRequest = ++requestId;
+      requestId += 1;
+      const activeRequest = requestId;
 
       const text = cleanText(rawText);
       if (!text) return;
@@ -1991,56 +2140,46 @@
       isPaused = false;
       updatePlayerState();
 
-      const previewEl = document.getElementById('ttsPlayerText');
-      if (previewEl) previewEl.textContent = text.slice(0, 60) + (text.length > 60 ? '...' : '');
-
-      try {
-        const res = await requestAudio(text);
-
-        if (activeRequest !== requestId || currentBtn !== btn) return;
-
-        const blob = await res.blob();
-        if (activeRequest !== requestId || currentBtn !== btn) return;
-
-        currentUrl = URL.createObjectURL(blob);
-        audioEl = new Audio(currentUrl);
-        audioEl.playbackRate = currentRate;
-
-        audioEl.onended = onEnded;
-        audioEl.onerror = onEnded;
-
-        btn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>&#128266; Speaking...';
-        updatePlayerState();
-        await audioEl.play();
-      } catch (err) {
-        if (activeRequest !== requestId || currentBtn !== btn) return;
-        console.error('Murf TTS error:', err);
-        btn.innerHTML = '&#9888; TTS Error';
-        btn.classList.remove('speaking');
-        setTimeout(() => resetBtn(btn), 3000);
-        isSpeaking = false;
-        isPaused = false;
-        audioEl = null;
-        revokeCurrentUrl();
-        currentBtn = null;
-        updatePlayerState();
+      const chunksText = splitTextIntoChunks(text);
+      if (chunksText.length === 0) {
+        onEnded();
+        return;
       }
+
+      chunks = chunksText.map(t => ({
+        text: t,
+        status: 'pending',
+        audioUrl: null,
+        audioEl: null
+      }));
+
+      currentChunkIndex = 0;
+      
+      preloadChunks();
+      playChunk(0);
     }
 
     function pauseResume() {
-      if (!audioEl || !isSpeaking) return;
+      if (!isSpeaking) return;
 
+      const chunk = chunks[currentChunkIndex];
       if (isPaused) {
-        audioEl.play();
         isPaused = false;
+        if (chunk && chunk.audioEl && chunk.status === 'ready') {
+          chunk.audioEl.play().catch(() => {});
+        } else {
+          playChunk(currentChunkIndex);
+        }
         if (currentBtn) {
           currentBtn.classList.remove('paused');
           currentBtn.classList.add('speaking');
           currentBtn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>&#128266; Speaking...';
         }
       } else {
-        audioEl.pause();
         isPaused = true;
+        if (chunk && chunk.audioEl) {
+          chunk.audioEl.pause();
+        }
         if (currentBtn) {
           currentBtn.classList.remove('speaking');
           currentBtn.classList.add('paused');
@@ -2054,17 +2193,22 @@
     function stop() {
       requestId += 1;
 
-      if (audioEl) {
-        audioEl.pause();
-        audioEl.onended = null;
-        audioEl.onerror = null;
-        audioEl.src = '';
-        audioEl = null;
-      }
+      chunks.forEach(chunk => {
+        if (chunk.audioEl) {
+          chunk.audioEl.pause();
+          chunk.audioEl.onended = null;
+          chunk.audioEl.onerror = null;
+          chunk.audioEl.src = '';
+        }
+        if (chunk.audioUrl) {
+          URL.revokeObjectURL(chunk.audioUrl);
+        }
+      });
 
+      chunks = [];
+      currentChunkIndex = 0;
       isSpeaking = false;
       isPaused = false;
-      revokeCurrentUrl();
       resetBtn(currentBtn);
       currentBtn = null;
       updatePlayerState();
@@ -2072,7 +2216,11 @@
 
     function setRate(val) {
       currentRate = parseFloat(val) || 1.0;
-      if (audioEl) audioEl.playbackRate = currentRate;
+      chunks.forEach(chunk => {
+        if (chunk.audioEl) {
+          chunk.audioEl.playbackRate = currentRate;
+        }
+      });
     }
 
     document.addEventListener('visibilitychange', () => {
