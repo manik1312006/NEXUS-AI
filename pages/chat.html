@@ -318,6 +318,24 @@
     .message-content li { margin:4px 0; }
     .copy-btn { margin-top:10px; padding:4px 12px; border-radius:6px; border:1px solid var(--c-border); background:transparent; color:var(--c-muted); font-size:0.72rem; cursor:pointer; transition:all 0.2s; font-family:'Space Mono',monospace; }
     .copy-btn:hover { color:var(--c-neon-cyan); border-color:var(--c-neon-cyan); }
+    .user-copy-btn {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.3);
+      color: rgba(255,255,255,0.7);
+      font-size: 0.72rem;
+      padding: 3px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      transition: all 0.2s;
+      margin-top: 10px;
+      margin-left: 0;
+    }
+    .user-copy-btn:hover {
+      color: #fff;
+      border-color: #fff;
+      background: rgba(255,255,255,0.15);
+    }
     @keyframes blurOut { 0%{filter:blur(0);opacity:1} 100%{filter:blur(6px);opacity:0} }
     @keyframes sparkleIn { 0%{filter:blur(8px);opacity:0;transform:scale(0.97)} 60%{filter:blur(1px);opacity:0.9;transform:scale(1.01)} 100%{filter:blur(0);opacity:1;transform:scale(1)} }
     .message-content.prompt-enhancing { animation:blurOut 0.35s ease forwards; }
@@ -1258,11 +1276,14 @@
       ? `<img src="${avatarSrc}" class="msg-avatar">`
       : `<div class="msg-avatar agent-avatar">${agentEmoji(window._nexus.selectedAgent)}</div>`;
     const rendered = (role === 'user' || role === 'error') ? escapeHTML(safeContent) : (safeContent ? marked.parse(safeContent) : '');
+    const buttonHTML = role === 'assistant' 
+      ? `<button class="tts-listen-btn" onclick="ttsController.speak(this)" title="Listen to this response"><span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>🔊 Listen</button><button class="copy-btn" onclick="copyMsg(this)">⎘ Copy</button>`
+      : (role === 'user' ? `<button class="copy-btn user-copy-btn" onclick="copyMsg(this)">⎘ Copy</button>` : '');
     wrap.innerHTML = `${role !== 'error' ? avatar : ''}
       <div class="message-bubble ${role}">
         ${role !== 'user' && role !== 'error' ? `<div class="agent-label">${agentName(window._nexus.selectedAgent)}</div>` : ''}
         <div class="message-content">${rendered}</div>
-        ${role === 'assistant' ? `<button class="tts-listen-btn" onclick="ttsController.speak(this)" title="Listen to this response"><span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>🔊 Listen</button><button class="copy-btn" onclick="copyMsg(this)">⎘ Copy</button>` : ''}
+        ${buttonHTML}
       </div>`;
     container.appendChild(wrap);
     container.scrollTop = container.scrollHeight;
@@ -1302,8 +1323,23 @@
   }
 
   function copyMsg(btn) {
-    navigator.clipboard.writeText(btn.previousElementSibling.textContent);
-    btn.textContent = '✓ Copied!'; setTimeout(() => btn.textContent = '⎘ Copy', 2000);
+    const bubble = btn.closest('.message-bubble');
+    const contentEl = bubble ? bubble.querySelector('.message-content') : null;
+    if (!contentEl) return;
+    navigator.clipboard.writeText(contentEl.innerText || contentEl.textContent || '').then(() => {
+      const prev = btn.textContent;
+      btn.textContent = '✓ Copied!';
+      btn.style.color = 'var(--c-neon-green)';
+      btn.style.borderColor = 'var(--c-neon-green)';
+      setTimeout(() => {
+        btn.textContent = prev;
+        btn.style.color = '';
+        btn.style.borderColor = '';
+      }, 2000);
+    }).catch(() => {
+      btn.textContent = '✗ Failed';
+      setTimeout(() => btn.textContent = '⎘ Copy', 2000);
+    });
   }
 
   function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 160)+'px'; }
@@ -1466,7 +1502,8 @@
     const webEnabled = document.getElementById('webSearchToggle')?.checked;
 
     const userBubbleNode = appendMessage('user', rawPrompt, true);
-    nx.chatHistory.push({ role: 'user', content: rawPrompt });
+    const userHistoryEntry = { role: 'user', content: rawPrompt };
+    nx.chatHistory.push(userHistoryEntry);
 
     const typingId = showTyping();
     try {
@@ -1476,6 +1513,7 @@
         finalPrompt = await enhancePrompt(rawPrompt, agent);
         if (finalPrompt && finalPrompt !== rawPrompt) {
           animatePromptReplacement(userBubbleNode, finalPrompt);
+          userHistoryEntry.content = finalPrompt;
         }
       }
 
