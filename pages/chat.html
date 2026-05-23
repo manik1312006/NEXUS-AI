@@ -604,6 +604,38 @@
       h1, h2, h3 { color: black !important; font-family: serif !important; page-break-after: avoid; }
       pre { background: #f4f4f4 !important; color: black !important; border: 1px solid #ccc !important; }
     }
+
+    /* ── WEB SEARCH (chat mode) ── */
+    .web-search-badge-header {
+      padding: 4px 12px; border-radius: 20px;
+      background: rgba(0,245,255,0.1); border: 1px solid rgba(0,245,255,0.3);
+      color: var(--c-neon-cyan); font-size: 0.72rem;
+      font-family: 'Space Mono', monospace;
+    }
+    .ws-indicator {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 3px 10px; border-radius: 20px; font-size: 0.68rem;
+      font-family: 'Space Mono', monospace; letter-spacing: 0.04em;
+      background: rgba(0,245,255,0.07); border: 1px solid rgba(0,245,255,0.3);
+      color: var(--c-neon-cyan); margin-top: 8px; animation: fadeUp 0.3s ease;
+    }
+    .ws-indicator .ws-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--c-neon-cyan); box-shadow: 0 0 5px var(--c-neon-cyan);
+      animation: recBlink 0.9s ease-in-out infinite;
+    }
+    .ws-source-list {
+      margin-top: 6px; padding: 8px 12px; border-radius: 10px;
+      background: rgba(0,245,255,0.04); border: 1px solid rgba(0,245,255,0.15);
+      font-size: 0.72rem; color: var(--c-muted); line-height: 1.7;
+    }
+    .ws-source-list a {
+      color: var(--c-neon-cyan); text-decoration: none;
+      display: inline-block; max-width: 360px;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom;
+    }
+    .ws-source-list a:hover { text-decoration: underline; }
+    html.light .ws-source-list { background: rgba(2,132,199,0.04); border-color: rgba(2,132,199,0.15); }
   </style>
 </head>
 <body>
@@ -658,6 +690,19 @@
         </div>
         <label class="toggle">
           <input type="checkbox" id="enhanceToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="web-search-section" style="padding:14px 16px; border-bottom:1px solid var(--c-border);">
+      <div class="enhance-row">
+        <div class="enhance-info">
+          <div class="enhance-title" style="color:var(--c-neon-cyan)">🌐 Web Search</div>
+          <div class="enhance-sub">Auto-fetches live data when<br>your question needs it</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="webSearchToggle" checked>
           <span class="slider"></span>
         </label>
       </div>
@@ -719,6 +764,7 @@
       <div id="enhanceBadgeHeader" class="enhance-badge-header">✨ Enhancer ON</div>
       <div id="memoryBadgeHeader" class="memory-badge-header" style="display:none">🧠 Memory</div>
       <div id="researchBadgeHeader" class="research-badge-header" style="display:none; padding:4px 12px; border-radius:20px; background:rgba(0,255,157,0.1); border:1px solid rgba(0,255,157,0.3); color:var(--c-neon-green); font-size:0.72rem; font-family:'Space Mono',monospace;">🔬 Research ON</div>
+      <div id="webSearchBadgeHeader" class="web-search-badge-header">🌐 Web ON</div>
       <button class="theme-toggle-btn" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle light/dark mode" aria-label="Toggle theme">🌙</button>
     </div>
   </div>
@@ -1299,36 +1345,186 @@
     return d.result;
   }
 
+  function shouldFetchWeb(prompt) {
+    const text = prompt.toLowerCase().trim();
+    if (/^(hi|hello|hey|hiya|yo|sup|thanks|thank you|bye|good morning|good night)[\s!?.]*$/.test(text)) return false;
+    if (/^(what is|define|explain|how does|difference between|why is|what are)\b/.test(text) && text.length < 60) return false;
+
+    const WEB_SIGNALS = [
+      'today','tonight','yesterday','this week','this month','this year',
+      'right now','just now','at the moment','as of','currently','at present',
+      'latest','recent','new release','newest','update','updated','upcoming',
+      'released','launched','announced','announcement',
+      'news','headline','breaking','trending','happening',
+      'election','result','winner','score','match','game today',
+      'price','cost','rate','stock','market','crypto','bitcoin',
+      'weather','forecast','temperature','rain',
+      'who is the','who won','who leads','ceo of','president of',
+      'prime minister','is still','does still',
+      'version','changelog','gpt-','gemini ','claude ',
+      'ios ','android ','macos ','windows ','2025','2026',
+    ];
+    return WEB_SIGNALS.some(s => text.includes(s));
+  }
+
+  async function fetchWebContext(query) {
+    try {
+      const res = await fetch(`${BACKEND}/api/search`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, service: 'auto' })
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (!data.success || !data.results?.length) return null;
+      return data;
+    } catch { return null; }
+  }
+
+  function buildWebPromptContext(webData, originalQuery) {
+    if (!webData?.results?.length) return '';
+    const today = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+    let ctx = `\n\n────────────────────────────────────────\n`;
+    ctx += `LIVE WEB SEARCH RESULTS\n`;
+    ctx += `Query: "${originalQuery}"\n`;
+    ctx += `Retrieved: ${today} | Source: ${webData.service || 'Web'}\n`;
+    ctx += `────────────────────────────────────────\n`;
+    if (webData.answer) ctx += `Quick Answer: ${webData.answer}\n\n`;
+    webData.results.slice(0, 5).forEach((r, i) => {
+      ctx += `[${i + 1}] ${r.title || 'Result'}\n`;
+      const snippet = (r.snippet || r.content || '').slice(0, 300).trim();
+      if (snippet) ctx += `    ${snippet}\n`;
+      if (r.url) ctx += `    🔗 ${r.url}\n`;
+      ctx += '\n';
+    });
+    ctx += `────────────────────────────────────────\n`;
+    ctx += `INSTRUCTION: Use the above real-time web data to answer accurately. Cite sources by number (e.g. [1]) where relevant. If web results conflict with training knowledge, defer to web data as it is more current.\n\n`;
+    return ctx;
+  }
+
+  function appendWebSources(bubbleEl, webData) {
+    if (!webData?.results?.length) return;
+    const svc = webData.service || 'Web';
+    const count = webData.results.length;
+
+    const badge = document.createElement('span');
+    badge.className = 'ws-indicator';
+    const dot = document.createElement('span');
+    dot.className = 'ws-dot';
+    badge.append(dot, `🌐 ${svc} · ${count} source${count !== 1 ? 's' : ''}`);
+    bubbleEl.appendChild(badge);
+
+    const details = document.createElement('details');
+    details.style.marginTop = '4px';
+
+    const summary = document.createElement('summary');
+    summary.style.cssText = 'cursor:pointer;font-size:0.72rem;color:var(--c-muted);font-family:Space Mono,monospace;list-style:none;outline:none;padding:2px 0;';
+    summary.textContent = '▸ Show sources';
+    summary.addEventListener('click', () => {
+      setTimeout(() => { summary.textContent = details.open ? '▾ Hide sources' : '▸ Show sources'; }, 0);
+    });
+
+    const list = document.createElement('div');
+    list.className = 'ws-source-list';
+    webData.results.slice(0, 5).forEach((r, i) => {
+      const row = document.createElement('div');
+      row.append(`[${i + 1}] `);
+      const title = (r.title || `Result ${i + 1}`).slice(0, 80);
+      if (r.url) {
+        const link = document.createElement('a');
+        link.href = r.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = title;
+        row.appendChild(link);
+      } else {
+        row.append(title);
+      }
+      list.appendChild(row);
+    });
+
+    details.appendChild(summary);
+    details.appendChild(list);
+    bubbleEl.appendChild(details);
+  }
+
   async function sendMessage() {
-    const input = document.getElementById('userInput');
+    const input     = document.getElementById('userInput');
     const rawPrompt = input.value.trim();
     if (!rawPrompt) return;
     input.value = ''; autoResize(input);
+
     const nx    = window._nexus;
     const agent = nx.selectedAgent;
-    const isResearch = document.getElementById('researchToggle')?.checked;
-    if (isResearch) { await runDeepResearch(rawPrompt, agent); return; }
-    const enhance = document.getElementById('enhanceToggle').checked;
+
+    if (document.getElementById('researchToggle')?.checked) {
+      await runDeepResearch(rawPrompt, agent);
+      return;
+    }
+
+    const enhance    = document.getElementById('enhanceToggle').checked;
+    const webEnabled = document.getElementById('webSearchToggle')?.checked;
+
     const userBubbleNode = appendMessage('user', rawPrompt, true);
-    nx.chatHistory.push({ role:'user', content: rawPrompt });
+    nx.chatHistory.push({ role: 'user', content: rawPrompt });
+
     const typingId = showTyping();
     try {
       let finalPrompt = rawPrompt;
-      if (enhance) { updateTyping(typingId, '✨ Enhancing your prompt…'); finalPrompt = await enhancePrompt(rawPrompt, agent); if (finalPrompt && finalPrompt !== rawPrompt) animatePromptReplacement(userBubbleNode, finalPrompt); }
+      if (enhance) {
+        updateTyping(typingId, '✨ Enhancing your prompt…');
+        finalPrompt = await enhancePrompt(rawPrompt, agent);
+        if (finalPrompt && finalPrompt !== rawPrompt) {
+          animatePromptReplacement(userBubbleNode, finalPrompt);
+        }
+      }
+
+      let webData = null;
+      if (webEnabled && shouldFetchWeb(rawPrompt)) {
+        updateTyping(typingId, '🌐 Fetching live web data…');
+        webData = await fetchWebContext(rawPrompt);
+      }
+
       const activeMemories = getActiveMemories();
-      const memLabel = activeMemories.length > 0 ? `🧠 Using ${activeMemories.length} memor${activeMemories.length===1?'y':'ies'}…` : '';
-      updateTyping(typingId, (memLabel ? memLabel+' · ' : '')+'🤖 Asking '+agentName(agent)+'…');
-      const response = await callAgent(agent, finalPrompt, nx.chatHistory.slice(-10), activeMemories);
+      const memLabel = activeMemories.length > 0
+        ? `🧠 Using ${activeMemories.length} memor${activeMemories.length === 1 ? 'y' : 'ies'}…`
+        : '';
+
+      updateTyping(typingId,
+        (memLabel ? memLabel + ' · ' : '') +
+        (webData ? '🌐 Web-grounded · ' : '') +
+        '🤖 Asking ' + agentName(agent) + '…'
+      );
+
+      const promptWithWeb = webData
+        ? finalPrompt + buildWebPromptContext(webData, rawPrompt)
+        : finalPrompt;
+
+      const response = await callAgent(agent, promptWithWeb, nx.chatHistory.slice(-10), activeMemories);
       removeTyping(typingId);
+
       const safeResponse = (typeof response === 'string' && response.trim()) ? response : '_(No response returned)_';
-      appendMessage('assistant', safeResponse, true);
-      nx.chatHistory.push({ role:'assistant', content: safeResponse });
+      const msgWrap = appendMessage('assistant', safeResponse, true);
+
+      if (webData) {
+        const bubble = msgWrap?.querySelector('.message-bubble');
+        if (bubble) appendWebSources(bubble, webData);
+      }
+
+      nx.chatHistory.push({ role: 'assistant', content: safeResponse });
+
       if (nx.currentUser && nx.currentSessionId && typeof window._saveSession === 'function') {
         const title = nx.chatHistory[0]?.content?.slice(0, 60) || 'Chat';
-        window._saveSession(nx.currentUser.uid, nx.currentSessionId, { title, messages: nx.chatHistory, createdAt: Date.now(), agent });
+        window._saveSession(nx.currentUser.uid, nx.currentSessionId, {
+          title, messages: nx.chatHistory, createdAt: Date.now(), agent
+        });
       }
+
       maybeExtractMemories();
-    } catch (err) { removeTyping(typingId); appendMessage('error', '⚠ '+err.message, true); }
+    } catch (err) {
+      removeTyping(typingId);
+      appendMessage('error', '⚠ ' + err.message, true);
+    }
   }
 
   function toggleSidebar() {
@@ -1742,6 +1938,15 @@
       researchToggle.addEventListener('change', function() {
         const badge = document.getElementById('researchBadgeHeader');
         if (badge) badge.style.display = this.checked ? 'block' : 'none';
+      });
+    }
+
+    const webSearchToggle = document.getElementById('webSearchToggle');
+    const webSearchBadge  = document.getElementById('webSearchBadgeHeader');
+    if (webSearchToggle && webSearchBadge) {
+      webSearchBadge.style.display = webSearchToggle.checked ? 'block' : 'none';
+      webSearchToggle.addEventListener('change', function() {
+        webSearchBadge.style.display = this.checked ? 'block' : 'none';
       });
     }
 
