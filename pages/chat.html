@@ -433,13 +433,6 @@
     .transcript-text-box { background: rgba(0,0,0,0.3); border: 1px solid rgba(0,245,255,0.15); border-radius: 10px; padding: 12px 14px; color: var(--c-text); font-size: 0.9rem; line-height: 1.6; min-height: 40px; outline: none; font-family: 'DM Sans', sans-serif; transition: border-color 0.2s; }
     .transcript-text-box[contenteditable="true"] { border-color: rgba(0,245,255,0.4); box-shadow: 0 0 12px rgba(0,245,255,0.08); }
     .transcript-text-box .interim { opacity: 0.45; font-style: italic; }
-    .word-hi { color: var(--c-neon-green); } .word-med { color: var(--c-neon-amber); } .word-lo { color: var(--c-neon-pink); }
-    .word-replaced { animation: wordReplaced 0.7s ease; }
-    @keyframes wordReplaced { 0% { background: rgba(255,45,120,0.25); text-decoration: line-through; } 100% { background: transparent; text-decoration: none; } }
-    .word-flash { animation: wordFlash 0.5s ease; }
-    @keyframes wordFlash { 0% { background: rgba(255,45,120,0.15); border-radius: 3px; } 100% { background: transparent; } }
-    .cmd-toast { position: fixed; bottom: 130px; left: 50%; transform: translateX(-50%); z-index: 500; background: rgba(0,245,255,0.12); border: 1px solid rgba(0,245,255,0.35); backdrop-filter: blur(8px); border-radius: 10px; padding: 6px 16px; color: var(--c-neon-cyan); font-size: 0.78rem; font-family: 'Space Mono',monospace; opacity: 0; transition: opacity 0.25s; pointer-events: none; white-space: nowrap; }
-    .cmd-toast.show { opacity: 1; }
     .transcript-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .btn-transcript { flex: 1; min-width: 80px; padding: 9px 12px; border-radius: 10px; font-size: 0.8rem; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; border: 1px solid var(--c-border); display: flex; align-items: center; justify-content: center; gap: 5px; }
     .btn-transcript.edit { background: transparent; color: var(--c-muted); }
@@ -946,8 +939,6 @@
       </div>
     </div>
 
-    <div class="cmd-toast" id="cmdToast"></div>
-
     <div class="input-box">
       <textarea id="userInput" rows="1" placeholder="Ask anything… your prompt will be enhanced before sending"></textarea>
       <button class="mic-btn" id="micBtn" onclick="voiceInput.toggle()" title="Voice input (Ctrl+Shift+V)" aria-label="Toggle voice input"></button>
@@ -1266,7 +1257,7 @@
     const STATES = { IDLE: 'idle', RECORDING: 'recording', PAUSED: 'paused', PREVIEW: 'preview' };
     let state = STATES.IDLE, recognition = null, finalTranscript = '';
     let timerInterval = null, elapsedSeconds = 0, isEditing = false, supported = false, pendingPreview = false, lastResultIndex = 0;
-    let wordConfidences = [], prevInterim = '', lastResultTime = 0, cmdToast;
+    let lastResultTime = 0;
     let micBtn, recIndicator, recDot, recText, waveform, pauseBtn, transcriptPreview, transcriptBox, confidenceBadge, recTimer, editBtn, voiceErrToast;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) supported = true;
@@ -1313,52 +1304,12 @@
     }
     function mergeSegments(segments) { let m = ''; for (const s of segments) m = mergeByWordOverlap(m,s); return m; }
     function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-    function addWordsWithConfidence(text, confidence) {
-      const words = text.split(/\s+/).filter(Boolean);
-      if (!words.length) return;
-      const existing = wordConfidences.map(wc => wc.word.toLowerCase());
-      let startIdx = 0;
-      const maxOverlap = Math.min(words.length, 5, existing.length);
-      for (let k = maxOverlap; k >= 1; k--) {
-        const prefix = words.slice(0, k).map(w => w.toLowerCase());
-        const tail = existing.slice(-k);
-        if (prefix.every((w, i) => w === tail[i])) { startIdx = k; break; }
-      }
-      for (let i = startIdx; i < words.length; i++) wordConfidences.push({ word: words[i], confidence });
-    }
-    function buildTranscriptHtml() {
-      if (!wordConfidences.length) return esc(finalTranscript || '');
-      return wordConfidences.map(wc => {
-        if (wc.word === '\n') return '<br>';
-        const cls = wc.confidence >= 0.8 ? 'word-hi' : wc.confidence >= 0.5 ? 'word-med' : 'word-lo';
-        return '<span class="' + cls + '">' + esc(wc.word) + '</span>';
-      }).join(' ');
-    }
-    function getVoiceCommand(text) {
-      const clean = text.replace(/[.!?]+$/, '').toLowerCase().trim();
-      const words = clean.split(/\s+/).filter(Boolean);
-      if (!words.length) return null;
-      const last = words[words.length - 1];
-      if (words.length >= 2 && words.slice(-2).join(' ') === 'new line') return 'newline';
-      if (last === 'send' || last === 'stop' || last === 'clear') return last;
-      return null;
-    }
-    function handleCommand(cmd) {
-      const labels = { send: 'Send', stop: 'Stop', clear: 'Clear', newline: 'New line' };
-      cmdToast.textContent = '🎤 Voice command: ' + (labels[cmd] || cmd);
-      cmdToast.classList.add('show');
-      setTimeout(() => cmdToast.classList.remove('show'), 2000);
-      if (cmd === 'clear') { setTimeout(() => cancel(), 300); }
-      else if (cmd === 'send') { setTimeout(() => sendTranscript(), 300); }
-      else if (cmd === 'stop') { stop(); }
-    }
-    let flashInterim = false, flashTimer = null;
     function buildRecognition() {
       const r = new SpeechRecognition();
       r.continuous = true; r.interimResults = true; r.maxAlternatives = 1; r.lang = navigator.language||'en-US';
       r.onstart = () => { pendingPreview = false; lastResultIndex = 0; setState(STATES.RECORDING); };
       r.onresult = (e) => {
-        let newFinal = '', interim = '';
+        let newFinal = '', interim = '', lc = 0;
         const now = Date.now();
         const pauseMs = lastResultTime ? now - lastResultTime : 0;
         lastResultTime = now;
@@ -1367,14 +1318,14 @@
           if (!t) continue;
           if (res.isFinal) {
             newFinal = newFinal ? newFinal + ' ' + t : t;
-            const conf = res[0].confidence;
-            addWordsWithConfidence(t, typeof conf === 'number' && conf > 0 ? conf : 0.5);
+            const c = res[0].confidence;
+            if (typeof c === 'number' && c > 0) lc = Math.round(c*100);
           } else {
             interim = interim ? interim + ' ' + t : t;
           }
         }
         lastResultIndex = e.results.length;
-        // Auto-punctuation
+        // Auto-punctuation: inject . or ? after >800ms pause
         if (newFinal && pauseMs > 800) {
           const frc = finalTranscript, nfc = newFinal;
           if (!/[.!?]$/.test(frc) && !/[.!?]$/.test(nfc)) {
@@ -1383,41 +1334,11 @@
             newFinal += qw.includes(fw) ? '?' : '.';
           }
         }
-        if (newFinal) {
-          finalTranscript = mergeByWordOverlap(finalTranscript, newFinal);
-          // Voice commands
-          const cmd = getVoiceCommand(newFinal);
-          if (cmd) {
-            const len = wordConfidences.length;
-            if (cmd === 'newline' && len >= 2 && wordConfidences[len-2].word.toLowerCase() === 'new' && wordConfidences[len-1].word.toLowerCase() === 'line') {
-              wordConfidences.splice(len - 2, 2);
-              wordConfidences.push({ word: '\n', confidence: 1 });
-            } else if (len && wordConfidences[len-1].word.toLowerCase() === cmd) {
-              wordConfidences.pop();
-            }
-            finalTranscript = wordConfidences.map(wc => wc.word === '\n' ? '\n' : wc.word).join(' ');
-            finalTranscript = finalTranscript.replace(/\n /g, '\n').replace(/ \n/g, '\n');
-            handleCommand(cmd);
-          }
-        }
-        // Update confidence badge (rolling average)
-        const confs = wordConfidences.map(wc => wc.confidence).filter(c => typeof c === 'number' && c > 0);
-        if (confs.length) {
-          const avg = confs.reduce((a, b) => a + b, 0) / confs.length;
-          confidenceBadge.textContent = Math.round(avg * 100) + '% confidence';
-        }
-        // Build HTML
+        if (newFinal) finalTranscript = mergeByWordOverlap(finalTranscript, newFinal);
+        if (lc > 0) confidenceBadge.textContent = lc + '% confidence';
         let html = '';
-        if (wordConfidences.length) html += buildTranscriptHtml();
-        if (interim) {
-          if (prevInterim && interim !== prevInterim) {
-            flashInterim = true;
-            if (flashTimer) clearTimeout(flashTimer);
-            flashTimer = setTimeout(() => { flashInterim = false; }, 500);
-          }
-          html += ' <span class="interim' + (flashInterim ? ' word-flash' : '') + '">' + esc(interim) + '</span>';
-        }
-        prevInterim = interim;
+        if (finalTranscript) html += esc(finalTranscript);
+        if (interim) html += ' <span class="interim">' + esc(interim) + '</span>';
         transcriptBox.innerHTML = html || '';
       };
       r.onerror = (e) => {
@@ -1440,15 +1361,13 @@
       transcriptPreview = document.getElementById('transcriptPreview'); transcriptBox = document.getElementById('transcriptTextBox');
       confidenceBadge = document.getElementById('confidenceBadge'); recTimer = document.getElementById('recTimer');
       editBtn = document.getElementById('btnEditTranscript'); voiceErrToast = document.getElementById('voiceErrorToast');
-      cmdToast = document.getElementById('cmdToast');
       micBtn.innerHTML = SVG_MIC;
       if (!supported) { micBtn.disabled = true; micBtn.title = 'Voice input not supported in this browser. Try Chrome or Edge.'; }
     }
     function toggle() { if (!supported) { showError('Not supported. Use Chrome or Edge.'); return; } if (state === STATES.RECORDING || state === STATES.PAUSED) stop(); else if (state === STATES.PREVIEW) cancel(); else start(); }
     function start() {
       if (!supported) return;
-      transcriptBox.innerHTML = ''; confidenceBadge.textContent = ''; finalTranscript = '';
-      wordConfidences = []; prevInterim = ''; lastResultTime = 0; pendingPreview = false; flashInterim = false; if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
+      transcriptBox.innerHTML = ''; confidenceBadge.textContent = ''; finalTranscript = ''; lastResultTime = 0; pendingPreview = false;
       startTimer();
       try { recognition = buildRecognition(); recognition.start(); } catch (err) { showError('Could not start microphone: '+err.message); }
     }
@@ -1456,7 +1375,7 @@
       if (state === STATES.PAUSED) { stopTimer(); showPreview(); return; }
       if (recognition) { try { recognition.stop(); } catch (_) {} } pendingPreview = true;
     }
-    function cancel() { if (recognition) { try { recognition.abort(); } catch (_) {} recognition = null; } stopTimer(); pendingPreview = false; finalTranscript = ''; wordConfidences = []; prevInterim = ''; transcriptBox.innerHTML = ''; confidenceBadge.textContent = ''; setState(STATES.IDLE); }
+    function cancel() { if (recognition) { try { recognition.abort(); } catch (_) {} recognition = null; } stopTimer(); pendingPreview = false; finalTranscript = ''; transcriptBox.innerHTML = ''; confidenceBadge.textContent = ''; setState(STATES.IDLE); }
     function togglePause() { if (state === STATES.RECORDING) pause(); else if (state === STATES.PAUSED) resume(); }
     function pause() {
       if (state !== STATES.RECORDING) return;
