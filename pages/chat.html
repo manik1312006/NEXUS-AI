@@ -400,7 +400,8 @@
     .typing-status { font-size:0.75rem; color:var(--c-muted); margin-top:6px; font-family:'Space Mono',monospace; }
 
     /* ── VOICE INPUT ── */
-    .mic-btn { width: 40px; height: 40px; border-radius: 12px; border: none; background: rgba(124,58,237,0.12); border: 1px solid rgba(124,58,237,0.35); color: var(--c-neon-purple); cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.05rem; transition: all 0.25s; flex-shrink: 0; position: relative; overflow: hidden; }
+    .mic-btn { width: 40px; height: 40px; border-radius: 12px; border: none; background: rgba(124,58,237,0.12); border: 1px solid rgba(124,58,237,0.35); color: var(--c-neon-purple); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.25s; flex-shrink: 0; position: relative; overflow: hidden; }
+    .mic-btn svg { width: 22px; height: 22px; }
     .mic-btn:hover:not(:disabled) { background: rgba(124,58,237,0.22); border-color: var(--c-neon-purple); transform: scale(1.05); box-shadow: 0 0 16px rgba(124,58,237,0.35); }
     .mic-btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
     .mic-btn.recording { background: rgba(255,45,120,0.18); border-color: var(--c-neon-pink); color: var(--c-neon-pink); box-shadow: 0 0 20px rgba(255,45,120,0.4), 0 0 40px rgba(255,45,120,0.2); animation: micPulse 1.4s ease-in-out infinite; }
@@ -418,7 +419,10 @@
     .waveform span:nth-child(1) { height: 8px; animation-delay: 0s; } .waveform span:nth-child(2) { height: 14px; animation-delay: 0.12s; } .waveform span:nth-child(3) { height: 20px; animation-delay: 0.24s; } .waveform span:nth-child(4) { height: 14px; animation-delay: 0.36s; } .waveform span:nth-child(5) { height: 8px; animation-delay: 0.48s; } .waveform span:nth-child(6) { height: 18px; animation-delay: 0.10s; } .waveform span:nth-child(7) { height: 12px; animation-delay: 0.32s; }
     @keyframes waveBar { 0%,100% { transform: scaleY(0.4); opacity: 0.5; } 50% { transform: scaleY(1.3); opacity: 1; } }
     .rec-timer { font-family: 'Space Mono', monospace; font-size: 0.72rem; color: var(--c-muted); letter-spacing: 0.05em; flex-shrink: 0; }
-    .btn-cancel-rec { padding: 5px 12px; border-radius: 8px; border: 1px solid rgba(255,45,120,0.4); background: transparent; color: var(--c-neon-pink); font-size: 0.75rem; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; flex-shrink: 0; }
+    .btn-pause-rec { width: 32px; height: 32px; border-radius: 8px; border: 1px solid rgba(0,245,255,0.35); background: transparent; color: var(--c-neon-cyan); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; }
+    .btn-pause-rec:hover { background: rgba(0,245,255,0.12); }
+    .btn-pause-rec svg { width: 18px; height: 18px; }
+    .btn-cancel-rec { width: 32px; height: 32px; border-radius: 8px; border: 1px solid rgba(255,45,120,0.4); background: transparent; color: var(--c-neon-pink); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; font-size: 0.85rem; }
     .btn-cancel-rec:hover { background: rgba(255,45,120,0.12); }
     .transcript-preview { display: none; flex-direction: column; gap: 10px; padding: 14px 16px; margin-bottom: 10px; background: rgba(0,245,255,0.04); border: 1px solid rgba(0,245,255,0.25); border-radius: 14px; animation: slideDown 0.35s cubic-bezier(0.34,1.56,0.64,1); }
     .transcript-preview.show { display: flex; }
@@ -646,7 +650,10 @@
       .input-box { padding:10px 12px; gap:8px; border-radius:14px; }
       #userInput { font-size:0.9rem; }
       .send-btn { width:36px; height:36px; border-radius:10px; font-size:1rem; }
-      .mic-btn { width:36px; height:36px; border-radius:10px; font-size:0.95rem; }
+      .mic-btn { width:36px; height:36px; border-radius:10px; }
+      .mic-btn svg { width: 20px; height: 20px; }
+      .btn-pause-rec { width: 28px; height: 28px; }
+      .btn-cancel-rec { width: 28px; height: 28px; font-size: 0.75rem; }
       .welcome-state { padding:40px 16px; }
       .welcome-state h2 { font-size:1.5rem; }
       .modal { border-radius:16px 16px 0 0; padding:24px 20px; width:100%; position:fixed; bottom:0; left:0; right:0; margin:0; }
@@ -908,14 +915,15 @@
 
   <div class="input-area">
     <div class="recording-indicator" id="recordingIndicator">
-      <div class="rec-dot"></div>
-      <span class="rec-text">Listening…</span>
-      <div class="waveform">
+      <div class="rec-dot" id="recDot"></div>
+      <span class="rec-text" id="recText">Listening…</span>
+      <div class="waveform" id="waveform">
         <span></span><span></span><span></span><span></span>
         <span></span><span></span><span></span>
       </div>
       <span class="rec-timer" id="recTimer">0:00</span>
-      <button class="btn-cancel-rec" onclick="voiceInput.cancel()">✕ Cancel</button>
+      <button class="btn-pause-rec" id="btnPauseRec" onclick="voiceInput.togglePause()" title="Pause"></button>
+      <button class="btn-cancel-rec" onclick="voiceInput.cancel()" title="Cancel">✕</button>
     </div>
 
     <div class="transcript-preview" id="transcriptPreview">
@@ -933,7 +941,7 @@
 
     <div class="input-box">
       <textarea id="userInput" rows="1" placeholder="Ask anything… your prompt will be enhanced before sending"></textarea>
-      <button class="mic-btn" id="micBtn" onclick="voiceInput.toggle()" title="Voice input (Ctrl+Shift+V)" aria-label="Toggle voice input">🎤</button>
+      <button class="mic-btn" id="micBtn" onclick="voiceInput.toggle()" title="Voice input (Ctrl+Shift+V)" aria-label="Toggle voice input"></button>
       <button class="send-btn" id="sendBtn">➤</button>
     </div>
     <div class="input-meta">
@@ -1242,22 +1250,38 @@
 
   // ── VOICE INPUT ──
   const voiceInput = (() => {
-    const STATES = { IDLE: 'idle', RECORDING: 'recording', PREVIEW: 'preview' };
+    const SVG_MIC = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="m798-322-62-62q44-41 69-97t25-119q0-63-25-118t-69-96l62-64q56 53 89 125t33 153q0 81-33 153t-89 125ZM670-450l-64-64q18-17 29-38.5t11-47.5q0-26-11-47.5T606-686l64-64q32 29 50 67.5t18 82.5q0 44-18 82.5T670-450Zm-310 10q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM40-120v-112q0-33 17-62t47-44q51-26 115-44t141-18q77 0 141 18t115 44q30 15 47 44t17 62v112H40Zm80-80h480v-32q0-11-5.5-20T580-266q-36-18-92.5-36T360-320q-71 0-127.5 18T140-266q-9 5-14.5 14t-5.5 20v32Zm296.5-343.5Q440-567 440-600t-23.5-56.5Q393-680 360-680t-56.5 23.5Q280-633 280-600t23.5 56.5Q327-520 360-520t56.5-23.5Z"/></svg>';
+    const SVG_STOP = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M320-320h320v-320H320v320ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Z"/></svg>';
+    const SVG_PAUSE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M560-200v-560h160v560H560Zm-320 0v-560h160v560H240Z"/></svg>';
+    const SVG_PLAY = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M320-200v-560l480 280-480 280Z"/></svg>';
+    const STATES = { IDLE: 'idle', RECORDING: 'recording', PAUSED: 'paused', PREVIEW: 'preview' };
     let state = STATES.IDLE, recognition = null, finalTranscript = '', lastMergedTranscript = '';
     let timerInterval = null, elapsedSeconds = 0, isEditing = false, supported = false, pendingPreview = false;
-    let micBtn, recIndicator, transcriptPreview, transcriptBox, confidenceBadge, recTimer, editBtn, voiceErrToast;
+    let micBtn, recIndicator, recDot, recText, waveform, pauseBtn, transcriptPreview, transcriptBox, confidenceBadge, recTimer, editBtn, voiceErrToast;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) supported = true;
     function setState(s) {
       state = s;
-      micBtn.classList.toggle('recording', s === STATES.RECORDING);
-      micBtn.setAttribute('aria-label', s === STATES.RECORDING ? 'Stop recording' : 'Toggle voice input');
-      micBtn.title = s === STATES.RECORDING ? 'Stop recording' : 'Voice input (Ctrl+Shift+V)';
-      recIndicator.classList.toggle('show', s === STATES.RECORDING);
+      const isActive = s === STATES.RECORDING || s === STATES.PAUSED;
+      micBtn.classList.toggle('recording', isActive);
+      micBtn.setAttribute('aria-label', s === STATES.RECORDING ? 'Stop recording' : s === STATES.PAUSED ? 'Stop & preview' : 'Toggle voice input');
+      micBtn.title = s === STATES.RECORDING ? 'Stop recording' : s === STATES.PAUSED ? 'Stop & preview' : 'Voice input (Ctrl+Shift+V)';
+      recIndicator.classList.toggle('show', isActive);
       transcriptPreview.classList.toggle('show', s === STATES.PREVIEW);
-      if (s === STATES.RECORDING) micBtn.innerHTML = '⏹';
+      if (s === STATES.RECORDING || s === STATES.PAUSED) micBtn.innerHTML = SVG_STOP;
       else if (s === STATES.PREVIEW) micBtn.innerHTML = '✓';
-      else micBtn.innerHTML = '🎤';
+      else micBtn.innerHTML = SVG_MIC;
+      if (s === STATES.PAUSED) {
+        recDot.style.animation = 'none'; recDot.style.opacity = '0.4';
+        recText.textContent = 'Paused';
+        waveform.style.visibility = 'hidden';
+        pauseBtn.innerHTML = SVG_PLAY; pauseBtn.title = 'Resume';
+      } else if (s === STATES.RECORDING) {
+        recDot.style.animation = ''; recDot.style.opacity = '';
+        recText.textContent = 'Listening…';
+        waveform.style.visibility = '';
+        pauseBtn.innerHTML = SVG_PAUSE; pauseBtn.title = 'Pause';
+      }
     }
     function showError(msg) { voiceErrToast.textContent = '🎤 ' + msg; voiceErrToast.classList.add('show'); setTimeout(() => voiceErrToast.classList.remove('show'), 3800); }
     function startTimer() { elapsedSeconds = 0; recTimer.textContent = '0:00'; timerInterval = setInterval(() => { elapsedSeconds++; const m = Math.floor(elapsedSeconds/60), s = elapsedSeconds%60; recTimer.textContent = `${m}:${s.toString().padStart(2,'0')}`; }, 1000); }
@@ -1312,39 +1336,53 @@
       r.onend = () => {
         if (pendingPreview) { stopTimer(); showPreview(); pendingPreview = false; }
         else if (state === STATES.RECORDING) {
-          setTimeout(() => {
-            if (state === STATES.RECORDING) {
-              try { recognition = buildRecognition(); recognition.start(); } catch(_) { stopTimer(); setState(STATES.IDLE); }
-            }
-          }, 150);
-        } else { stopTimer(); setState(STATES.IDLE); pendingPreview = false; }
+          try { recognition = buildRecognition(); recognition.start(); } catch(_) { stopTimer(); setState(STATES.IDLE); }
+        }
       };
       return r;
     }
     function showPreview() { const text = (finalTranscript||'').trim(); if (!text) { showError('No speech detected. Try again.'); setState(STATES.IDLE); return; } transcriptBox.textContent = text; transcriptBox.removeAttribute('contenteditable'); isEditing = false; editBtn.classList.remove('active'); editBtn.textContent = '✏️ Edit'; setState(STATES.PREVIEW); }
     function init() {
       micBtn = document.getElementById('micBtn'); recIndicator = document.getElementById('recordingIndicator');
+      recDot = document.getElementById('recDot'); recText = document.getElementById('recText');
+      waveform = document.getElementById('waveform'); pauseBtn = document.getElementById('btnPauseRec');
       transcriptPreview = document.getElementById('transcriptPreview'); transcriptBox = document.getElementById('transcriptTextBox');
       confidenceBadge = document.getElementById('confidenceBadge'); recTimer = document.getElementById('recTimer');
       editBtn = document.getElementById('btnEditTranscript'); voiceErrToast = document.getElementById('voiceErrorToast');
+      micBtn.innerHTML = SVG_MIC;
       if (!supported) { micBtn.disabled = true; micBtn.title = 'Voice input not supported in this browser. Try Chrome or Edge.'; }
     }
-    function toggle() { if (!supported) { showError('Not supported. Use Chrome or Edge.'); return; } if (state === STATES.RECORDING) stop(); else if (state === STATES.PREVIEW) cancel(); else start(); }
+    function toggle() { if (!supported) { showError('Not supported. Use Chrome or Edge.'); return; } if (state === STATES.RECORDING || state === STATES.PAUSED) stop(); else if (state === STATES.PREVIEW) cancel(); else start(); }
     function start() {
       if (!supported) return;
       transcriptBox.innerHTML = ''; confidenceBadge.textContent = ''; finalTranscript = ''; lastMergedTranscript = ''; pendingPreview = false;
       startTimer();
       try { recognition = buildRecognition(); recognition.start(); } catch (err) { showError('Could not start microphone: '+err.message); }
     }
-    function stop() { if (recognition) { try { recognition.stop(); } catch (_) {} } pendingPreview = true; }
+    function stop() {
+      if (state === STATES.PAUSED) { stopTimer(); showPreview(); return; }
+      if (recognition) { try { recognition.stop(); } catch (_) {} } pendingPreview = true;
+    }
     function cancel() { if (recognition) { try { recognition.abort(); } catch (_) {} recognition = null; } stopTimer(); pendingPreview = false; finalTranscript = ''; lastMergedTranscript = ''; transcriptBox.innerHTML = ''; confidenceBadge.textContent = ''; setState(STATES.IDLE); }
+    function togglePause() { if (state === STATES.RECORDING) pause(); else if (state === STATES.PAUSED) resume(); }
+    function pause() {
+      if (state !== STATES.RECORDING) return;
+      if (recognition) { try { recognition.abort(); } catch (_) {} }
+      stopTimer();
+      setState(STATES.PAUSED);
+    }
+    function resume() {
+      if (state !== STATES.PAUSED) return;
+      startTimer();
+      try { recognition = buildRecognition(); recognition.start(); } catch (err) { showError('Could not resume: '+err.message); }
+    }
     function reRecord() { cancel(); setTimeout(() => start(), 120); }
     function toggleEdit() {
       if (!isEditing) { transcriptBox.setAttribute('contenteditable','true'); transcriptBox.focus(); const range = document.createRange(), sel = window.getSelection(); range.selectNodeContents(transcriptBox); range.collapse(false); sel.removeAllRanges(); sel.addRange(range); isEditing = true; editBtn.classList.add('active'); editBtn.textContent = '✓ Done'; }
       else { transcriptBox.removeAttribute('contenteditable'); isEditing = false; editBtn.classList.remove('active'); editBtn.textContent = '✏️ Edit'; }
     }
     function sendTranscript() { const text = transcriptBox.textContent.trim(); if (!text) { showError('Transcript is empty.'); return; } const input = document.getElementById('userInput'); input.value = text; autoResize(input); cancel(); sendMessage(); }
-    return { init, toggle, start, stop, cancel, reRecord, toggleEdit, sendTranscript };
+    return { init, toggle, start, stop, cancel, togglePause, reRecord, toggleEdit, sendTranscript };
   })();
 
   // ── CORE APP ──
