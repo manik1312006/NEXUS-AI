@@ -1323,6 +1323,7 @@
       r.continuous = true; r.interimResults = true; r.maxAlternatives = 1; r.lang = navigator.language||'en-US';
       r.onstart = () => { if (recognition !== r) return; pendingPreview = false; lastResultIndex = 0; setState(STATES.RECORDING); };
       r.onresult = (e) => {
+        if (onAirActive && window.ttsController) { window.ttsController.stop(); const b = document.getElementById('onAirBtn'); if (b && onAirActive) b.innerHTML = '<span class="onair-dot"></span> Working<br>ON·AIR'; }
         let newFinal = '', interim = '', lc = 0;
         const now = Date.now();
         const pauseMs = lastResultTime ? now - lastResultTime : 0;
