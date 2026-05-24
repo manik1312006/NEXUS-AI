@@ -6,7 +6,7 @@ A web-based chat platform that lets you talk to multiple AI models from a single
 
 ## Features
 
-- **8 AI Agents** — GPT-OSS 120B (NVIDIA NIM), LLaMA 3.3 70B (NVIDIA NIM), DeepSeek v4 Pro (NVIDIA NIM), Gemma 4 31B IT (NVIDIA NIM), Gemini Flash, Mistral Large, LLaMA 3.3 (via Groq), and Cohere Command R+
+- **8 AI Agents** — GPT-OSS 120B (NVIDIA NIM), LLaMA 3.3 70B (NVIDIA NIM), Kimi K2.6 (NVIDIA NIM), Gemma 4 31B IT (NVIDIA NIM), Gemini Flash, Mistral Large, LLaMA 3.3 (via Groq), and Cohere Command R+
 - **Structured Pointwise Responses** — all AI agents are instructed to format responses in clear, readable bullet points or numbered lists, keeping paragraphs short and highly structured
 - **Prompt Enhancer** — automatically rewrites your prompt using LLaMA (free) before sending it to the chosen agent
 - **Smart Web Grounding** — comprehensive regular-expression-based checker matching temporal indicators, comparisons, explicit search commands, and factual question formats to automatically fetch live context
@@ -127,7 +127,7 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 |---|---|---|---|
 | POST | `/api/openai` | GPT-OSS 120B (NVIDIA NIM) | Requires `{ messages }` |
 | POST | `/api/nvidia-llama` | LLaMA 3.3 70B (NVIDIA NIM) | Requires `{ messages }` |
-| POST | `/api/deepseek` | DeepSeek v4 Pro (NVIDIA NIM) | Requires `{ messages }` |
+| POST | `/api/deepseek` | Kimi K2.6 (NVIDIA NIM) | Requires `{ messages }` |
 | POST | `/api/gemma4` | Gemma 4 31B IT (NVIDIA NIM) | Requires `{ messages }` |
 | POST | `/api/gemini` | Gemini Flash | Requires `{ prompt }` |
 | POST | `/api/mistral` | Mistral Large | Requires `{ messages }` |
@@ -150,7 +150,7 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 | LLaMA 3.3 (Groq) | ✅ Yes | Generous free tier, also powers the Prompt Enhancer |
 | NVIDIA NIM (LLaMA 3.3 70B) | ✅ Trial credits | Free credits on sign-up |
 | NVIDIA NIM (GPT-OSS 120B) | ✅ Trial credits | OpenAI-compatible endpoint |
-| NVIDIA NIM (DeepSeek v4 Pro) | ✅ Trial credits | Requires `NVIDIA_KEY_DEEPSEEK` on the backend |
+| NVIDIA NIM (Kimi K2.6) | ✅ Trial credits | Requires `NVIDIA_KEY_KIMI` on the backend |
 | NVIDIA NIM (Gemma 4 31B IT) | ✅ Trial credits | Requires `NVIDIA_KEY_GEMMA4` on the backend |
 | Mistral Large | ✅ Trial credits | Free trial on sign-up |
 | Cohere Command R+ | ✅ Trial credits | v2/chat API |
