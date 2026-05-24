@@ -6,7 +6,7 @@ A web-based chat platform that lets you talk to multiple AI models from a single
 
 ## Features
 
-- **6+ AI Agents** — GPT-OSS 120B (NVIDIA NIM), LLaMA 3.3 70B (NVIDIA NIM), Gemini Flash, Mistral Large, LLaMA 3.3 (via Groq), and Cohere Command R+
+- **8 AI Agents** — GPT-OSS 120B (NVIDIA NIM), LLaMA 3.3 70B (NVIDIA NIM), DeepSeek v4 Pro (NVIDIA NIM), Gemma 4 31B IT (NVIDIA NIM), Gemini Flash, Mistral Large, LLaMA 3.3 (via Groq), and Cohere Command R+
 - **Structured Pointwise Responses** — all AI agents are instructed to format responses in clear, readable bullet points or numbered lists, keeping paragraphs short and highly structured
 - **Prompt Enhancer** — automatically rewrites your prompt using LLaMA (free) before sending it to the chosen agent
 - **Smart Web Grounding** — comprehensive regular-expression-based checker matching temporal indicators, comparisons, explicit search commands, and factual question formats to automatically fetch live context
@@ -128,6 +128,7 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 | POST | `/api/openai` | GPT-OSS 120B (NVIDIA NIM) | Requires `{ messages }` |
 | POST | `/api/nvidia-llama` | LLaMA 3.3 70B (NVIDIA NIM) | Requires `{ messages }` |
 | POST | `/api/deepseek` | DeepSeek v4 Pro (NVIDIA NIM) | Requires `{ messages }` |
+| POST | `/api/gemma4` | Gemma 4 31B IT (NVIDIA NIM) | Requires `{ messages }` |
 | POST | `/api/gemini` | Gemini Flash | Requires `{ prompt }` |
 | POST | `/api/mistral` | Mistral Large | Requires `{ messages }` |
 | POST | `/api/groq` | LLaMA 3.3 (Groq) | Requires `{ messages }` |
@@ -150,6 +151,7 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 | NVIDIA NIM (LLaMA 3.3 70B) | ✅ Trial credits | Free credits on sign-up |
 | NVIDIA NIM (GPT-OSS 120B) | ✅ Trial credits | OpenAI-compatible endpoint |
 | NVIDIA NIM (DeepSeek v4 Pro) | ✅ Trial credits | Requires `NVIDIA_KEY_DEEPSEEK` on the backend |
+| NVIDIA NIM (Gemma 4 31B IT) | ✅ Trial credits | Requires `NVIDIA_KEY_GEMMA4` on the backend |
 | Mistral Large | ✅ Trial credits | Free trial on sign-up |
 | Cohere Command R+ | ✅ Trial credits | v2/chat API |
 | Gemini Flash | ⚠️ Daily quota | Free via AI Studio key; quota resets daily |
@@ -163,6 +165,7 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 | `NVIDIA_KEY_GPTOSS` | [build.nvidia.com](https://build.nvidia.com) |
 | `NVIDIA_KEY_LLAMA` | [build.nvidia.com](https://build.nvidia.com) |
 | `NVIDIA_KEY_DEEPSEEK` | [build.nvidia.com](https://build.nvidia.com) |
+| `NVIDIA_KEY_GEMMA4` | [build.nvidia.com](https://build.nvidia.com) |
 | `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com) |
 | `MISTRAL_API_KEY` | [console.mistral.ai](https://console.mistral.ai) |
 | `GROQ_API_KEY` | [console.groq.com](https://console.groq.com) |
