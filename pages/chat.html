@@ -2093,6 +2093,20 @@
     let isPaused = false;
     let currentRate = 1.0;
     let requestId = 0;
+    let audioCtx = null;
+    let activeSource = null;
+    let resumeOffset = 0;
+    let sourceStartTime = 0;
+
+    function getAudioCtx() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        audioCtx.onstatechange = () => {
+          if (audioCtx.state === 'suspended') audioCtx.resume();
+        };
+      }
+      return audioCtx;
+    }
 
     function getSourceText(btn) {
       const bubble = btn.closest('.message-bubble');
@@ -2159,23 +2173,20 @@
       return resChunks.filter(c => c.trim().length > 0);
     }
 
-    function isPlayingAudio(index) {
-      const chunk = chunks[index];
-      return chunk && chunk.audioEl && !chunk.audioEl.paused && !chunk.audioEl.ended;
+    function cleanupAudio() {
+      if (activeSource) {
+        try { activeSource.onended = null; activeSource.stop(); } catch (_) {}
+        activeSource = null;
+      }
     }
 
     function onEnded() {
+      cleanupAudio();
+      if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; }
       isSpeaking = false;
       isPaused = false;
-      
-      chunks.forEach(chunk => {
-        if (chunk.audioUrl) {
-          URL.revokeObjectURL(chunk.audioUrl);
-        }
-      });
       chunks = [];
       currentChunkIndex = 0;
-      
       resetBtn(currentBtn);
       currentBtn = null;
       updatePlayerState();
@@ -2212,9 +2223,7 @@
       const maxAhead = 2; 
       for (let i = currentChunkIndex; i < Math.min(chunks.length, currentChunkIndex + maxAhead + 1); i++) {
         const chunk = chunks[i];
-        if (chunk.status === 'pending') {
-          fetchChunk(i);
-        }
+        if (chunk.status === 'pending') fetchChunk(i);
       }
     }
 
@@ -2232,26 +2241,17 @@
         const blob = await res.blob();
         if (activeRequest !== requestId) return;
         
-        chunk.audioUrl = URL.createObjectURL(blob);
-        const audio = new Audio(chunk.audioUrl);
-        audio.playbackRate = currentRate;
+        const arrayBuffer = await blob.arrayBuffer();
+        if (activeRequest !== requestId) return;
         
-        audio.onended = () => {
-          if (currentChunkIndex === index) {
-            playNextChunk();
-          }
-        };
-        audio.onerror = () => {
-          console.error("Audio chunk playback error:", index);
-          if (currentChunkIndex === index) {
-            playNextChunk();
-          }
-        };
+        const ctx = getAudioCtx();
+        const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+        if (activeRequest !== requestId) return;
         
-        chunk.audioEl = audio;
+        chunk.audioBuffer = audioBuffer;
         chunk.status = 'ready';
         
-        if (isSpeaking && !isPaused && currentChunkIndex === index && !isPlayingAudio(index)) {
+        if (isSpeaking && !isPaused && currentChunkIndex === index && !activeSource) {
           playChunk(index);
         }
         
@@ -2259,54 +2259,61 @@
       } catch (err) {
         console.error("Failed to fetch chunk:", index, err);
         chunk.status = 'error';
-        if (currentChunkIndex === index) {
-          playNextChunk();
-        }
+        if (currentChunkIndex === index) playNextChunk();
       }
     }
 
     async function playChunk(index) {
-      if (index >= chunks.length) {
-        onEnded();
-        return;
-      }
+      if (index >= chunks.length) { onEnded(); return; }
       
       const chunk = chunks[index];
-      if (chunk.status === 'ready' && chunk.audioEl) {
+      if (chunk.status === 'ready' && chunk.audioBuffer) {
         const previewEl = document.getElementById('ttsPlayerText');
-        if (previewEl) {
-          previewEl.textContent = chunk.text;
-        }
+        if (previewEl) previewEl.textContent = chunk.text;
         
         try {
-          chunk.audioEl.playbackRate = currentRate;
-          await chunk.audioEl.play();
+          const ctx = getAudioCtx();
+          if (ctx.state === 'suspended') await ctx.resume();
+          
+          cleanupAudio();
+          const source = ctx.createBufferSource();
+          source.buffer = chunk.audioBuffer;
+          source.playbackRate.value = currentRate;
+          source.connect(ctx.destination);
+          source.start(0, resumeOffset);
+          activeSource = source;
+          sourceStartTime = ctx.currentTime;
+          
+          source.onended = () => {
+            if (activeSource === source && currentChunkIndex === index) {
+              activeSource = null;
+              if (!isPaused) {
+                resumeOffset = 0;
+                playNextChunk();
+              }
+            }
+          };
+          
           preloadChunks();
         } catch (err) {
           console.error("Play failed for chunk:", index, err);
+          activeSource = null;
+          resumeOffset = 0;
           playNextChunk();
         }
       } else if (chunk.status === 'error') {
+        resumeOffset = 0;
         playNextChunk();
       } else {
         const previewEl = document.getElementById('ttsPlayerText');
-        if (previewEl) {
-          previewEl.textContent = "Loading audio...";
-        }
-        if (chunk.status === 'pending') {
-          fetchChunk(index);
-        }
+        if (previewEl) previewEl.textContent = "Loading audio...";
+        if (chunk.status === 'pending') fetchChunk(index);
       }
     }
 
     function playNextChunk() {
-      const prevChunk = chunks[currentChunkIndex];
-      if (prevChunk && prevChunk.audioEl) {
-        prevChunk.audioEl.pause();
-        prevChunk.audioEl.onended = null;
-        prevChunk.audioEl.onerror = null;
-      }
-      
+      cleanupAudio();
+      resumeOffset = 0;
       currentChunkIndex++;
       if (currentChunkIndex >= chunks.length) {
         onEnded();
@@ -2336,6 +2343,7 @@
       currentBtn = btn;
       isSpeaking = true;
       isPaused = false;
+      resumeOffset = 0;
       updatePlayerState();
 
       const chunksText = splitTextIntoChunks(text);
@@ -2347,8 +2355,7 @@
       chunks = chunksText.map(t => ({
         text: t,
         status: 'pending',
-        audioUrl: null,
-        audioEl: null
+        audioBuffer: null
       }));
 
       currentChunkIndex = 0;
@@ -2360,14 +2367,9 @@
     function pauseResume() {
       if (!isSpeaking) return;
 
-      const chunk = chunks[currentChunkIndex];
       if (isPaused) {
         isPaused = false;
-        if (chunk && chunk.audioEl && chunk.status === 'ready') {
-          chunk.audioEl.play().catch(() => {});
-        } else {
-          playChunk(currentChunkIndex);
-        }
+        playChunk(currentChunkIndex);
         if (currentBtn) {
           currentBtn.classList.remove('paused');
           currentBtn.classList.add('speaking');
@@ -2375,8 +2377,10 @@
         }
       } else {
         isPaused = true;
-        if (chunk && chunk.audioEl) {
-          chunk.audioEl.pause();
+        if (activeSource) {
+          const elapsed = (audioCtx ? audioCtx.currentTime - sourceStartTime : 0) + resumeOffset;
+          if (elapsed > 0 && isFinite(elapsed)) resumeOffset = elapsed;
+          cleanupAudio();
         }
         if (currentBtn) {
           currentBtn.classList.remove('speaking');
@@ -2390,23 +2394,13 @@
 
     function stop() {
       requestId += 1;
-
-      chunks.forEach(chunk => {
-        if (chunk.audioEl) {
-          chunk.audioEl.pause();
-          chunk.audioEl.onended = null;
-          chunk.audioEl.onerror = null;
-          chunk.audioEl.src = '';
-        }
-        if (chunk.audioUrl) {
-          URL.revokeObjectURL(chunk.audioUrl);
-        }
-      });
-
+      cleanupAudio();
+      if (audioCtx) { audioCtx.close().catch(() => {}); audioCtx = null; }
       chunks = [];
       currentChunkIndex = 0;
       isSpeaking = false;
       isPaused = false;
+      resumeOffset = 0;
       resetBtn(currentBtn);
       currentBtn = null;
       updatePlayerState();
@@ -2414,16 +2408,7 @@
 
     function setRate(val) {
       currentRate = parseFloat(val) || 1.0;
-      chunks.forEach(chunk => {
-        if (chunk.audioEl) {
-          chunk.audioEl.playbackRate = currentRate;
-        }
-      });
     }
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden && isSpeaking) stop();
-    });
 
     return { speak, pauseResume, stop, setRate };
   })();
