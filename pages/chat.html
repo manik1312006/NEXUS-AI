@@ -1271,7 +1271,7 @@
     const STATES = { IDLE: 'idle', RECORDING: 'recording', PAUSED: 'paused', PREVIEW: 'preview' };
     let state = STATES.IDLE, recognition = null, finalTranscript = '';
     let timerInterval = null, elapsedSeconds = 0, isEditing = false, supported = false, pendingPreview = false, lastResultIndex = 0;
-    let lastResultTime = 0;
+    let lastResultTime = 0, onAirDebounce = null;
     let micBtn, recIndicator, recDot, recText, waveform, pauseBtn, transcriptPreview, transcriptBox, confidenceBadge, recTimer, editBtn, voiceErrToast;
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) supported = true;
@@ -1321,7 +1321,7 @@
     function buildRecognition() {
       const r = new SpeechRecognition();
       r.continuous = true; r.interimResults = true; r.maxAlternatives = 1; r.lang = navigator.language||'en-US';
-      r.onstart = () => { pendingPreview = false; lastResultIndex = 0; setState(STATES.RECORDING); };
+      r.onstart = () => { if (recognition !== r) return; pendingPreview = false; lastResultIndex = 0; setState(STATES.RECORDING); };
       r.onresult = (e) => {
         let newFinal = '', interim = '', lc = 0;
         const now = Date.now();
@@ -1349,13 +1349,18 @@
           }
         }
         if (newFinal) {
-          const merged = mergeByWordOverlap(finalTranscript, newFinal);
+          finalTranscript = mergeByWordOverlap(finalTranscript, newFinal);
           if (onAirActive && typeof _onAirCb === 'function') {
-            _onAirCb(merged);
-            finalTranscript = ''; transcriptBox.innerHTML = ''; confidenceBadge.textContent = ''; lastResultTime = 0;
-            return;
+            if (onAirDebounce) clearTimeout(onAirDebounce);
+            onAirDebounce = setTimeout(() => {
+              onAirDebounce = null;
+              if (onAirActive && finalTranscript.trim() && !_onAirProcessing) {
+                const text = finalTranscript;
+                finalTranscript = ''; transcriptBox.innerHTML = ''; confidenceBadge.textContent = '';
+                _onAirCb(text);
+              }
+            }, 1200);
           }
-          finalTranscript = merged;
         }
         if (lc > 0) confidenceBadge.textContent = lc + '% confidence';
         let html = '';
@@ -1364,15 +1369,23 @@
         transcriptBox.innerHTML = html || '';
       };
       r.onerror = (e) => {
+        if (recognition !== r) return;
         if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
           stopTimer(); setState(STATES.IDLE);
           showError(e.error === 'not-allowed' ? 'Microphone access denied. Allow it in browser settings.' : 'Speech service blocked. Try HTTPS.');
         }
       };
       r.onend = () => {
+        if (recognition !== r) return;
         if (onAirActive) {
           if (pendingPreview) pendingPreview = false;
           stopTimer();
+          if (onAirDebounce) { clearTimeout(onAirDebounce); onAirDebounce = null; }
+          if (finalTranscript.trim() && !_onAirProcessing) {
+            const text = finalTranscript;
+            finalTranscript = ''; transcriptBox.innerHTML = ''; confidenceBadge.textContent = '';
+            _onAirCb(text);
+          }
           try { recognition = buildRecognition(); recognition.start(); } catch (_) {}
           return;
         }
@@ -1395,7 +1408,7 @@
     function toggle() { if (!supported) { showError('Not supported. Use Chrome or Edge.'); return; } if (state === STATES.RECORDING || state === STATES.PAUSED) stop(); else if (state === STATES.PREVIEW) cancel(); else start(); }
     function start() {
       if (!supported) return;
-      transcriptBox.innerHTML = ''; confidenceBadge.textContent = ''; finalTranscript = ''; lastResultTime = 0; pendingPreview = false;
+      transcriptBox.innerHTML = ''; confidenceBadge.textContent = ''; finalTranscript = ''; lastResultTime = 0; pendingPreview = false; if (onAirDebounce) { clearTimeout(onAirDebounce); onAirDebounce = null; }
       startTimer();
       try { recognition = buildRecognition(); recognition.start(); } catch (err) { showError('Could not start microphone: '+err.message); }
     }
@@ -1403,7 +1416,7 @@
       if (state === STATES.PAUSED) { stopTimer(); showPreview(); return; }
       if (recognition) { try { recognition.stop(); } catch (_) {} } pendingPreview = true;
     }
-    function cancel() { if (recognition) { try { recognition.abort(); } catch (_) {} recognition = null; } stopTimer(); pendingPreview = false; finalTranscript = ''; transcriptBox.innerHTML = ''; confidenceBadge.textContent = ''; setState(STATES.IDLE); }
+    function cancel() { state = STATES.IDLE; if (recognition) { try { recognition.abort(); } catch (_) {} recognition = null; } stopTimer(); pendingPreview = false; finalTranscript = ''; transcriptBox.innerHTML = ''; confidenceBadge.textContent = ''; if (onAirDebounce) { clearTimeout(onAirDebounce); onAirDebounce = null; } setState(STATES.IDLE); }
     function togglePause() { if (state === STATES.RECORDING) pause(); else if (state === STATES.PAUSED) resume(); }
     function pause() {
       if (state !== STATES.RECORDING) return;
