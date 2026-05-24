@@ -1336,9 +1336,7 @@
       };
       r.onend = () => {
         if (pendingPreview) { stopTimer(); showPreview(); pendingPreview = false; }
-        else if (state === STATES.RECORDING) {
-          try { recognition = buildRecognition(); recognition.start(); } catch(_) { stopTimer(); setState(STATES.IDLE); }
-        }
+        else if (state === STATES.RECORDING) { stopTimer(); setState(STATES.PAUSED); }
       };
       return r;
     }
