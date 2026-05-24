@@ -445,107 +445,6 @@
     .voice-error-toast { position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%) translateY(20px); z-index: 500; opacity: 0; background: rgba(255,45,120,0.12); border: 1px solid rgba(255,45,120,0.4); border-radius: 12px; padding: 10px 18px; color: var(--c-neon-pink); font-size: 0.82rem; font-family: 'Space Mono', monospace; pointer-events: none; transition: all 0.35s ease; white-space: nowrap; }
     .voice-error-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-    /* ── LIVE MODE ── */
-    .live-mode-btn {
-      padding: 8px 16px;
-      border-radius: 10px;
-      border: 1px solid rgba(124,58,237,0.3);
-      background: linear-gradient(135deg, rgba(124,58,237,0.1), rgba(0,245,255,0.1));
-      color: var(--c-neon-purple);
-      font-family: 'Space Mono', monospace;
-      font-size: 0.75rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-shrink: 0;
-      letter-spacing: 0.05em;
-    }
-    .live-mode-btn:hover {
-      border-color: var(--c-neon-purple);
-      color: var(--c-neon-cyan);
-      background: linear-gradient(135deg, rgba(124,58,237,0.2), rgba(0,245,255,0.15));
-      box-shadow: 0 0 16px rgba(124,58,237,0.3);
-      transform: translateY(-1px);
-    }
-    .live-mode-btn:active {
-      transform: translateY(0);
-    }
-    .live-mode-btn.active {
-      border-color: var(--c-neon-cyan);
-      background: linear-gradient(135deg, rgba(0,245,255,0.2), rgba(124,58,237,0.2));
-      color: var(--c-neon-cyan);
-      box-shadow: 0 0 20px rgba(0,245,255,0.4);
-      animation: livePulse 2s ease-in-out infinite, liveGlow 3s ease-in-out infinite;
-    }
-    @keyframes livePulse {
-      0%, 100% { box-shadow: 0 0 16px rgba(0,245,255,0.3); }
-      50% { box-shadow: 0 0 24px rgba(0,245,255,0.5); }
-    }
-    @keyframes liveGlow {
-      0%, 100% { 
-        border-color: rgba(0,245,255,0.3);
-        transform: translateY(0);
-      }
-      50% { 
-        border-color: rgba(0,245,255,0.8);
-        transform: translateY(-1px);
-      }
-    }
-    .live-mode {
-      background: rgba(0,0,0,0.3);
-      border: 1px solid rgba(0,245,255,0.15);
-      padding: 12px 16px;
-      border-radius: 10px;
-      margin-top: 12px;
-      margin-bottom: 8px;
-      backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
-    }
-    .live-line {
-      margin: 6px 0;
-      font-size: 0.85rem;
-      color: var(--c-text);
-      font-family: 'DM Sans', sans-serif;
-      line-height: 1.6;
-      display: flex;
-      gap: 8px;
-      align-items: flex-start;
-    }
-    .live-line:first-child {
-      margin-top: 0;
-      padding-bottom: 8px;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-    }
-    .live-line:last-child {
-      margin-bottom: 0;
-    }
-    .live-line strong {
-      color: var(--c-neon-cyan);
-      font-family: 'Space Mono', monospace;
-      font-size: 0.75rem;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      flex-shrink: 0;
-      min-width: 60px;
-    }
-    .live-line span {
-      flex: 1;
-      word-break: break-word;
-      min-height: 1.4em;
-    }
-    .live-line span:empty::before {
-      content: 'Waiting…';
-      color: var(--c-muted);
-      font-style: italic;
-      font-size: 0.8rem;
-    }
-    .live-line span:not(:empty) {
-      color: var(--c-text);
-    }
-
     /* ── TTS ── */
     .tts-listen-btn { margin-top: 8px; margin-right: 6px; padding: 4px 12px; border-radius: 6px; border: 1px solid rgba(0,245,255,0.25); background: transparent; color: var(--c-muted); font-size: 0.72rem; cursor: pointer; transition: all 0.25s; font-family: 'Space Mono', monospace; display: inline-flex; align-items: center; gap: 5px; position: relative; overflow: hidden; }
     .tts-listen-btn:hover { color: var(--c-neon-cyan); border-color: var(--c-neon-cyan); background: rgba(0,245,255,0.06); box-shadow: 0 0 12px rgba(0,245,255,0.15); }
@@ -1039,15 +938,10 @@
         <button class="btn-transcript send-voice" onclick="voiceInput.sendTranscript()">➤ Send</button>
       </div>
     </div>
-      <div id="liveContainer" class="live-mode" style="display:none; margin-top:12px;">
-        <div class="live-line"><strong>You:</strong> <span id="liveUserBox"></span></div>
-        <div class="live-line"><strong>Assistant:</strong> <span id="liveAssistantBox"></span></div>
-      </div>
 
     <div class="input-box">
       <textarea id="userInput" rows="1" placeholder="Ask anything… your prompt will be enhanced before sending"></textarea>
       <button class="mic-btn" id="micBtn" onclick="voiceInput.toggle()" title="Voice input (Ctrl+Shift+V)" aria-label="Toggle voice input"></button>
-      <button class="live-mode-btn" id="liveModeBtn" title="Live mode – continuous conversation">⚡ Live</button>
       <button class="send-btn" id="sendBtn">➤</button>
     </div>
     <div class="input-meta">
@@ -1503,69 +1397,6 @@
     return { init, toggle, start, stop, cancel, togglePause, reRecord, toggleEdit, sendTranscript };
   })();
 
-  // ── LIVE MODE STATE ──
-  let liveMode = false, responding = false, nowModal = null;
-  function toggleLiveMode() {
-    liveMode = !liveMode;
-    const btn = document.getElementById('liveModeBtn');
-    const container = document.getElementById('liveContainer');
-    if (liveMode) {
-      btn.classList.add('active');
-      btn.title = 'Live mode ON – Click to turn off';
-      if (container) {
-        container.style.display = 'block';
-        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }
-    } else {
-      btn.classList.remove('active');
-      btn.title = 'Live mode – continuous conversation';
-      if (container) container.style.display = 'none';
-      // Clear live preview when turning off
-      const userBox = document.getElementById('liveUserBox');
-      const asstBox = document.getElementById('liveAssistantBox');
-      if (userBox) userBox.textContent = '';
-      if (asstBox) asstBox.textContent = '';
-    }
-  }
-  function updateLiveResponses(userText, assistantText) {
-    if (!liveMode) return;
-    const userBox = document.getElementById('liveUserBox');
-    const asstBox = document.getElementById('liveAssistantBox');
-    if (userBox && userText !== null) {
-      userBox.textContent = userText;
-      userBox.parentElement.style.display = 'flex';
-    }
-    if (asstBox && assistantText !== null) {
-      asstBox.textContent = assistantText;
-      asstBox.parentElement.style.display = 'flex';
-    }
-  }
-  async function pollAssistantResponse(msgWrap) {
-    if (!liveMode || !msgWrap) return;
-    if (responding) return;
-    responding = true;
-    try {
-      const bubble = msgWrap.querySelector('.message-bubble');
-      if (!bubble) return;
-      const contentEl = bubble.querySelector('.message-content');
-      if (!contentEl) return;
-      // Convert HTML to plain text
-      const tmp = document.createElement('div');
-      tmp.innerHTML = contentEl.innerHTML;
-      const text = (tmp.innerText || tmp.textContent || '').trim();
-      if (text) {
-        updateLiveResponses(null, text);
-      }
-      // Check for URLs in response
-      const linkEl = contentEl.querySelector('a');
-      if (linkEl) {
-        nowModal = { isOpen: true, isLoading: false, url: linkEl.href };
-      }
-    } finally {
-      responding = false;
-    }
-  }
-
   // ── CORE APP ──
   window._nexus = {
     currentUser: null, currentSessionId: null, chatHistory: [], selectedAgent: 'openai', memories: {},
@@ -1892,7 +1723,6 @@
     const userBubbleNode = appendMessage('user', rawPrompt, true);
     const userHistoryEntry = { role: 'user', content: rawPrompt };
     nx.chatHistory.push(userHistoryEntry);
-    if (liveMode) updateLiveResponses(rawPrompt, null);
 
     const typingId = showTyping();
     try {
@@ -1937,7 +1767,7 @@
         const bubble = msgWrap?.querySelector('.message-bubble');
         if (bubble) appendWebSources(bubble, webData);
       }
-      if (liveMode) pollAssistantResponse(msgWrap);
+
       nx.chatHistory.push({ role: 'assistant', content: safeResponse });
 
       if (nx.currentUser && nx.currentSessionId && typeof window._saveSession === 'function') {
@@ -2620,13 +2450,6 @@
 
     voiceInput.init();
     document.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'V') { e.preventDefault(); voiceInput.toggle(); } });
-    
-    // Initialize live mode button state
-    const liveBtn = document.getElementById('liveModeBtn');
-    if (liveBtn) {
-      liveBtn.addEventListener('click', toggleLiveMode);
-    }
-    
     renderMemoryPanel();
   });
 </script>
