@@ -78,8 +78,9 @@ npm install
 ### 2. Create your `.env` file
 
 ```env
-OPENAI_API_KEY=sk-...          # or NVIDIA NIM key
-ANTHROPIC_API_KEY=sk-ant-...
+NVIDIA_KEY_GPTOSS=...
+NVIDIA_KEY_LLAMA=...
+NVIDIA_KEY_DEEPSEEK=...
 GEMINI_API_KEY=AIza...
 MISTRAL_API_KEY=...
 GROQ_API_KEY=gsk_...
@@ -126,6 +127,7 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 |---|---|---|---|
 | POST | `/api/openai` | GPT-OSS 120B (NVIDIA NIM) | Requires `{ messages }` |
 | POST | `/api/nvidia-llama` | LLaMA 3.3 70B (NVIDIA NIM) | Requires `{ messages }` |
+| POST | `/api/deepseek` | DeepSeek v4 Pro (NVIDIA NIM) | Requires `{ messages }` |
 | POST | `/api/gemini` | Gemini Flash | Requires `{ prompt }` |
 | POST | `/api/mistral` | Mistral Large | Requires `{ messages }` |
 | POST | `/api/groq` | LLaMA 3.3 (Groq) | Requires `{ messages }` |
@@ -147,6 +149,7 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 | LLaMA 3.3 (Groq) | ✅ Yes | Generous free tier, also powers the Prompt Enhancer |
 | NVIDIA NIM (LLaMA 3.3 70B) | ✅ Trial credits | Free credits on sign-up |
 | NVIDIA NIM (GPT-OSS 120B) | ✅ Trial credits | OpenAI-compatible endpoint |
+| NVIDIA NIM (DeepSeek v4 Pro) | ✅ Trial credits | Requires `NVIDIA_KEY_DEEPSEEK` on the backend |
 | Mistral Large | ✅ Trial credits | Free trial on sign-up |
 | Cohere Command R+ | ✅ Trial credits | v2/chat API |
 | Gemini Flash | ⚠️ Daily quota | Free via AI Studio key; quota resets daily |
@@ -157,7 +160,9 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 
 | Variable | Where to get it |
 |---|---|
-| `OPENAI_API_KEY` | [build.nvidia.com](https://build.nvidia.com) (NIM) or [platform.openai.com](https://platform.openai.com/api-keys) |
+| `NVIDIA_KEY_GPTOSS` | [build.nvidia.com](https://build.nvidia.com) |
+| `NVIDIA_KEY_LLAMA` | [build.nvidia.com](https://build.nvidia.com) |
+| `NVIDIA_KEY_DEEPSEEK` | [build.nvidia.com](https://build.nvidia.com) |
 | `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com) |
 | `MISTRAL_API_KEY` | [console.mistral.ai](https://console.mistral.ai) |
 | `GROQ_API_KEY` | [console.groq.com](https://console.groq.com) |
