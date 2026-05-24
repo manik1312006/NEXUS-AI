@@ -1282,7 +1282,7 @@
     function buildRecognition() {
       const r = new SpeechRecognition();
       r.continuous = true; r.interimResults = true; r.maxAlternatives = 1; r.lang = navigator.language||'en-US';
-      r.onstart = () => { finalTranscript = ''; lastMergedTranscript = ''; pendingPreview = false; setState(STATES.RECORDING); startTimer(); };
+      r.onstart = () => { pendingPreview = false; setState(STATES.RECORDING); };
       r.onresult = (e) => {
         let finalText = '', interimText = '', lc = 0;
         for (let i = 0; i < e.results.length; i++) {
@@ -1303,8 +1303,22 @@
         if (interimText) html += ' <span class="interim">' + esc(interimText) + '</span>';
         transcriptBox.innerHTML = html || '';
       };
-      r.onerror = (e) => { stopTimer(); setState(STATES.IDLE); const msgs = {'not-allowed':'Microphone access denied. Allow it in browser settings.','no-speech':'No speech detected. Please try again.','network':'Network error. Check your connection.','audio-capture':'No microphone found.','service-not-allowed':'Speech service blocked. Try HTTPS.'}; showError(msgs[e.error]||`Error: ${e.error}`); };
-      r.onend = () => { stopTimer(); if (pendingPreview) showPreview(); else if (state===STATES.RECORDING) setState(STATES.IDLE); pendingPreview = false; };
+      r.onerror = (e) => {
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          stopTimer(); setState(STATES.IDLE);
+          showError(e.error === 'not-allowed' ? 'Microphone access denied. Allow it in browser settings.' : 'Speech service blocked. Try HTTPS.');
+        }
+      };
+      r.onend = () => {
+        if (pendingPreview) { stopTimer(); showPreview(); pendingPreview = false; }
+        else if (state === STATES.RECORDING) {
+          setTimeout(() => {
+            if (state === STATES.RECORDING) {
+              try { recognition = buildRecognition(); recognition.start(); } catch(_) { stopTimer(); setState(STATES.IDLE); }
+            }
+          }, 150);
+        } else { stopTimer(); setState(STATES.IDLE); pendingPreview = false; }
+      };
       return r;
     }
     function showPreview() { const text = (finalTranscript||'').trim(); if (!text) { showError('No speech detected. Try again.'); setState(STATES.IDLE); return; } transcriptBox.textContent = text; transcriptBox.removeAttribute('contenteditable'); isEditing = false; editBtn.classList.remove('active'); editBtn.textContent = '✏️ Edit'; setState(STATES.PREVIEW); }
@@ -1318,11 +1332,12 @@
     function toggle() { if (!supported) { showError('Not supported. Use Chrome or Edge.'); return; } if (state === STATES.RECORDING) stop(); else if (state === STATES.PREVIEW) cancel(); else start(); }
     function start() {
       if (!supported) return;
-      transcriptBox.textContent = ''; confidenceBadge.textContent = ''; finalTranscript = ''; lastMergedTranscript = ''; pendingPreview = false;
+      transcriptBox.innerHTML = ''; confidenceBadge.textContent = ''; finalTranscript = ''; lastMergedTranscript = ''; pendingPreview = false;
+      startTimer();
       try { recognition = buildRecognition(); recognition.start(); } catch (err) { showError('Could not start microphone: '+err.message); }
     }
-    function stop() { if (recognition) { try { recognition.stop(); } catch (_) {} } stopTimer(); pendingPreview = true; }
-    function cancel() { if (recognition) { try { recognition.abort(); } catch (_) {} recognition = null; } stopTimer(); pendingPreview = false; finalTranscript = ''; lastMergedTranscript = ''; transcriptBox.textContent = ''; confidenceBadge.textContent = ''; setState(STATES.IDLE); }
+    function stop() { if (recognition) { try { recognition.stop(); } catch (_) {} } pendingPreview = true; }
+    function cancel() { if (recognition) { try { recognition.abort(); } catch (_) {} recognition = null; } stopTimer(); pendingPreview = false; finalTranscript = ''; lastMergedTranscript = ''; transcriptBox.innerHTML = ''; confidenceBadge.textContent = ''; setState(STATES.IDLE); }
     function reRecord() { cancel(); setTimeout(() => start(), 120); }
     function toggleEdit() {
       if (!isEditing) { transcriptBox.setAttribute('contenteditable','true'); transcriptBox.focus(); const range = document.createRange(), sel = window.getSelection(); range.selectNodeContents(transcriptBox); range.collapse(false); sel.removeAllRanges(); sel.addRange(range); isEditing = true; editBtn.classList.add('active'); editBtn.textContent = '✓ Done'; }
