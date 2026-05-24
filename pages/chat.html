@@ -735,6 +735,9 @@
           <button class="agent-btn nvidia-agent" onclick="selectAgent('deepseek',this)">
             <span class="a-emoji">◆</span><span class="a-name">DeepSeek<br>v4 Pro</span><span class="nvidia-tag">NIM</span>
           </button>
+          <button class="agent-btn nvidia-agent" onclick="selectAgent('gemma4',this)">
+            <span class="a-emoji">◈</span><span class="a-name">Gemma 4<br>31B IT</span><span class="nvidia-tag">NIM</span>
+          </button>
           <button class="agent-btn" onclick="selectAgent('gemini',this)">
             <span class="a-emoji">◉</span><span class="a-name">Gemini</span>
           </button>
@@ -1356,8 +1359,8 @@
     } catch { btn.classList.remove('deleting'); btn.innerHTML = `⚠ Failed — try again`; }
   }
 
-  const AGENT_NAMES = { openai:'GPT-OSS 120B', gemini:'Gemini Flash', mistral:'Mistral Large', cohere:'Cohere R+', groq:'LLaMA 3.3', 'nvidia-llama':'LLaMA 3.3 70B', deepseek: 'DeepSeek v4 Pro' };
-  const AGENT_EMOJI = { openai:'⬡', gemini:'◉', mistral:'⬢', cohere:'⊗', groq:'⊕', 'nvidia-llama':'🦙', deepseek: '◆' };
+  const AGENT_NAMES = { openai:'GPT-OSS 120B', gemini:'Gemini Flash', mistral:'Mistral Large', cohere:'Cohere R+', groq:'LLaMA 3.3', 'nvidia-llama':'LLaMA 3.3 70B', deepseek: 'DeepSeek v4 Pro', gemma4: 'Gemma 4 31B IT' };
+  const AGENT_EMOJI = { openai:'⬡', gemini:'◉', mistral:'⬢', cohere:'⊗', groq:'⊕', 'nvidia-llama':'🦙', deepseek: '◆', gemma4: '◈' };
   function agentName(a)  { return AGENT_NAMES[a]  || 'AI'; }
   function agentEmoji(a) { return AGENT_EMOJI[a]   || '✦'; }
 
@@ -1479,6 +1482,7 @@
       openai:         { url:`${BACKEND}/api/openai`,         body:{ messages } },
       'nvidia-llama': { url:`${BACKEND}/api/nvidia-llama`,   body:{ messages } },
       deepseek:       { url:`${BACKEND}/api/deepseek`,       body:{ messages } },
+      gemma4:         { url:`${BACKEND}/api/gemma4`,         body:{ messages } },
       gemini:         { url:`${BACKEND}/api/gemini`,         body:{ prompt: promptWithContext } },
       mistral:        { url:`${BACKEND}/api/mistral`,        body:{ messages } },
       cohere:         { url:`${BACKEND}/api/cohere`,         body:{ prompt: promptWithContext } },
