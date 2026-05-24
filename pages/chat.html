@@ -140,7 +140,7 @@
     html.light .agent-btn.active { background: rgba(2,132,199,0.08); }
     html.light .modal { background: #fff; }
     html.light .mem-card { background: rgba(255,255,255,0.8); }
-    html.light .artifact-panel { background: #f5f5ff; }
+    html.light .artifact-panel { background: #f5f5ff; box-shadow: -10px 0 40px rgba(0,0,0,0.08); }
     html.light .artifact-header { background: #e8e8ff; }
     html.light .cot-accordion { background: rgba(109,40,217,0.04); }
     html.light .cot-accordion[open] { background: rgba(109,40,217,0.08); }
@@ -151,6 +151,9 @@
     html.light .session-item-wrap.active-session .session-item { color: var(--c-neon-cyan); }
     html.light .sidebar-overlay { background: rgba(200,200,240,0.6); }
     html.light .modal-overlay { background: rgba(240,240,255,0.85); }
+    @media (max-width: 768px) {
+      html.light .sidebar { box-shadow: 4px 0 40px rgba(0,0,0,0.1); }
+    }
     /* ── THEME TOGGLE BTN ── */
     #theme-toggle-button {
       font-size: 12px;
@@ -425,6 +428,7 @@
     .confidence-badge { font-family: 'Space Mono', monospace; font-size: 0.6rem; padding: 2px 8px; border-radius: 10px; border: 1px solid rgba(0,255,157,0.3); background: rgba(0,255,157,0.08); color: var(--c-neon-green); }
     .transcript-text-box { background: rgba(0,0,0,0.3); border: 1px solid rgba(0,245,255,0.15); border-radius: 10px; padding: 12px 14px; color: var(--c-text); font-size: 0.9rem; line-height: 1.6; min-height: 40px; outline: none; font-family: 'DM Sans', sans-serif; transition: border-color 0.2s; }
     .transcript-text-box[contenteditable="true"] { border-color: rgba(0,245,255,0.4); box-shadow: 0 0 12px rgba(0,245,255,0.08); }
+    .transcript-text-box .interim { opacity: 0.45; font-style: italic; }
     .transcript-actions { display: flex; gap: 8px; flex-wrap: wrap; }
     .btn-transcript { flex: 1; min-width: 80px; padding: 9px 12px; border-radius: 10px; font-size: 0.8rem; font-family: 'DM Sans', sans-serif; cursor: pointer; transition: all 0.2s; border: 1px solid var(--c-border); display: flex; align-items: center; justify-content: center; gap: 5px; }
     .btn-transcript.edit { background: transparent; color: var(--c-muted); }
@@ -1256,7 +1260,7 @@
       else micBtn.innerHTML = '🎤';
     }
     function showError(msg) { voiceErrToast.textContent = '🎤 ' + msg; voiceErrToast.classList.add('show'); setTimeout(() => voiceErrToast.classList.remove('show'), 3800); }
-    function startTimer() { elapsedSeconds = 0; recTimer.textContent = '0:00'; timerInterval = setInterval(() => { elapsedSeconds++; const m = Math.floor(elapsedSeconds/60), s = elapsedSeconds%60; recTimer.textContent = `${m}:${s.toString().padStart(2,'0')}`; if (elapsedSeconds >= 60) stop(); }, 1000); }
+    function startTimer() { elapsedSeconds = 0; recTimer.textContent = '0:00'; timerInterval = setInterval(() => { elapsedSeconds++; const m = Math.floor(elapsedSeconds/60), s = elapsedSeconds%60; recTimer.textContent = `${m}:${s.toString().padStart(2,'0')}`; }, 1000); }
     function stopTimer() { clearInterval(timerInterval); timerInterval = null; }
     function normalizeTranscript(text) { return (text || '').replace(/\s+/g,' ').trim(); }
     function mergeByWordOverlap(base, next) {
@@ -1274,22 +1278,33 @@
       return normalizeTranscript(a+' '+b);
     }
     function mergeSegments(segments) { let m = ''; for (const s of segments) m = mergeByWordOverlap(m,s); return m; }
+    function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
     function buildRecognition() {
       const r = new SpeechRecognition();
-      r.continuous = false; r.interimResults = false; r.maxAlternatives = 1; r.lang = navigator.language||'en-US';
+      r.continuous = true; r.interimResults = true; r.maxAlternatives = 1; r.lang = navigator.language||'en-US';
       r.onstart = () => { finalTranscript = ''; lastMergedTranscript = ''; pendingPreview = false; setState(STATES.RECORDING); startTimer(); };
       r.onresult = (e) => {
-        const segs = []; let lc = 0;
-        for (let i = 0; i < e.results.length; i++) { const res = e.results[i], t = res?.[0]?.transcript||''; if (t.trim()) segs.push(t); const c = res?.[0]?.confidence; if (typeof c === 'number' && c > 0) lc = Math.round(c*100); }
-        const merged = mergeSegments(segs);
-        if (!merged || merged.toLowerCase() === lastMergedTranscript.toLowerCase()) return;
-        lastMergedTranscript = merged; finalTranscript = merged;
+        let finalText = '', interimText = '', lc = 0;
+        for (let i = 0; i < e.results.length; i++) {
+          const res = e.results[i], t = (res?.[0]?.transcript||'').trim();
+          if (!t) continue;
+          if (res.isFinal) {
+            finalText = finalText ? finalText + ' ' + t : t;
+            const c = res[0].confidence;
+            if (typeof c === 'number' && c > 0) lc = Math.round(c*100);
+          } else {
+            interimText = interimText ? interimText + ' ' + t : t;
+          }
+        }
+        if (finalText) { finalTranscript = finalText; lastMergedTranscript = finalText; }
         if (lc > 0) confidenceBadge.textContent = `${lc}% confidence`;
-        transcriptBox.textContent = finalTranscript;
+        let html = '';
+        if (finalTranscript) html += esc(finalTranscript);
+        if (interimText) html += ' <span class="interim">' + esc(interimText) + '</span>';
+        transcriptBox.innerHTML = html || '';
       };
-      r.onspeechend = () => { stop(); };
       r.onerror = (e) => { stopTimer(); setState(STATES.IDLE); const msgs = {'not-allowed':'Microphone access denied. Allow it in browser settings.','no-speech':'No speech detected. Please try again.','network':'Network error. Check your connection.','audio-capture':'No microphone found.','service-not-allowed':'Speech service blocked. Try HTTPS.'}; showError(msgs[e.error]||`Error: ${e.error}`); };
-      r.onend = () => { stopTimer(); if (pendingPreview||state===STATES.RECORDING) showPreview(); pendingPreview = false; };
+      r.onend = () => { stopTimer(); if (pendingPreview) showPreview(); else if (state===STATES.RECORDING) setState(STATES.IDLE); pendingPreview = false; };
       return r;
     }
     function showPreview() { const text = (finalTranscript||'').trim(); if (!text) { showError('No speech detected. Try again.'); setState(STATES.IDLE); return; } transcriptBox.textContent = text; transcriptBox.removeAttribute('contenteditable'); isEditing = false; editBtn.classList.remove('active'); editBtn.textContent = '✏️ Edit'; setState(STATES.PREVIEW); }
