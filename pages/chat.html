@@ -236,10 +236,11 @@
     .agent-panel.open::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 2px; }
     .section-label { font-family:'Space Mono',monospace; font-size:0.6rem; color:var(--c-muted); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:0; }
     .agent-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; padding: 12px; }
-    .agent-btn { padding:8px 4px; border-radius:10px; border:1px solid var(--c-border); background:rgba(0,0,0,0.3); color:var(--c-muted); font-size:0.72rem; cursor:pointer; text-align:center; transition:all 0.2s; font-family:'DM Sans',sans-serif; }
+    .agent-btn { padding:8px 4px; border-radius:10px; border:1px solid var(--c-border); background:rgba(0,0,0,0.3); color:var(--c-muted); font-size:0.72rem; cursor:pointer; text-align:center; transition:all 0.2s; font-family:'DM Sans',sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:88px; }
     .agent-btn:hover { border-color:rgba(255,255,255,0.2); color:var(--c-text); }
     .agent-btn.active { border-color:var(--c-neon-cyan); color:var(--c-neon-cyan); background:rgba(0,245,255,0.08); box-shadow:0 0 12px rgba(0,245,255,0.15); }
-    .agent-btn .a-emoji { display:block; font-size:1rem; margin-bottom:2px; }
+    .agent-btn .a-emoji { display:flex; align-items:center; justify-content:center; width:28px; height:28px; margin-bottom:4px; }
+    .agent-btn .a-emoji svg { width:22px; height:22px; display:block; }
     .agent-btn .a-name  { display:block; font-weight:500; line-height:1.2; }
     .agent-btn.nvidia-agent { border-color:rgba(118,185,0,0.3); }
     .agent-btn.nvidia-agent.active { border-color:#76b900; color:#76b900; background:rgba(118,185,0,0.08); box-shadow:0 0 12px rgba(118,185,0,0.2); }
@@ -456,8 +457,9 @@
     .tts-btn-waves span:nth-child(1) { height: 4px; } .tts-btn-waves span:nth-child(2) { height: 8px; } .tts-btn-waves span:nth-child(3) { height: 12px; } .tts-btn-waves span:nth-child(4) { height: 8px; } .tts-btn-waves span:nth-child(5) { height: 4px; }
     .tts-listen-btn.speaking .tts-btn-waves span:nth-child(1) { animation: ttsWave 0.9s 0.0s ease-in-out infinite; } .tts-listen-btn.speaking .tts-btn-waves span:nth-child(2) { animation: ttsWave 0.9s 0.15s ease-in-out infinite; } .tts-listen-btn.speaking .tts-btn-waves span:nth-child(3) { animation: ttsWave 0.9s 0.30s ease-in-out infinite; } .tts-listen-btn.speaking .tts-btn-waves span:nth-child(4) { animation: ttsWave 0.9s 0.45s ease-in-out infinite; } .tts-listen-btn.speaking .tts-btn-waves span:nth-child(5) { animation: ttsWave 0.9s 0.60s ease-in-out infinite; }
     @keyframes ttsWave { 0%,100% { transform: scaleY(0.4); opacity: 0.5; } 50% { transform: scaleY(1.6); opacity: 1; } }
-    .tts-player { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px); z-index: 600; background: var(--c-card); border: 1px solid rgba(0,245,255,0.3); border-radius: 20px; padding: 12px 20px; display: flex; align-items: center; gap: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 30px rgba(0,245,255,0.1); backdrop-filter: blur(20px); opacity: 0; pointer-events: none; transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); min-width: 320px; max-width: min(90vw, 520px); }
+    .tts-player { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px); z-index: 600; background: var(--c-card); border: 1px solid rgba(0,245,255,0.3); border-radius: 20px; padding: 12px 20px; display: flex; align-items: center; gap: 14px; box-shadow: 0 12px 40px rgba(0,0,0,0.6), 0 0 30px rgba(0,245,255,0.1); backdrop-filter: blur(20px); opacity: 0; pointer-events: none; transition: all 0.45s cubic-bezier(0.34, 1.56, 0.64, 1); min-width: 320px; max-width: min(90vw, 520px); cursor: grab; user-select: none; }
     .tts-player.show { opacity: 1; pointer-events: all; transform: translateX(-50%) translateY(0); }
+    .tts-player.dragging.show { cursor: grabbing; }
     html.light .tts-player { background: #fff; border-color: rgba(2,132,199,0.3); box-shadow: 0 12px 40px rgba(0,0,0,0.15), 0 0 24px rgba(2,132,199,0.1); }
     .tts-player-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, var(--c-neon-cyan), var(--c-neon-purple)); display: flex; align-items: center; justify-content: center; font-size: 1rem; flex-shrink: 0; box-shadow: 0 0 12px rgba(0,245,255,0.3); }
     .tts-player.show .tts-player-avatar { animation: ttsAvatarGlow 2s ease-in-out infinite; }
@@ -498,8 +500,8 @@
     .input-box:focus-within { border-color:rgba(0,245,255,0.4); box-shadow:0 0 20px rgba(0,245,255,0.08); }
     #userInput { flex:1; background:transparent; border:none; color:var(--c-text); font-family:'DM Sans',sans-serif; font-size:0.95rem; resize:none; outline:none; max-height:160px; min-height:24px; line-height:1.5; }
     #userInput::placeholder { color:var(--c-muted); }
-    .send-btn { width:40px; height:40px; border-radius:12px; border:none; background:linear-gradient(135deg,var(--c-neon-purple),var(--c-neon-cyan)); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:1.1rem; transition:all 0.2s; flex-shrink:0; }
-    .send-btn:hover { transform:scale(1.05); box-shadow:0 4px 20px rgba(0,245,255,0.3); }
+    .send-btn { width:40px; height:40px; border-radius:12px; border:1px solid var(--c-border); background:transparent; color:var(--c-text); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; flex-shrink:0; }
+    .send-btn:hover { border-color:var(--c-neon-purple); color:var(--c-neon-purple); }
     .input-meta { display:flex; justify-content:space-between; align-items:center; margin-top:8px; padding:0 4px; flex-wrap: wrap; gap: 4px; }
     .input-hint { font-size:0.72rem; color:var(--c-muted); font-family:'Space Mono',monospace; }
     .modal-overlay { position:fixed; inset:0; z-index:200; background:rgba(5,5,16,0.85); backdrop-filter:blur(10px); display:none; align-items:center; justify-content:center; }
@@ -672,13 +674,13 @@
       .memory-toast { bottom: 70px; right: 10px; max-width: 240px; }
       .header-badges { gap:5px; }
       .agent-grid { grid-template-columns: 1fr 1fr; gap: 4px; padding: 10px; }
-      .agent-btn { padding: 7px 3px; font-size: 0.68rem; }
+      .agent-btn { padding: 7px 3px; font-size: 0.68rem; min-height:80px; }
       .transcript-actions { flex-direction: column; }
       .btn-transcript { flex: none; }
       .voice-error-toast { font-size: 0.72rem; padding: 8px 14px; }
       .waveform span:nth-child(n+6) { display: none; }
     }
-    @media (max-width:400px) { .message-bubble { max-width:93%; } .agent-btn { padding:6px 3px; font-size:0.65rem; } .agent-btn .a-emoji { font-size:0.85rem; } .agent-grid { grid-template-columns: 1fr 1fr; } }
+    @media (max-width:400px) { .message-bubble { max-width:93%; } .agent-btn { padding:6px 3px; font-size:0.65rem; min-height:72px; } .agent-btn .a-emoji { width:24px; height:24px; } .agent-btn .a-emoji svg { width:20px; height:20px; } .agent-grid { grid-template-columns: 1fr 1fr; } }
     @media (min-width:769px) and (max-width:1024px) { .sidebar { width:240px; min-width:240px; } .message-bubble { max-width:80%; } }
 
     @media print {
@@ -737,7 +739,7 @@
     <div class="agent-section" id="agentSection">
       <div class="agent-section-header" onclick="toggleAgentPanel()">
         <div class="agent-section-left">
-          <span style="font-size:1rem">⚙️</span>
+          <span style="font-size:1rem;display:inline-flex;vertical-align:middle"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M160-360q-50 0-85-35t-35-85q0-50 35-85t85-35v-80q0-33 23.5-56.5T240-760h120q0-50 35-85t85-35q50 0 85 35t35 85h120q33 0 56.5 23.5T800-680v80q50 0 85 35t35 85q0 50-35 85t-85 35v160q0 33-23.5 56.5T720-120H240q-33 0-56.5-23.5T160-200v-160Zm242.5-97.5Q420-475 420-500t-17.5-42.5Q385-560 360-560t-42.5 17.5Q300-525 300-500t17.5 42.5Q335-440 360-440t42.5-17.5Zm240 0Q660-475 660-500t-17.5-42.5Q625-560 600-560t-42.5 17.5Q540-525 540-500t17.5 42.5Q575-440 600-440t42.5-17.5ZM320-280h320v-80H320v80Zm-80 80h480v-480H240v480Zm240-240Z"/></svg></span>
           <span class="section-label" style="margin:0;color:var(--c-text);font-size:0.65rem;letter-spacing:0.12em">AGENTS</span>
         </div>
         <div class="agent-section-right">
@@ -747,28 +749,28 @@
       <div class="agent-panel" id="agentPanel">
         <div class="agent-grid">
           <button class="agent-btn nvidia-agent" onclick="selectAgent('openai',this)">
-            <span class="a-emoji">⬡</span><span class="a-name">GPT-OSS<br>120B</span><span class="nvidia-tag">NIM</span>
+            <span class="a-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg></span><span class="a-name">GPT-OSS<br>120B</span><span class="nvidia-tag">NIM</span>
           </button>
           <button class="agent-btn nvidia-agent" onclick="selectAgent('nvidia-llama',this)">
-            <span class="a-emoji">🦙</span><span class="a-name">LLaMA<br>3.3 70B</span><span class="nvidia-tag">NIM</span>
+            <span class="a-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg></span><span class="a-name">LLaMA<br>3.3 70B</span><span class="nvidia-tag">NIM</span>
           </button>
           <button class="agent-btn nvidia-agent" onclick="selectAgent('deepseek',this)">
-            <span class="a-emoji">🌙</span><span class="a-name">Kimi<br>K2.6</span><span class="nvidia-tag">NIM</span>
+            <span class="a-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg></span><span class="a-name">Kimi<br>K2.6</span><span class="nvidia-tag">NIM</span>
           </button>
           <button class="agent-btn nvidia-agent" onclick="selectAgent('gemma4',this)">
-            <span class="a-emoji">◈</span><span class="a-name">Gemma 4<br>31B IT</span><span class="nvidia-tag">NIM</span>
+            <span class="a-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg></span><span class="a-name">Gemma 4<br>31B IT</span><span class="nvidia-tag">NIM</span>
           </button>
           <button class="agent-btn" onclick="selectAgent('gemini',this)">
-            <span class="a-emoji">◉</span><span class="a-name">Gemini</span>
+            <span class="a-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg></span><span class="a-name">Gemini</span>
           </button>
           <button class="agent-btn" onclick="selectAgent('mistral',this)">
-            <span class="a-emoji">⬢</span><span class="a-name">Mistral</span>
+            <span class="a-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg></span><span class="a-name">Mistral</span>
           </button>
           <button class="agent-btn" onclick="selectAgent('groq',this)">
-            <span class="a-emoji">⊕</span><span class="a-name">LLaMA<br>Groq</span>
+            <span class="a-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg></span><span class="a-name">LLaMA<br>Groq</span>
           </button>
           <button class="agent-btn" onclick="selectAgent('cohere',this)">
-            <span class="a-emoji">⊗</span><span class="a-name">Cohere</span>
+            <span class="a-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg></span><span class="a-name">Cohere</span>
           </button>
         </div>
       </div>
@@ -932,7 +934,7 @@
       </div>
       <span class="rec-timer" id="recTimer">0:00</span>
       <button class="btn-pause-rec" id="btnPauseRec" onclick="voiceInput.togglePause()" title="Pause"></button>
-      <button class="btn-cancel-rec" onclick="voiceInput.cancel()" title="Cancel">✕</button>
+      <button class="btn-cancel-rec" onclick="voiceInput.cancel()" title="Cancel"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20px" height="20px" fill="currentColor"><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/></svg></button>
     </div>
 
     <div class="transcript-preview" id="transcriptPreview">
@@ -942,9 +944,9 @@
       </div>
       <div class="transcript-text-box" id="transcriptTextBox" spellcheck="true"></div>
       <div class="transcript-actions">
-        <button class="btn-transcript edit" id="btnEditTranscript" onclick="voiceInput.toggleEdit()">✏️ Edit</button>
-        <button class="btn-transcript rerecord" onclick="voiceInput.reRecord()">🔄 Re-record</button>
-        <button class="btn-transcript send-voice" onclick="voiceInput.sendTranscript()">➤ Send</button>
+        <button class="btn-transcript edit" id="btnEditTranscript" onclick="voiceInput.toggleEdit()"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="16px" height="16px" fill="currentColor" style="vertical-align:middle"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t27 18l55 56q12 13 17.5 28.5T832-680q0 16-5.5 30.5T809-623L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg> Edit</button>
+        <button class="btn-transcript rerecord" onclick="voiceInput.reRecord()"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="16px" height="16px" fill="currentColor" style="vertical-align:middle"><path d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z"/></svg> Re-record</button>
+        <button class="btn-transcript send-voice" onclick="voiceInput.sendTranscript()"><svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" style="vertical-align:middle"><path d="M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Zm0 0v-400 400Z"/></svg> Send</button>
       </div>
     </div>
 
@@ -952,7 +954,7 @@
       <textarea id="userInput" rows="1" placeholder="Ask anything… your prompt will be enhanced before sending"></textarea>
       <button class="onair-btn" id="onAirBtn" onclick="toggleOnAir()" title="Toggle ON-AIR — hands-free voice conversation"><span class="onair-dot"></span> ON‑AIR</button>
       <button class="mic-btn" id="micBtn" onclick="voiceInput.toggle()" title="Voice input (Ctrl+Shift+V)" aria-label="Toggle voice input"></button>
-      <button class="send-btn" id="sendBtn">➤</button>
+      <button class="send-btn" id="sendBtn"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Zm0 0v-400 400Z"/></svg></button>
     </div>
     <div class="input-meta">
       <span class="input-hint">Enter to send · Shift+Enter for new line · Ctrl+Shift+V for voice</span>
@@ -1048,7 +1050,7 @@
 
 <!-- TTS Floating Player -->
 <div class="tts-player" id="ttsPlayer">
-  <div class="tts-player-avatar" id="ttsPlayerAvatar">🔊</div>
+  <div class="tts-player-avatar" id="ttsPlayerAvatar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="22px" height="22px" fill="currentColor"><path d="M560-131v-82q90-26 145-100t55-168q0-94-55-168T560-749v-82q124 28 202 125.5T840-481q0 127-78 224.5T560-131ZM120-360v-240h160l200-200v640L280-360H120Zm80-80h114l86 86v-252l-86 86H200v80Zm200-40Z"/></svg></div>
   <div class="tts-player-info">
     <div class="tts-player-label">Sol Voice · Speaking</div>
     <div class="tts-player-text" id="ttsPlayerText">NEXUS AI Response</div>
@@ -1065,8 +1067,8 @@
       <option value="1.2">1.2×</option>
       <option value="1.3">1.3×</option>
     </select>
-    <button class="tts-ctrl-btn primary" id="ttsPauseResumeBtn" onclick="ttsController.pauseResume()" title="Pause / Resume">⏸</button>
-    <button class="tts-ctrl-btn stop-btn" onclick="ttsController.stop()" title="Stop">⏹</button>
+    <button class="tts-ctrl-btn" id="ttsPauseResumeBtn" onclick="ttsController.pauseResume()" title="Pause / Resume"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20px" height="20px" fill="currentColor"><path d="M560-200v-560h160v560H560Zm-320 0v-560h160v560H240Z"/></svg></button>
+    <button class="tts-ctrl-btn stop-btn" id="ttsStopBtn" onclick="ttsController.stop()" title="Stop"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20px" height="20px" fill="currentColor"><path d="M320-320h320v-320H320v320ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Z"/></svg></button>
   </div>
 </div>
 
@@ -1262,12 +1264,22 @@
   let onAirActive = false;
   let _onAirCb = null;
 
+  // ── GLOBAL SVG ICONS ──
+  const SVG_SEND = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Zm0 0v-400 400Z"/></svg>';
+  const SVG_SETTINGS = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M160-360q-50 0-85-35t-35-85q0-50 35-85t85-35v-80q0-33 23.5-56.5T240-760h120q0-50 35-85t85-35q50 0 85 35t35 85h120q33 0 56.5 23.5T800-680v80q50 0 85 35t35 85q0 50-35 85t-85 35v160q0 33-23.5 56.5T720-120H240q-33 0-56.5-23.5T160-200v-160Zm242.5-97.5Q420-475 420-500t-17.5-42.5Q385-560 360-560t-42.5 17.5Q300-525 300-500t17.5 42.5Q335-440 360-440t42.5-17.5Zm240 0Q660-475 660-500t-17.5-42.5Q625-560 600-560t-42.5 17.5Q540-525 540-500t17.5 42.5Q575-440 600-440t42.5-17.5ZM320-280h320v-80H320v80Zm-80 80h480v-480H240v480Zm240-240Z"/></svg>';
+  const SVG_SPEAKER = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20px" height="20px" fill="currentColor"><path d="M560-131v-82q90-26 145-100t55-168q0-94-55-168T560-749v-82q124 28 202 125.5T840-481q0 127-78 224.5T560-131ZM120-360v-240h160l200-200v640L280-360H120Zm80-80h114l86 86v-252l-86 86H200v80Zm200-40Z"/></svg>';
+  const SVG_PAUSE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20px" height="20px" fill="currentColor"><path d="M560-200v-560h160v560H560Zm-320 0v-560h160v560H240Z"/></svg>';
+  const SVG_PLAY = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20px" height="20px" fill="currentColor"><path d="M320-200v-560l480 280-480 280Z"/></svg>';
+  const SVG_STOP = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20px" height="20px" fill="currentColor"><path d="M320-320h320v-320H320v320ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Z"/></svg>';
+  const SVG_CLOSE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20px" height="20px" fill="currentColor"><path d="m256-200-56-56 224-224-224-224 56-56 224 224 224-224 56 56-224 224 224 224-56 56-224-224-224 224Z"/></svg>';
+  const SVG_EDIT = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20px" height="20px" fill="currentColor"><path d="M200-200h57l391-391-57-57-391 391v57Zm-80 80v-170l528-527q12-11 26.5-17t30.5-6q16 0 31 6t27 18l55 56q12 13 17.5 28.5T832-680q0 16-5.5 30.5T809-623L290-120H120Zm640-584-56-56 56 56Zm-141 85-28-29 57 57-29-28Z"/></svg>';
+  const SVG_REFRESH = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20px" height="20px" fill="currentColor"><path d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z"/></svg>';
+  const SVG_CHECK = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20px" height="20px" fill="currentColor"><path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z"/></svg>';
+  const SVG_MIC = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="m798-322-62-62q44-41 69-97t25-119q0-63-25-118t-69-96l62-64q56 53 89 125t33 153q0 81-33 153t-89 125ZM670-450l-64-64q18-17 29-38.5t11-47.5q0-26-11-47.5T606-686l64-64q32 29 50 67.5t18 82.5q0 44-18 82.5T670-450Zm-310 10q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM40-120v-112q0-33 17-62t47-44q51-26 115-44t141-18q77 0 141 18t115 44q30 15 47 44t17 62v112H40Zm80-80h480v-32q0-11-5.5-20T580-266q-36-18-92.5-36T360-320q-71 0-127.5 18T140-266q-9 5-14.5 14t-5.5 20v32Zm296.5-343.5Q440-567 440-600t-23.5-56.5Q393-680 360-680t-56.5 23.5Q280-633 280-600t23.5 56.5Q327-520 360-520t56.5-23.5Z"/></svg>';
+  const SVG_ROBOT = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg>';
+
   // ── VOICE INPUT ──
   const voiceInput = (() => {
-    const SVG_MIC = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="m798-322-62-62q44-41 69-97t25-119q0-63-25-118t-69-96l62-64q56 53 89 125t33 153q0 81-33 153t-89 125ZM670-450l-64-64q18-17 29-38.5t11-47.5q0-26-11-47.5T606-686l64-64q32 29 50 67.5t18 82.5q0 44-18 82.5T670-450Zm-310 10q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM40-120v-112q0-33 17-62t47-44q51-26 115-44t141-18q77 0 141 18t115 44q30 15 47 44t17 62v112H40Zm80-80h480v-32q0-11-5.5-20T580-266q-36-18-92.5-36T360-320q-71 0-127.5 18T140-266q-9 5-14.5 14t-5.5 20v32Zm296.5-343.5Q440-567 440-600t-23.5-56.5Q393-680 360-680t-56.5 23.5Q280-633 280-600t23.5 56.5Q327-520 360-520t56.5-23.5Z"/></svg>';
-    const SVG_STOP = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M320-320h320v-320H320v320ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Z"/></svg>';
-    const SVG_PAUSE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M560-200v-560h160v560H560Zm-320 0v-560h160v560H240Z"/></svg>';
-    const SVG_PLAY = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M320-200v-560l480 280-480 280Z"/></svg>';
     const STATES = { IDLE: 'idle', RECORDING: 'recording', PAUSED: 'paused', PREVIEW: 'preview' };
     let state = STATES.IDLE, recognition = null, finalTranscript = '';
     let timerInterval = null, elapsedSeconds = 0, isEditing = false, supported = false, pendingPreview = false, lastResultIndex = 0;
@@ -1284,7 +1296,7 @@
       recIndicator.classList.toggle('show', isActive);
       transcriptPreview.classList.toggle('show', s === STATES.PREVIEW);
       if (s === STATES.RECORDING || s === STATES.PAUSED) micBtn.innerHTML = SVG_STOP;
-      else if (s === STATES.PREVIEW) micBtn.innerHTML = '✓';
+      else if (s === STATES.PREVIEW) micBtn.innerHTML = SVG_CHECK;
       else micBtn.innerHTML = SVG_MIC;
       if (s === STATES.PAUSED) {
         recDot.style.animation = 'none'; recDot.style.opacity = '0.4';
@@ -1298,7 +1310,7 @@
         pauseBtn.innerHTML = SVG_PAUSE; pauseBtn.title = 'Pause';
       }
     }
-    function showError(msg) { voiceErrToast.textContent = '🎤 ' + msg; voiceErrToast.classList.add('show'); setTimeout(() => voiceErrToast.classList.remove('show'), 3800); }
+    function showError(msg) { voiceErrToast.textContent = msg; voiceErrToast.classList.add('show'); setTimeout(() => voiceErrToast.classList.remove('show'), 3800); }
     function startTimer() { elapsedSeconds = 0; recTimer.textContent = '0:00'; timerInterval = setInterval(() => { elapsedSeconds++; const m = Math.floor(elapsedSeconds/60), s = elapsedSeconds%60; recTimer.textContent = `${m}:${s.toString().padStart(2,'0')}`; }, 1000); }
     function stopTimer() { clearInterval(timerInterval); timerInterval = null; }
     function normalizeTranscript(text) { return (text || '').replace(/\s+/g,' ').trim(); }
@@ -1395,7 +1407,7 @@
       };
       return r;
     }
-    function showPreview() { const text = (finalTranscript||'').trim(); if (!text) { showError('No speech detected. Try again.'); setState(STATES.IDLE); return; } transcriptBox.textContent = text; transcriptBox.removeAttribute('contenteditable'); isEditing = false; editBtn.classList.remove('active'); editBtn.textContent = '✏️ Edit'; setState(STATES.PREVIEW); }
+    function showPreview() { const text = (finalTranscript||'').trim(); if (!text) { showError('No speech detected. Try again.'); setState(STATES.IDLE); return; } transcriptBox.textContent = text; transcriptBox.removeAttribute('contenteditable'); isEditing = false; editBtn.classList.remove('active'); editBtn.innerHTML = SVG_EDIT + ' Edit'; setState(STATES.PREVIEW); }
     function init() {
       micBtn = document.getElementById('micBtn'); recIndicator = document.getElementById('recordingIndicator');
       recDot = document.getElementById('recDot'); recText = document.getElementById('recText');
@@ -1432,8 +1444,8 @@
     }
     function reRecord() { cancel(); setTimeout(() => start(), 120); }
     function toggleEdit() {
-      if (!isEditing) { transcriptBox.setAttribute('contenteditable','true'); transcriptBox.focus(); const range = document.createRange(), sel = window.getSelection(); range.selectNodeContents(transcriptBox); range.collapse(false); sel.removeAllRanges(); sel.addRange(range); isEditing = true; editBtn.classList.add('active'); editBtn.textContent = '✓ Done'; }
-      else { transcriptBox.removeAttribute('contenteditable'); isEditing = false; editBtn.classList.remove('active'); editBtn.textContent = '✏️ Edit'; }
+      if (!isEditing) { transcriptBox.setAttribute('contenteditable','true'); transcriptBox.focus(); const range = document.createRange(), sel = window.getSelection(); range.selectNodeContents(transcriptBox); range.collapse(false); sel.removeAllRanges(); sel.addRange(range); isEditing = true; editBtn.classList.add('active'); editBtn.innerHTML = SVG_CHECK + ' Done'; }
+      else { transcriptBox.removeAttribute('contenteditable'); isEditing = false; editBtn.classList.remove('active'); editBtn.innerHTML = SVG_EDIT + ' Edit'; }
     }
     function sendTranscript() { const text = transcriptBox.textContent.trim(); if (!text) { showError('Transcript is empty.'); return; } const input = document.getElementById('userInput'); input.value = text; autoResize(input); cancel(); sendMessage(); }
     return { init, toggle, start, stop, cancel, togglePause, reRecord, toggleEdit, sendTranscript };
@@ -1482,9 +1494,10 @@
   }
 
   const AGENT_NAMES = { openai:'GPT-OSS 120B', gemini:'Gemini Flash', mistral:'Mistral Large', cohere:'Cohere R+', groq:'LLaMA 3.3', 'nvidia-llama':'LLaMA 3.3 70B', deepseek: 'Kimi K2.6', gemma4: 'Gemma 4 31B IT' };
-  const AGENT_EMOJI = { openai:'⬡', gemini:'◉', mistral:'⬢', cohere:'⊗', groq:'⊕', 'nvidia-llama':'🦙', deepseek: '🌙', gemma4: '◈' };
-  function agentName(a)  { return AGENT_NAMES[a]  || 'AI'; }
-  function agentEmoji(a) { return AGENT_EMOJI[a]   || '✦'; }
+  function agentName(a) { return AGENT_NAMES[a] || a; }
+  const AGENT_EMOJI = { openai: SVG_ROBOT, gemini: SVG_ROBOT, mistral: SVG_ROBOT, cohere: SVG_ROBOT, groq: SVG_ROBOT, 'nvidia-llama': SVG_ROBOT, deepseek: SVG_ROBOT, gemma4: SVG_ROBOT };
+
+  function agentEmoji(a) { return AGENT_EMOJI[a] || SVG_ROBOT; }
 
   function escapeHTML(s) {
     if (!s) return '';
@@ -1505,7 +1518,7 @@
       : `<div class="msg-avatar agent-avatar">${agentEmoji(window._nexus.selectedAgent)}</div>`;
     const rendered = (role === 'user' || role === 'error') ? escapeHTML(safeContent) : (safeContent ? marked.parse(safeContent) : '');
     const buttonHTML = role === 'assistant' 
-      ? `<button class="tts-listen-btn" onclick="ttsController.speak(this)" title="Listen to this response"><span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>🔊 Listen</button><button class="copy-btn" onclick="copyMsg(this)">⎘ Copy</button>`
+      ? `<button class="tts-listen-btn" onclick="ttsController.speak(this)" title="Listen to this response"><span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>${SVG_SPEAKER} Listen</button><button class="copy-btn" onclick="copyMsg(this)">⎘ Copy</button>`
       : (role === 'user' ? `<button class="copy-btn user-copy-btn" onclick="copyMsg(this)">⎘ Copy</button>` : '');
     wrap.innerHTML = `${role !== 'error' ? avatar : ''}
       <div class="message-bubble ${role}">
@@ -2178,20 +2191,38 @@
     function resetBtn(btn) {
       if (!btn) return;
       btn.classList.remove('speaking', 'paused');
-      btn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>&#128266; Listen';
+      btn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>'+SVG_SPEAKER+' Listen';
     }
 
+    function restoreTtsPlayerPosition(player) {
+      const stored = localStorage.getItem('ttsPlayerPos');
+      if (stored) {
+        try {
+          const pos = JSON.parse(stored);
+          player.style.transition = 'none';
+          player.style.left = pos.x + 'px';
+          player.style.bottom = pos.y + 'px';
+          player.style.top = 'auto';
+          player.style.transform = 'translateX(-50%) translateY(0)';
+          void player.offsetHeight;
+          player.style.transition = '';
+          return;
+        } catch(e) {}
+      }
+      player.style.left = ''; player.style.bottom = ''; player.style.top = ''; player.style.transform = '';
+    }
     function updatePlayerState() {
       const player = document.getElementById('ttsPlayer');
       const pauseBtn = document.getElementById('ttsPauseResumeBtn');
       if (!player) return;
 
       if (isSpeaking) {
+        restoreTtsPlayerPosition(player);
         player.classList.add('show');
         player.classList.toggle('paused', isPaused);
-        if (pauseBtn) pauseBtn.innerHTML = isPaused ? '&#9654;' : '&#9208;';
+        if (pauseBtn) pauseBtn.innerHTML = isPaused ? SVG_PLAY : SVG_PAUSE;
       } else {
-        player.classList.remove('show', 'paused');
+        player.classList.remove('show', 'paused', 'dragging');
       }
     }
 
@@ -2383,7 +2414,7 @@
       if (!text) return;
 
       btn.classList.add('speaking');
-      btn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>&#9203; Loading...';
+      btn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>'+SVG_SPEAKER+' Loading...';
       currentBtn = btn;
       isSpeaking = true;
       isPaused = false;
@@ -2417,7 +2448,7 @@
         if (currentBtn) {
           currentBtn.classList.remove('paused');
           currentBtn.classList.add('speaking');
-          currentBtn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>&#128266; Speaking...';
+          currentBtn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>'+SVG_SPEAKER+' Speaking...';
         }
       } else {
         isPaused = true;
@@ -2429,7 +2460,7 @@
         if (currentBtn) {
           currentBtn.classList.remove('speaking');
           currentBtn.classList.add('paused');
-          currentBtn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>&#9208; Paused';
+          currentBtn.innerHTML = '<span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>'+SVG_PAUSE+' Paused';
         }
       }
 
@@ -2570,6 +2601,44 @@
     voiceInput.init();
     document.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.shiftKey && e.key === 'V') { e.preventDefault(); voiceInput.toggle(); } });
     renderMemoryPanel();
+
+    // ── TTS Player Drag ──
+    const ttsPlayer = document.getElementById('ttsPlayer');
+    let dragState = null;
+    function dragStart(e) {
+      if (e.target.closest('button,select')) return;
+      const rect = ttsPlayer.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const halfW = rect.width / 2;
+      const pt = e.touches ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : { x: e.clientX, y: e.clientY };
+      dragState = { startX: pt.x, startY: pt.y, origLeft: rect.left + halfW, origBottom: vh - rect.bottom };
+      ttsPlayer.style.transition = 'none';
+      ttsPlayer.style.left = (rect.left + halfW) + 'px';
+      ttsPlayer.style.bottom = (vh - rect.bottom) + 'px';
+      ttsPlayer.style.top = 'auto';
+      ttsPlayer.style.transform = 'translateX(-50%) translateY(0)';
+      ttsPlayer.classList.add('dragging');
+    }
+    function dragMove(e) {
+      if (!dragState) return;
+      const pt = e.touches ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : { x: e.clientX, y: e.clientY };
+      const dx = pt.x - dragState.startX, dy = pt.y - dragState.startY;
+      ttsPlayer.style.left = (dragState.origLeft + dx) + 'px';
+      ttsPlayer.style.bottom = (dragState.origBottom - dy) + 'px';
+    }
+    function dragEnd() {
+      if (!dragState) return;
+      dragState = null;
+      ttsPlayer.style.transition = '';
+      ttsPlayer.classList.remove('dragging');
+      localStorage.setItem('ttsPlayerPos', JSON.stringify({ x: parseInt(ttsPlayer.style.left), y: parseInt(ttsPlayer.style.bottom) }));
+    }
+    ttsPlayer.addEventListener('mousedown', dragStart);
+    document.addEventListener('mousemove', dragMove);
+    document.addEventListener('mouseup', dragEnd);
+    ttsPlayer.addEventListener('touchstart', dragStart, { passive: false });
+    document.addEventListener('touchmove', dragMove, { passive: false });
+    document.addEventListener('touchend', dragEnd);
   });
 </script>
 </body>
