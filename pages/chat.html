@@ -697,6 +697,8 @@
       #userInput { font-size:0.9rem; }
       .send-btn { width:36px; height:36px; border-radius:10px; font-size:1rem; }
       .welcome-state { padding:40px 16px; }
+      .session-delete-btn { opacity:1; }
+      .session-item-wrap { padding-right:4px; }
     }
     @media (max-width:400px) { .message-bubble { max-width:93%; } .agent-btn { padding:6px 3px; font-size:0.65rem; min-height:72px; } .agent-btn .a-emoji { width:24px; height:24px; } .agent-btn .a-emoji svg { width:20px; height:20px; } .agent-grid { grid-template-columns: 1fr 1fr; } }
     @media (min-width:769px) and (max-width:1024px) { .sidebar { width:240px; min-width:240px; } .message-bubble { max-width:80%; } }
@@ -1639,6 +1641,8 @@ After your Drive operation executes, the result will appear in the conversation 
     currentUser: null, currentSessionId: null, chatHistory: [], selectedAgent: 'openai', memories: {},
     newChat() {
       this.currentSessionId = 'session_' + Date.now(); this.chatHistory = [];
+      this.activeResearchReport = null;
+      this.activeResearchTopic = null;
       document.querySelectorAll('.session-item-wrap').forEach(w => w.classList.remove('active-session'));
       document.getElementById('chatMessages').innerHTML = `<div class="welcome-state"><div class="welcome-icon">✦</div><h2>What can I help you with?</h2><p>Your prompt will be <span class="highlight">auto-enhanced</span> before reaching the AI.</p></div>`;
       if (typeof closeArtifactPanel === 'function') closeArtifactPanel();
@@ -1647,6 +1651,18 @@ After your Drive operation executes, the result will appear in the conversation 
       this.currentSessionId = id; this.chatHistory = session.messages || [];
       document.getElementById('chatMessages').innerHTML = '';
       this.chatHistory.forEach(m => appendMessage(m.role, m.content, false));
+      // Restore research artifact panel if this session has research data
+      if (session.researchReport) {
+        this.activeResearchReport = session.researchReport;
+        this.activeResearchTopic = session.researchTopic || 'Research Report';
+        document.getElementById('artifactTopic').textContent = this.activeResearchTopic;
+        document.getElementById('artifactBody').innerHTML = formatResearchMarkdown(marked.parse(session.researchReport));
+        openArtifactPanel();
+      } else {
+        this.activeResearchReport = null;
+        this.activeResearchTopic = null;
+        closeArtifactPanel();
+      }
     }
   };
 
@@ -1953,14 +1969,19 @@ After your Drive operation executes, the result will appear in the conversation 
 
     const nx    = window._nexus;
     const agent = nx.selectedAgent;
-
-    if (document.getElementById('researchToggle')?.checked) {
-      await runDeepResearch(rawPrompt, agent);
-      return;
-    }
-
     const enhance    = document.getElementById('enhanceToggle').checked;
     const webEnabled = document.getElementById('webSearchToggle')?.checked;
+
+    // Enhance first for both normal and deep research modes
+    let finalPrompt = rawPrompt;
+    if (enhance && document.getElementById('researchToggle')?.checked) {
+      finalPrompt = await enhancePrompt(rawPrompt, agent);
+    }
+
+    if (document.getElementById('researchToggle')?.checked) {
+      await runDeepResearch(finalPrompt, agent);
+      return;
+    }
 
     const userBubbleNode = appendMessage('user', rawPrompt, true);
     const userHistoryEntry = { role: 'user', content: rawPrompt };
@@ -1968,7 +1989,6 @@ After your Drive operation executes, the result will appear in the conversation 
 
     const typingId = showTyping();
     try {
-      let finalPrompt = rawPrompt;
       if (enhance) {
         updateTyping(typingId, '✨ Enhancing your prompt…');
         finalPrompt = await enhancePrompt(rawPrompt, agent);
@@ -2023,7 +2043,8 @@ After your Drive operation executes, the result will appear in the conversation 
       if (nx.currentUser && nx.currentSessionId && typeof window._saveSession === 'function') {
         const title = nx.chatHistory[0]?.content?.slice(0, 60) || 'Chat';
         window._saveSession(nx.currentUser.uid, nx.currentSessionId, {
-          title, messages: nx.chatHistory, createdAt: Date.now(), agent
+          title, messages: nx.chatHistory, createdAt: Date.now(), agent,
+          ...(nx.activeResearchReport ? { researchReport: nx.activeResearchReport, researchTopic: nx.activeResearchTopic } : {})
         });
       }
 
@@ -2085,6 +2106,8 @@ After your Drive operation executes, the result will appear in the conversation 
     link.setAttribute("href", url); link.setAttribute("download", filename);
     document.body.appendChild(link); link.click(); document.body.removeChild(link);
   }
+
+  // ══════════════════════════════════════════════
 
   function formatResearchMarkdown(md) {
     let processed = md;
@@ -2315,7 +2338,11 @@ After your Drive operation executes, the result will appear in the conversation 
             nx.chatHistory.push({ role:'assistant', content: event.result });
             if (nx.currentUser && nx.currentSessionId && typeof window._saveSession === 'function') {
               const title = nx.chatHistory[0]?.content?.slice(0,60) || 'Research: '+(plan ? plan.topic : prompt);
-              window._saveSession(nx.currentUser.uid, nx.currentSessionId, { title, messages: nx.chatHistory, createdAt: Date.now(), agent });
+              window._saveSession(nx.currentUser.uid, nx.currentSessionId, {
+                title, messages: nx.chatHistory, createdAt: Date.now(), agent,
+                researchReport: event.result,
+                researchTopic: plan ? plan.topic : prompt
+              });
             }
 
           // ── ERROR ──
