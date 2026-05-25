@@ -14,7 +14,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getAuth, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { getDatabase, ref, set, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
     const firebaseConfig = {
@@ -60,6 +60,7 @@
           || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'U')}&background=7c3aed&color=fff`;
         document.getElementById('userName').textContent = user.displayName || 'User';
       }
+      updateDriveUi();
       const sessRef = ref(db, `sessions/${user.uid}`);
       onValue(sessRef, (snap) => {
         const data = snap.val() || {};
@@ -110,6 +111,87 @@
       }
       window._nexus.newChat();
     });
+
+    /* ── Google Drive ────────────────────────────── */
+    const DRIVE_TOKEN_KEY = 'nexus_drive_token';
+    window._nexus.driveToken = null;
+    window._nexus.driveConnected = false;
+
+    (function restoreDriveToken() {
+      try {
+        const stored = localStorage.getItem(DRIVE_TOKEN_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed && parsed.token) {
+            window._nexus.driveToken = parsed.token;
+            window._nexus.driveConnected = true;
+            setTimeout(() => validateDriveToken(), 100);
+          }
+        }
+      } catch {}
+    })();
+
+    async function validateDriveToken() {
+      const token = window._nexus.driveToken;
+      if (!token) return;
+      try {
+        const res = await fetch("https://nexus-ai-backend-3csk.onrender.com/api/drive/list", {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ accessToken: token, pageSize: 1 })
+        });
+        if (!res.ok) throw new Error('invalid');
+      } catch {
+        window._nexus.driveToken = null;
+        window._nexus.driveConnected = false;
+        localStorage.removeItem(DRIVE_TOKEN_KEY);
+        if (typeof window.updateDriveUi === 'function') window.updateDriveUi();
+      }
+    }
+
+    window.updateDriveUi = function() {
+      const btn = document.getElementById('googleDriveBtn');
+      const lbl = document.getElementById('googleDriveLabel');
+      if (!btn) return;
+      const user = window._nexus.currentUser;
+      if (!user || user.isAnonymous) {
+        btn.disabled = true; btn.classList.remove('connected');
+        lbl.textContent = 'Sign in to Connect Drive';
+        return;
+      }
+      btn.disabled = false;
+      if (window._nexus.driveConnected) {
+        btn.classList.add('connected'); btn.onclick = window.disconnectGoogleDrive;
+        lbl.textContent = 'Disconnect Google Drive';
+      } else {
+        btn.classList.remove('connected'); btn.onclick = window.connectGoogleDrive;
+        lbl.textContent = 'Connect Google Drive';
+      }
+    };
+    window.connectGoogleDrive = async function() {
+      const btn = document.getElementById('googleDriveBtn');
+      if (!btn || btn.disabled) return;
+      try {
+        const provider = new GoogleAuthProvider();
+        provider.addScope('https://www.googleapis.com/auth/drive.file');
+        const result = await signInWithPopup(auth, provider);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        window._nexus.driveToken = credential.accessToken;
+        window._nexus.driveConnected = true;
+        localStorage.setItem(DRIVE_TOKEN_KEY, JSON.stringify({ token: credential.accessToken, savedAt: Date.now() }));
+        window.updateDriveUi();
+      } catch (e) {
+        if (e.code !== 'auth/popup-closed-by-user') {
+          console.error('Drive connect error:', e);
+          alert('Failed to connect Google Drive: ' + e.message);
+        }
+      }
+    };
+    window.disconnectGoogleDrive = function() {
+      window._nexus.driveToken = null;
+      window._nexus.driveConnected = false;
+      localStorage.removeItem(DRIVE_TOKEN_KEY);
+      window.updateDriveUi();
+    };
   </script>
 
   <style>
@@ -333,6 +415,12 @@
     .btn-signout:hover { background:rgba(255,45,120,0.1); }
     .btn-settings { padding:6px 10px; border-radius:8px; border:1px solid var(--c-border); background:transparent; color:var(--c-muted); font-size:0.72rem; cursor:pointer; transition:all 0.2s; margin-bottom:8px; width:100%; font-family:'DM Sans',sans-serif; }
     .btn-settings:hover { border-color:var(--c-neon-amber); color:var(--c-neon-amber); }
+    .btn-drive { padding:6px 10px; border-radius:8px; border:1px solid var(--c-border); background:transparent; color:var(--c-muted); font-size:0.72rem; cursor:pointer; transition:all 0.2s; margin-bottom:4px; width:100%; font-family:'DM Sans',sans-serif; display:flex; align-items:center; gap:6px; justify-content:center; }
+    .btn-drive:hover:not(:disabled) { border-color:rgba(66,133,244,0.5); color:#4285f4; }
+    .btn-drive:disabled { opacity:0.4; cursor:not-allowed; }
+    .btn-drive.connected { border-color:rgba(52,168,83,0.4); color:#34a853; }
+    .btn-drive.connected:hover { border-color:#34a853; background:rgba(52,168,83,0.06); }
+    .btn-drive svg { width:14px; height:14px; flex-shrink:0; }
     .main { flex:1; display:flex; flex-direction:column; height:100vh; height:100dvh; overflow:hidden; }
     .main-header { padding:16px 24px; border-bottom:1px solid var(--c-border); display:flex; align-items:center; justify-content:space-between; backdrop-filter:blur(20px); background:rgba(5,5,16,0.8); flex-shrink:0; }
     .agent-indicator { display:flex; align-items:center; gap:10px; }
@@ -767,6 +855,7 @@
 
   <div class="sidebar-footer">
     <button class="btn-settings" onclick="showBackendStatus()">⚙ Backend Status</button>
+    <button class="btn-drive" id="googleDriveBtn" onclick="connectGoogleDrive()" title="Connect Google Drive"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M220-80 80-300l280-480 140 240-140 240 60 100H220Zm160 0 140-240 280-480 80 140-220 380-200 200h-80Zm360-420L580-340l-80-140 120-200 200 340h-80Z"/></svg> <span id="googleDriveLabel">Connect Google Drive</span></button>
     <div class="user-row">
       <img class="user-avatar-sm" id="userAvatar" src="" alt="avatar">
       <span class="user-name-sm" id="userName">User</span>
@@ -1160,6 +1249,167 @@
     return Object.values(nx.memories || {}).sort((a, b) => b.createdAt - a.createdAt).slice(0, 10);
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  ☁️ GOOGLE DRIVE INTEGRATION
+  // ══════════════════════════════════════════════════════════
+
+  const DRIVE_SYSTEM_PROMPT = `\n\n── GOOGLE DRIVE ACCESS ──
+You have live access to the user's Google Drive. You can read, create, edit, delete, search, move, and organize files and folders.
+
+HOW TO USE:
+To perform a Drive operation, include a JSON code block tagged with "drive" in your response. The system will execute it and feed the result back so you can continue.
+
+FORMAT:
+\`\`\`drive
+{"action":"<action>", ...params}
+\`\`\`
+
+AVAILABLE ACTIONS:
+• list   → List files/folders. Params: folder? (ID or "root"), query?, pageSize?
+• read   → Read file content. Params: fileId (required)
+• write  → Create/update file. Params: name, content, mimeType?, parentId?, fileId? (omit fileId to create new)
+• delete → Delete file. Params: fileId
+• search → Full-text search. Params: query
+• mkdir  → Create folder. Params: name, parentId?
+• move   → Move/rename file. Params: fileId, newName?, addParents?, removeParents?
+
+After your Drive operation executes, the result will appear in the conversation context. You can chain multiple operations across multiple response rounds to accomplish complex tasks.`;
+
+  async function buildDriveContext() {
+    if (!window._nexus.driveToken) return '';
+    try {
+      const res = await fetch(`${BACKEND}/api/drive/list`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ accessToken: window._nexus.driveToken, pageSize: 30 })
+      });
+      const d = await res.json();
+      if (!d.files?.length) return '\n\n── Google Drive: No files found ──';
+      let ctx = '\n\n── YOUR GOOGLE DRIVE FILES ──\n';
+      d.files.forEach(f => {
+        const isF = f.mimeType === 'application/vnd.google-apps.folder';
+        ctx += `  ${isF ? '[📁]' : '[📄]'} ${f.name}${isF ? ' (folder)' : ''} [ID:${f.id}]${f.size ? ' (' + Math.round(f.size/1024) + 'KB)' : ''}\n`;
+      });
+      return ctx;
+    } catch { return ''; }
+  }
+
+  function parseDriveOps(text) {
+    const ops = [];
+    const regex = /```drive\s*({[\s\S]*?})\s*```/g;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      try {
+        const op = JSON.parse(match[1]);
+        if (op && op.action) ops.push(op);
+      } catch { /* skip invalid JSON */ }
+    }
+    return ops;
+  }
+
+  async function executeDriveOperation(op) {
+    const token = window._nexus.driveToken;
+    if (!token) return { error: 'Drive not connected' };
+    const action = op.action;
+    let endpoint, body;
+    switch (action) {
+      case 'list':
+        endpoint = `${BACKEND}/api/drive/list`;
+        body = { accessToken: token, pageSize: op.pageSize || 50 };
+        if (op.folder && op.folder !== 'root') body.query = `'${op.folder}' in parents and trashed=false`;
+        else if (!op.query) body.query = 'trashed=false';
+        if (op.query) body.query = op.query;
+        break;
+      case 'read':
+        endpoint = `${BACKEND}/api/drive/read`;
+        body = { accessToken: token, fileId: op.fileId };
+        break;
+      case 'write':
+        endpoint = `${BACKEND}/api/drive/write`;
+        body = { accessToken: token, name: op.name, content: op.content, mimeType: op.mimeType || 'text/plain', parentId: op.parentId };
+        if (op.fileId) body.fileId = op.fileId;
+        break;
+      case 'delete':
+        endpoint = `${BACKEND}/api/drive/delete`;
+        body = { accessToken: token, fileId: op.fileId };
+        break;
+      case 'search':
+        endpoint = `${BACKEND}/api/drive/search`;
+        body = { accessToken: token, query: op.query };
+        break;
+      case 'mkdir':
+        endpoint = `${BACKEND}/api/drive/mkdir`;
+        body = { accessToken: token, name: op.name, parentId: op.parentId };
+        break;
+      case 'move':
+        endpoint = `${BACKEND}/api/drive/move`;
+        body = { accessToken: token, fileId: op.fileId, newName: op.newName, addParents: op.addParents, removeParents: op.removeParents };
+        break;
+      default: return { error: `Unknown Drive action: ${action}` };
+    }
+    try {
+      const res = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) return { error: data.error || `HTTP ${res.status}` };
+      return { ...data, action };
+    } catch (err) {
+      return { error: err.message, action };
+    }
+  }
+
+  function formatDriveResultSummary(op, result) {
+    if (result.error) return `❌ Drive ${op.action}: ${result.error}`;
+    switch (op.action) {
+      case 'list': {
+        const files = result.files || [];
+        if (!files.length) return '📁 Drive: No files found.';
+        return `📁 Drive: Found ${files.length} item${files.length > 1 ? 's' : ''}\n${files.slice(0, 15).map(f => `  ${f.mimeType === 'application/vnd.google-apps.folder' ? '📁' : '📄'} ${f.name} [${f.id}]`).join('\n')}${files.length > 15 ? '\n  ... and ' + (files.length - 15) + ' more' : ''}`;
+      }
+      case 'read': return result.content ? `📄 "${result.name}" (${(result.content.length / 1024).toFixed(1)}KB):\n${result.content.slice(0, 8000)}` : `📄 "${result.name}" [binary, ${result.mimeType}]`;
+      case 'write': return `✅ File ${result.file?.id ? (op.fileId ? 'updated' : 'created') : 'saved'}: ${result.file?.name || op.name} (ID: ${result.file?.id})`;
+      case 'delete': return `🗑️ Deleted file: ${result.fileId || op.fileId}`;
+      case 'search': {
+        const files = result.files || [];
+        if (!files.length) return '🔍 Drive search: No results.';
+        return `🔍 Drive search results:\n${files.map(f => `  📄 ${f.name} [${f.id}]`).join('\n')}`;
+      }
+      case 'mkdir': return `📁 Folder created: ${result.file?.name || op.name} (ID: ${result.file?.id})`;
+      case 'move': return `✏️ Renamed/moved: ${result.file?.name}`;
+      default: return `✅ Drive ${op.action}: completed`;
+    }
+  }
+
+  async function processDriveResponse(agent, response, chatHistory, activeMemories) {
+    const ops = parseDriveOps(response);
+    if (!ops.length) return response;
+    const nx = window._nexus;
+    const maxRounds = 3;
+    let currentResponse = response;
+    let allResults = [];
+
+    for (let round = 0; round < maxRounds; round++) {
+      const roundOps = parseDriveOps(currentResponse);
+      if (!roundOps.length) break;
+
+      for (const op of roundOps) {
+        const result = await executeDriveOperation(op);
+        allResults.push({ op, result });
+      }
+
+      let resultCtx = '\n\n── DRIVE OPERATION RESULTS ──\n';
+      for (const { op, result } of allResults) {
+        resultCtx += formatDriveResultSummary(op, result) + '\n';
+      }
+
+      const cleanResponse = currentResponse.replace(/```drive\s*[\s\S]*?```/g, '').trim();
+
+      chatHistory.push({ role: 'assistant', content: cleanResponse || `[Drive operations: ${roundOps.map(o => o.action).join(', ')}]` });
+      chatHistory.push({ role: 'user', content: resultCtx });
+
+      currentResponse = await callAgent(agent, resultCtx + '\n\nContinue your response using the Drive operation results above.', chatHistory.slice(-10), activeMemories);
+    }
+
+    return currentResponse.replace(/```drive\s*[\s\S]*?```/g, '').trim() || currentResponse;
+  }
 
   // ── GLOBAL SVG ICONS ──
   const SVG_SEND = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Zm0 0v-400 400Z"/></svg>';
@@ -1323,6 +1573,9 @@
     let messages, promptWithContext = prompt;
     
     let sysContent = BASE_SYSTEM_PROMPT;
+    if (window._nexus.driveConnected && window._nexus.driveToken) {
+      sysContent += DRIVE_SYSTEM_PROMPT;
+    }
     if (memories.length > 0) {
       const memLines   = memories.slice(0, 8).map(m => `• ${m.content}`).join('\n');
       sysContent += `\n\nAdditionally, here is relevant context about the user, learned from previous conversations:\n${memLines}\n\nUse this context naturally and helpfully when relevant. Do not explicitly tell the user that you have a stored memory system — just respond in a personalized, aware way.`;
@@ -1333,7 +1586,8 @@
     const memPrefix = memories.length > 0
       ? `[User background: ${memories.slice(0,5).map(m=>m.content).join('. ')}]\n\n`
       : '';
-    promptWithContext = `[System Instruction: ${BASE_SYSTEM_PROMPT}]\n\n${memPrefix}${prompt}`;
+    const drivePrompt = (window._nexus.driveConnected && window._nexus.driveToken) ? '\n\n' + DRIVE_SYSTEM_PROMPT : '';
+    promptWithContext = `[System Instruction: ${BASE_SYSTEM_PROMPT}]\n\n${memPrefix}${prompt}${drivePrompt}`;
 
     const map = {
       openai:         { url:`${BACKEND}/api/openai`,         body:{ messages } },
@@ -1534,10 +1788,25 @@
         ? finalPrompt + buildWebPromptContext(webData, rawPrompt)
         : finalPrompt;
 
-      const response = await callAgent(agent, promptWithWeb, nx.chatHistory.slice(-10), activeMemories);
+      // Include Drive file listing as context when connected
+      let driveCtx = '';
+      if (window._nexus.driveConnected && window._nexus.driveToken) {
+        updateTyping(typingId, '📁 Scanning Google Drive…');
+        driveCtx = await buildDriveContext();
+      }
+
+      const response = await callAgent(agent, promptWithWeb + driveCtx, nx.chatHistory.slice(-10), activeMemories);
       removeTyping(typingId);
 
-      const safeResponse = (typeof response === 'string' && response.trim()) ? response : '_(No response returned)_';
+      // Process any Drive operations the LLM requested
+      let finalResponse = response;
+      if (window._nexus.driveConnected && window._nexus.driveToken && parseDriveOps(response).length) {
+        updateTyping(typingId, '📁 Executing Drive operations…');
+        finalResponse = await processDriveResponse(agent, response, nx.chatHistory, activeMemories);
+        removeTyping(typingId);
+      }
+
+      const safeResponse = (typeof finalResponse === 'string' && finalResponse.trim()) ? finalResponse : '_(No response returned)_';
       const msgWrap = appendMessage('assistant', safeResponse, true);
 
       if (webData) {
