@@ -15,7 +15,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getDatabase, ref, set, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { getDatabase, ref, set, remove, get, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBYqYSWd1-DOB5O6gkixbRibtuJI66QkjE",
@@ -61,6 +61,22 @@
         document.getElementById('userName').textContent = user.displayName || 'User';
       }
       updateDriveUi();
+
+      // Restore Drive token from Firebase RTDB (cross-device sync)
+      if (!user.isAnonymous && !window._nexus.driveToken) {
+        try {
+          const snap = await get(ref(db, `drive_tokens/${user.uid}`));
+          if (snap.exists()) {
+            const data = snap.val();
+            if (data && data.token) {
+              window._nexus.driveToken = data.token;
+              window._nexus.driveConnected = true;
+              updateDriveUi();
+            }
+          }
+        } catch {}
+      }
+
       const sessRef = ref(db, `sessions/${user.uid}`);
       onValue(sessRef, (snap) => {
         const data = snap.val() || {};
@@ -113,40 +129,8 @@
     });
 
     /* ── Google Drive ────────────────────────────── */
-    const DRIVE_TOKEN_KEY = 'nexus_drive_token';
     window._nexus.driveToken = null;
     window._nexus.driveConnected = false;
-
-    (function restoreDriveToken() {
-      try {
-        const stored = localStorage.getItem(DRIVE_TOKEN_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored);
-          if (parsed && parsed.token) {
-            window._nexus.driveToken = parsed.token;
-            window._nexus.driveConnected = true;
-            setTimeout(() => validateDriveToken(), 100);
-          }
-        }
-      } catch {}
-    })();
-
-    async function validateDriveToken() {
-      const token = window._nexus.driveToken;
-      if (!token) return;
-      try {
-        const res = await fetch("https://nexus-ai-backend-3csk.onrender.com/api/drive/list", {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ accessToken: token, pageSize: 1 })
-        });
-        if (!res.ok) throw new Error('invalid');
-      } catch {
-        window._nexus.driveToken = null;
-        window._nexus.driveConnected = false;
-        localStorage.removeItem(DRIVE_TOKEN_KEY);
-        if (typeof window.updateDriveUi === 'function') window.updateDriveUi();
-      }
-    }
 
     window.updateDriveUi = function() {
       const btn = document.getElementById('googleDriveBtn');
@@ -177,7 +161,8 @@
         const credential = GoogleAuthProvider.credentialFromResult(result);
         window._nexus.driveToken = credential.accessToken;
         window._nexus.driveConnected = true;
-        localStorage.setItem(DRIVE_TOKEN_KEY, JSON.stringify({ token: credential.accessToken, savedAt: Date.now() }));
+        const uid = window._nexus.currentUser?.uid;
+        if (uid) set(ref(db, 'drive_tokens/' + uid), { token: credential.accessToken });
         window.updateDriveUi();
       } catch (e) {
         if (e.code !== 'auth/popup-closed-by-user') {
@@ -189,7 +174,8 @@
     window.disconnectGoogleDrive = function() {
       window._nexus.driveToken = null;
       window._nexus.driveConnected = false;
-      localStorage.removeItem(DRIVE_TOKEN_KEY);
+      const uid = window._nexus.currentUser?.uid;
+      if (uid) remove(ref(db, 'drive_tokens/' + uid));
       window.updateDriveUi();
     };
   </script>
