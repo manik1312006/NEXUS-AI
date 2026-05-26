@@ -1339,18 +1339,17 @@ After your Drive operation executes, the result (including a direct link to the 
 
   function handleDriveError(err) {
     const msg = (typeof err === 'string' ? err : (err?.message || err?.error || ''));
-    if (msg.includes('401') || msg.includes('Unauthorized') || msg.includes('invalid_grant') || msg.includes('Token')) {
+    if (msg.includes('401') || msg.includes('Unauthorized') || msg.includes('invalid_grant') || msg.includes('Token') || msg.includes('invalid authentication') || msg.includes('Expected OAuth')) {
       window._nexus.driveToken = null;
       window._nexus.driveConnected = false;
       window.updateDriveUi();
-      return 'Your Google Drive session has expired. Please reconnect by clicking the Drive icon in the sidebar.';
+      return 'Please Reconnect Drive.';
     }
     return msg || 'Unknown Drive error';
   }
 
   async function buildDriveContext() {
     if (!window._nexus.driveToken) return '';
-    await window.ensureDriveToken();
     try {
       // Collect files across multiple pages (up to 150 items)
       let allFiles = [];
@@ -1686,7 +1685,7 @@ After your Drive operation executes, the result (including a direct link to the 
         if (!res.ok) throw new Error(data.error || 'Upload failed');
         uploaded.push({ name: file.name, size: file.size, mimeType, fileId: data.file.id, webViewLink: data.file.webViewLink });
       } catch (err) {
-        uploaded.push({ name: file.name, size: file.size, mimeType, error: err.message });
+        uploaded.push({ name: file.name, size: file.size, mimeType, error: handleDriveError(err.message) });
       }
     }
     return uploaded;
@@ -1794,7 +1793,7 @@ After your Drive operation executes, the result (including a direct link to the 
       } catch (err) {
         removeTyping(typingId);
         console.error('Upload error:', err);
-        appendMessage('error', 'Upload failed: ' + (err.message || err), true);
+        appendMessage('error', 'Upload failed: ' + handleDriveError(err.message || err), true);
       }
     });
 
@@ -2164,11 +2163,6 @@ After your Drive operation executes, the result (including a direct link to the 
     const agent = nx.selectedAgent;
     const enhance    = document.getElementById('enhanceToggle').checked;
     const webEnabled = document.getElementById('webSearchToggle')?.checked;
-
-    // Auto-refresh Drive token if needed (runs inside user gesture so popup is allowed)
-    if (window._nexus.driveConnected) {
-      await window.ensureDriveToken();
-    }
 
     // Enhance first for both normal and deep research modes
     let finalPrompt = rawPrompt;
