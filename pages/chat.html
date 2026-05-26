@@ -590,6 +590,72 @@
     .btn-confirm-delete:hover { transform:translateY(-1px); box-shadow:0 8px 30px rgba(255,45,120,0.45); }
     .btn-confirm-delete.deleting { opacity:0.7; pointer-events:none; }
     @keyframes slideOut { from{opacity:1;max-height:60px;transform:translateX(0)} to{opacity:0;max-height:0;transform:translateX(-20px)} }
+
+    /* ── Code Editor Modal ── */
+    .code-modal { width:min(900px,95vw) !important; height:min(600px,80vh); display:flex; flex-direction:column; padding:20px !important; }
+    .code-modal .modal-header { margin-bottom:8px; flex-shrink:0; }
+    .code-modal-actions { display:flex; gap:6px; align-items:center; }
+    .code-action-btn { padding:6px 14px; border-radius:8px; border:1px solid var(--c-border); background:transparent; color:var(--c-muted); font-size:0.78rem; cursor:pointer; font-family:'DM Sans',sans-serif; transition:all 0.2s; }
+    .code-action-btn:hover { color:var(--c-text); border-color:var(--c-neon-cyan); }
+    .code-action-btn.primary { background:var(--c-neon-cyan); color:#000; border-color:var(--c-neon-cyan); font-weight:600; }
+    .code-action-btn.primary:hover { background:transparent; color:var(--c-neon-cyan); }
+    .code-editor-layout { flex:1; display:flex; flex-direction:column; min-height:0; }
+
+    /* File tabs */
+    .code-file-tabs { display:flex; gap:2px; padding:4px 0 0; overflow-x:auto; flex-shrink:0; }
+    .code-file-tab { position:relative; display:inline-flex; align-items:center; gap:5px; padding:5px 10px; border-radius:6px 6px 0 0; border:1px solid transparent; border-bottom:none; background:transparent; color:var(--c-muted); font-size:0.78rem; cursor:pointer; font-family:'Space Mono',monospace; white-space:nowrap; transition:all 0.2s; user-select:none; }
+    .code-file-tab:hover { color:var(--c-text); border-color:var(--c-border); background:rgba(255,255,255,0.04); }
+    .code-file-tab.active { color:var(--c-text); border-color:var(--c-border); background:var(--c-card); }
+    .code-file-tab.active::after { content:''; position:absolute; bottom:-1px; left:0; right:0; height:2px; background:var(--c-neon-cyan); border-radius:2px 2px 0 0; }
+    .code-tab-close { display:none; align-items:center; justify-content:center; width:16px; height:16px; border-radius:3px; border:none; background:transparent; color:var(--c-muted); font-size:0.55rem; cursor:pointer; padding:0; line-height:1; transition:all 0.15s; }
+    .code-file-tab:hover .code-tab-close { display:inline-flex; }
+    .code-file-tab.active .code-tab-close { display:inline-flex; }
+    .code-tab-close:hover { background:rgba(255,55,95,0.2); color:var(--c-neon-pink); }
+
+    /* File info bar */
+    .code-file-info { display:flex; gap:8px; align-items:center; padding:6px 0; flex-shrink:0; }
+    .code-filename-input { flex:1; padding:6px 10px; border-radius:6px; border:1px solid var(--c-border); background:rgba(0,0,0,0.3); color:var(--c-text); font-family:'Space Mono',monospace; font-size:0.8rem; outline:none; }
+    .code-filename-input:focus { border-color:var(--c-neon-cyan); }
+    .code-lang-badge { display:inline-flex; align-items:center; padding:3px 8px; border-radius:4px; background:rgba(0,245,255,0.08); border:1px solid rgba(0,245,255,0.15); color:var(--c-neon-cyan); font-size:0.62rem; font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:0.05em; flex-shrink:0; }
+    
+
+    /* Editor container */
+    .code-editor-container { flex:1; min-height:200px; border-radius:0; border:1px solid var(--c-border); border-left:none; border-right:none; overflow:hidden; position:relative; }
+
+    /* Status bar */
+    .code-status-bar { display:flex; align-items:center; gap:10px; padding:3px 10px; flex-shrink:0; font-size:0.65rem; font-family:'Space Mono',monospace; color:var(--c-muted); border:1px solid var(--c-border); border-top:none; border-radius:0 0 6px 6px; min-height:22px; }
+    .code-status-bar-item { display:flex; align-items:center; gap:4px; }
+    .code-status-bar-sep { width:1px; height:10px; background:var(--c-border); }
+
+    /* Footer */
+    .code-modal-footer { flex-shrink:0; padding-top:8px; }
+    .code-footer-hint { font-size:0.7rem; color:var(--c-muted); display:flex; gap:12px; flex-wrap:wrap; }
+    .file-download-bar { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+    .code-footer-kbd { background:rgba(255,255,255,0.06); padding:1px 6px; border-radius:3px; font-family:'Space Mono',monospace; font-size:0.62rem; border:1px solid rgba(255,255,255,0.08); }
+
+    @media (max-width:600px) {
+      .code-modal { width:100vw !important; height:100vh !important; max-height:100vh !important; border-radius:0 !important; padding:12px !important; }
+      .code-modal .modal-header { margin-bottom:4px; }
+      .code-modal .modal-title { font-size:0.85rem; }
+      .code-modal-actions { gap:3px; }
+      .code-action-btn { padding:4px 8px; font-size:0.68rem; }
+      .code-file-tabs { padding:2px 0 0; }
+      .code-file-tab { padding:3px 6px; font-size:0.65rem; border-radius:4px 4px 0 0; gap:3px; }
+      .code-file-info { padding:4px 0; gap:5px; }
+      .code-filename-input { font-size:0.68rem; padding:4px 7px; }
+      .code-lang-badge { font-size:0.55rem; padding:2px 5px; }
+      .code-editor-container { min-height:100px; }
+      .code-status-bar { font-size:0.55rem; gap:6px; padding:2px 6px; min-height:18px; }
+      .code-modal-footer { padding-top:4px; }
+      .code-footer-hint { font-size:0.6rem; gap:6px; flex-direction:column; }
+      .code-footer-kbd { font-size:0.55rem; padding:0 4px; }
+    }
+    @media (max-width:400px) {
+      .code-action-btn { font-size:0.62rem; padding:3px 6px; }
+      .code-file-tab { font-size:0.58rem; padding:2px 5px; }
+      .code-status-bar { font-size:0.5rem; gap:4px; }
+      .code-footer-hint { font-size:0.55rem; }
+    }
     .session-item-wrap.deleting-anim { animation:slideOut 0.3s ease forwards; overflow:hidden; }
     .menu-toggle { display:none; background:none; border:none; color:var(--c-text); font-size:1.4rem; cursor:pointer; padding:4px 8px; border-radius:8px; transition:background 0.2s; }
     .menu-toggle:hover { background:rgba(255,255,255,0.08); }
@@ -979,6 +1045,7 @@
 
   <div class="input-area">
     <div class="input-box">
+      <button class="upload-btn" id="codeBtn" title="Open code editor (Ctrl+Shift+K)"><svg xmlns="http://www.w3.org/2000/svg" height="22px" viewBox="0 -960 960 960" width="22px" fill="currentColor"><path d="M160-240v-480 520-40Zm0 80q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h240l80 80h320q33 0 56.5 23.5T880-640v200h-80v-200H447l-80-80H160v480h200v80H160ZM584-56 440-200l144-144 56 57-87 87 87 87-56 57Zm192 0-56-57 87-87-87-87 56-57 144 144L776-56Z"/></svg></button>
       <button class="upload-btn" id="uploadBtn" title="Upload file to Google Drive (Google users only)"><svg xmlns="http://www.w3.org/2000/svg" height="22px" viewBox="0 -960 960 960" width="22px" fill="currentColor"><path d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg></button>
       <textarea id="userInput" rows="1" placeholder="Ask anything… your prompt will be enhanced before sending"></textarea>
       <button class="send-btn" id="sendBtn"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Zm0 0v-400 400Z"/></svg></button>
@@ -1076,6 +1143,43 @@
   </div>
 </div>
 
+<!-- CODE EDITOR MODAL -->
+<div class="modal-overlay" id="codeModal">
+  <div class="modal code-modal">
+    <div class="modal-header">
+      <div class="modal-title"><svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="currentColor" style="vertical-align:middle;margin-right:6px"><path d="M160-400v-80h280v80H160Zm0-160v-80h440v80H160Zm0-160v-80h440v80H160Zm360 560v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q8 9 12.5 20t4.5 22q0 11-4 22.5T863-380L643-160H520Zm300-263-37-37 37 37ZM580-220h38l121-122-18-19-19-18-122 121v38Zm141-141-19-18 37 37-18-19Z"/></svg>Code Editor</div>
+      <div class="code-modal-actions">
+        <button class="code-action-btn" onclick="addCodeFile()" title="Add a new file">+ Add File</button>
+        <button class="code-action-btn" id="codeUploadBtn" title="Upload a file from your computer"><svg xmlns="http://www.w3.org/2000/svg" height="18px" viewBox="0 -960 960 960" width="18px" fill="currentColor" style="vertical-align:middle"><path d="M440-200h80v-167l64 64 56-57-160-160-160 160 57 56 63-63v167ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v480q0 33-23.5 56.5T720-80H240Zm280-520v-200H240v640h480v-440H520ZM240-800v200-200 640-640Z"/></svg></button>
+        <button class="code-action-btn primary" onclick="sendCodeToLLM()" title="Send all files to the LLM as context">➤ Send to LLM</button>
+        <button class="modal-close" onclick="closeCodeModal()">✕</button>
+      </div>
+    </div>
+    <div class="code-editor-layout">
+      <div class="code-file-tabs" id="codeFileTabs"></div>
+      <div class="code-file-info">
+        <input class="code-filename-input" id="codeFileName" placeholder="filename.ext (e.g. script.js)" spellcheck="false">
+        <span class="code-lang-badge" id="codeLangBadge">TXT</span>
+      </div>
+      <div id="codeEditorContainer" class="code-editor-container"></div>
+      <div class="code-status-bar" id="codeStatusBar">
+        <span class="code-status-bar-item" id="codeStatusCursor">Ln 1, Col 1</span>
+        <span class="code-status-bar-sep"></span>
+        <span class="code-status-bar-item" id="codeStatusLang">plaintext</span>
+        <span class="code-status-bar-sep"></span>
+        <span class="code-status-bar-item" id="codeStatusFiles">1 file</span>
+      </div>
+    </div>
+    <div class="code-modal-footer">
+      <span class="code-footer-hint">
+        <span>Ctrl+<kbd class="code-footer-kbd">S</kbd> save · <kbd class="code-footer-kbd">Tab</kbd> indent · <kbd class="code-footer-kbd">Ctrl+Shift+K</kbd> open</span>
+        <span>Upload files from your computer</span>
+      </span>
+    </div>
+
+  </div>
+</div>
+
 <!-- TTS Floating Player -->
 <div class="tts-player" id="ttsPlayer">
   <div class="tts-player-avatar" id="ttsPlayerAvatar"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="22px" height="22px" fill="currentColor"><path d="M560-131v-82q90-26 145-100t55-168q0-94-55-168T560-749v-82q124 28 202 125.5T840-481q0 127-78 224.5T560-131ZM120-360v-240h160l200-200v640L280-360H120Zm80-80h114l86 86v-252l-86 86H200v80Zm200-40Z"/></svg></div>
@@ -1112,6 +1216,9 @@
     const isDark = document.getElementById('toggle').checked;
     document.documentElement.classList.toggle('light', !isDark);
     localStorage.setItem('nexus-theme', isDark ? 'dark' : 'light');
+    if (typeof monaco !== 'undefined' && monacoEditor) {
+      monaco.editor.setTheme(isDark ? 'vs-dark' : 'vs');
+    }
   }
 
   const RENDER_BACKEND = "https://nexus-ai-backend-3csk.onrender.com";
@@ -1282,7 +1389,7 @@
   function getActiveMemories() {
     const nx = window._nexus;
     if (nx.currentUser?.isAnonymous) return [];
-    return Object.values(nx.memories || {}).sort((a, b) => b.createdAt - a.createdAt).slice(0, 10);
+    return Object.values(nx.memories || {}).sort((a, b) => b.createdAt - a.createdAt);
   }
 
   // ══════════════════════════════════════════════════════════
@@ -1919,7 +2026,11 @@ After your Drive operation executes, the result (including a direct link to the 
       </div>`;
     container.appendChild(wrap);
     container.scrollTop = container.scrollHeight;
-    if (role === 'assistant') wrap.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+    if (role === 'assistant') {
+      wrap.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+      const bubble = wrap.querySelector('.message-bubble');
+      if (bubble) injectFileDownloads(bubble, safeContent);
+    }
     return wrap;
   }
 
@@ -1952,6 +2063,42 @@ After your Drive operation executes, the result (including a direct link to the 
       bubble.classList.remove('prompt-enhancing'); bubble.classList.add('prompt-enhanced');
       setTimeout(() => bubble.classList.remove('prompt-enhanced'), 700);
     }, 350);
+  }
+
+  function injectFileDownloads(bubbleEl, content) {
+    const regex = /###\s*📄\s*(\S+)\s*\n(?:```\w*\n)?([\s\S]*?)```/g;
+    const files = [];
+    let match;
+    while ((match = regex.exec(content)) !== null) {
+      const filename = match[1].trim();
+      const fileContent = match[2].trim();
+      if (filename && fileContent) files.push({ filename, content: fileContent });
+    }
+    if (!files.length) return;
+
+    const btnWrap = document.createElement('div');
+    btnWrap.className = 'file-download-bar';
+
+    files.forEach(f => {
+      const btn = document.createElement('button');
+      btn.className = 'copy-btn';
+      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" height="14px" viewBox="0 -960 960 960" width="14px" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>' + f.filename;
+      btn.title = 'Download ' + f.filename;
+      btn.onclick = () => {
+        const blob = new Blob([f.content], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = f.filename;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        btn.innerHTML = '✓ Downloaded';
+        setTimeout(() => btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" height="14px" viewBox="0 -960 960 960" width="14px" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>' + f.filename, 2000);
+      };
+      btnWrap.appendChild(btn);
+    });
+
+    bubbleEl.appendChild(btnWrap);
   }
 
   function copyMsg(btn) {
@@ -1995,15 +2142,24 @@ After your Drive operation executes, the result (including a direct link to the 
     if (window._nexus.driveConnected && window._nexus.driveToken) {
       sysContent += DRIVE_SYSTEM_PROMPT;
     }
+    if (window._nexus.codeFilesSent?.length) {
+      sysContent += `\n\n── CODE EDITING INSTRUCTIONS ──
+The user has sent code files for you to edit. The files are embedded in the message with headers like "### 📄 filename.ext". You MUST:
+1. Read all the code files carefully
+2. Make the requested edits
+3. Return each edited file using the EXACT SAME format: "### 📄 filename.ext" followed by a code block with the complete file content
+4. If the user doesn't specify changes, review the code for improvements, bugs, and best practices
+5. Keep the filename headers identical so the system can match files`;
+    }
     if (memories.length > 0) {
-      const memLines   = memories.slice(0, 8).map(m => `• ${m.content}`).join('\n');
+      const memLines   = memories.map(m => `• ${m.content}`).join('\n');
       sysContent += `\n\nAdditionally, here is relevant context about the user, learned from previous conversations:\n${memLines}\n\nUse this context naturally and helpfully when relevant. Do not explicitly tell the user that you have a stored memory system — just respond in a personalized, aware way.`;
     }
     
     messages = [{ role: 'system', content: sysContent }, ...recentHistory, userMsg];
     
     const memPrefix = memories.length > 0
-      ? `[User background: ${memories.slice(0,5).map(m=>m.content).join('. ')}]\n\n`
+      ? `[User background: ${memories.map(m=>m.content).join('. ')}]\n\n`
       : '';
     const drivePrompt = (window._nexus.driveConnected && window._nexus.driveToken) ? '\n\n' + DRIVE_SYSTEM_PROMPT : '';
     promptWithContext = `[System Instruction: ${BASE_SYSTEM_PROMPT}]\n\n${memPrefix}${prompt}${drivePrompt}`;
@@ -2153,6 +2309,261 @@ After your Drive operation executes, the result (including a direct link to the 
     bubbleEl.appendChild(details);
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  💻 CODE EDITOR
+  // ══════════════════════════════════════════════════════════
+  // ── CODE EDITOR (Monaco Editor) ──
+  let codeFiles = [];
+  let activeCodeFile = 0;
+  let monacoEditor = null;
+  let monacoReady = false;
+
+  // Start loading Monaco in background
+  const MONACO_URL = 'https://cdn.jsdelivr.net/npm/monaco-editor@0.52.0/min/vs';
+  (function loadMonaco() {
+    const script = document.createElement('script');
+    script.src = MONACO_URL + '/loader.js';
+    script.onload = () => {
+      require.config({ paths: { vs: MONACO_URL }});
+      require(['vs/editor/editor.main'], () => {
+        monacoReady = true;
+        if (document.getElementById('codeModal').classList.contains('show')) {
+          document.getElementById('codeEditorContainer').innerHTML = '';
+          createMonacoEditor();
+          if (codeFiles[activeCodeFile]) monacoEditor.setValue(codeFiles[activeCodeFile].content);
+        }
+      });
+    };
+    document.head.appendChild(script);
+  })();
+
+
+
+  function detectLanguage(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    const map = {
+      js:'javascript', jsx:'javascript', mjs:'javascript', cjs:'javascript',
+      ts:'typescript', tsx:'typescript',
+      py:'python', rb:'ruby', go:'go', rs:'rust', swift:'swift', kt:'kotlin',
+      html:'html', htm:'html', css:'css', scss:'scss', less:'less',
+      json:'json', xml:'xml', yaml:'yaml', yml:'yaml',
+      md:'markdown', sql:'sql', sh:'shell', bash:'shell', zsh:'shell',
+      c:'c', cpp:'cpp', h:'c', hpp:'cpp', java:'java',
+      php:'php', r:'r', vue:'html', svelte:'html', astro:'html',
+      toml:'ini', ini:'ini', cfg:'ini',
+      tex:'latex', dart:'dart', lua:'lua', scala:'scala', groovy:'groovy',
+    };
+    return map[ext] || 'plaintext';
+  }
+
+  function createMonacoEditor() {
+    if (!monacoReady || monacoEditor) return;
+    const container = document.getElementById('codeEditorContainer');
+    if (!container) return;
+    const isLight = document.documentElement.classList.contains('light');
+    monacoEditor = monaco.editor.create(container, {
+      value: codeFiles[activeCodeFile]?.content || '',
+      language: detectLanguage(codeFiles[activeCodeFile]?.name || ''),
+      theme: isLight ? 'vs' : 'vs-dark',
+      minimap: { enabled: false },
+      fontSize: 13,
+      fontFamily: "'Space Mono', monospace",
+      lineNumbers: 'on',
+      scrollBeyondLastLine: false,
+      automaticLayout: true,
+      padding: { top: 12, bottom: 12 },
+      tabSize: 2,
+    });
+    // Sync Monaco changes back to codeFiles
+    monacoEditor.onDidChangeModelContent(() => {
+      if (codeFiles[activeCodeFile]) {
+        codeFiles[activeCodeFile].content = monacoEditor.getValue();
+      }
+    });
+    // Update status bar on cursor move
+    monacoEditor.onDidChangeCursorPosition(() => updateStatusBar());
+    updateStatusBar();
+  }
+
+  function openCodeModal() {
+    if (!codeFiles.length) addCodeFile();
+    renderCodeTabs();
+    document.getElementById('codeModal').classList.add('show');
+    const container = document.getElementById('codeEditorContainer');
+    if (!monacoReady) {
+      container.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--c-muted);font-size:0.85rem;font-family:\'Space Mono\',monospace;gap:10px"><div style="width:16px;height:16px;border:2px solid rgba(0,245,255,0.15);border-top-color:var(--c-neon-cyan);border-radius:50%;animation:wspin 0.8s linear infinite"></div>Loading editor…</div>';
+    }
+    setTimeout(() => {
+      if (monacoReady) createMonacoEditor();
+      if (monacoEditor) {
+        monacoEditor.setValue(codeFiles[activeCodeFile]?.content || '');
+        monaco.editor.setModelLanguage(monacoEditor.getModel(), detectLanguage(codeFiles[activeCodeFile]?.name || ''));
+        monacoEditor.focus();
+      }
+      updateStatusBar();
+    }, 200);
+  }
+
+  function closeCodeModal() {
+    document.getElementById('codeModal').classList.remove('show');
+  }
+
+  function updateStatusBar() {
+    const cursorEl = document.getElementById('codeStatusCursor');
+    const langEl = document.getElementById('codeStatusLang');
+    const filesEl = document.getElementById('codeStatusFiles');
+    const badgeEl = document.getElementById('codeLangBadge');
+    if (!cursorEl || !langEl || !filesEl) return;
+    const f = codeFiles[activeCodeFile];
+    const lang = f ? detectLanguage(f.name) : 'plaintext';
+    langEl.textContent = lang;
+    if (badgeEl) badgeEl.textContent = lang === 'plaintext' ? 'TXT' : lang.slice(0, 4).toUpperCase();
+    filesEl.textContent = codeFiles.length + ' file' + (codeFiles.length !== 1 ? 's' : '');
+    if (monacoEditor) {
+      const pos = monacoEditor.getPosition();
+      cursorEl.textContent = `Ln ${pos.lineNumber}, Col ${pos.column}`;
+    }
+  }
+
+  function closeTab(idx) {
+    if (codeFiles.length <= 1) return;
+    if (monacoEditor) codeFiles[activeCodeFile].content = monacoEditor.getValue();
+    codeFiles.splice(idx, 1);
+    if (activeCodeFile > idx) activeCodeFile--;
+    else if (activeCodeFile >= codeFiles.length) activeCodeFile = codeFiles.length - 1;
+    renderCodeTabs();
+  }
+
+  function renderCodeTabs() {
+    const tabsEl = document.getElementById('codeFileTabs');
+    const nameInput = document.getElementById('codeFileName');
+    if (!tabsEl) return;
+
+    tabsEl.innerHTML = codeFiles.map((f, i) =>
+      `<div class="code-file-tab ${i === activeCodeFile ? 'active' : ''}" onclick="switchCodeFile(${i})">
+        ${f.name || 'untitled'}
+        <span class="code-tab-close" onclick="event.stopPropagation();closeTab(${i})" title="Close">✕</span>
+      </div>`
+    ).join('');
+
+    if (codeFiles[activeCodeFile]) {
+      nameInput.value = codeFiles[activeCodeFile].name;
+      if (monacoEditor) {
+        monacoEditor.setValue(codeFiles[activeCodeFile].content);
+        monaco.editor.setModelLanguage(monacoEditor.getModel(), detectLanguage(codeFiles[activeCodeFile].name));
+      }
+    }
+    updateStatusBar();
+  }
+
+  function switchCodeFile(idx) {
+    const nameInput = document.getElementById('codeFileName');
+    if (codeFiles[activeCodeFile]) {
+      codeFiles[activeCodeFile].content = monacoEditor ? monacoEditor.getValue() : '';
+      codeFiles[activeCodeFile].name = nameInput.value.trim();
+    }
+    activeCodeFile = idx;
+    renderCodeTabs();
+  }
+
+  function addCodeFile() {
+    const nameInput = document.getElementById('codeFileName');
+    if (codeFiles[activeCodeFile]) {
+      codeFiles[activeCodeFile].content = monacoEditor ? monacoEditor.getValue() : '';
+      codeFiles[activeCodeFile].name = nameInput.value.trim();
+    }
+    codeFiles.push({ name: '', content: '' });
+    activeCodeFile = codeFiles.length - 1;
+    renderCodeTabs();
+    setTimeout(() => document.getElementById('codeFileName')?.focus(), 100);
+  }
+
+  function syncCurrentFile() {
+    const nameInput = document.getElementById('codeFileName');
+    if (codeFiles[activeCodeFile]) {
+      codeFiles[activeCodeFile].content = monacoEditor ? monacoEditor.getValue() : '';
+      codeFiles[activeCodeFile].name = nameInput.value.trim();
+    }
+  }
+
+  function sendCodeToLLM() {
+    syncCurrentFile();
+    const validFiles = codeFiles.filter(f => f.content.trim());
+    if (!validFiles.length) {
+      if (codeFiles[0]?.content?.trim()) validFiles.push(codeFiles[0]);
+    }
+    if (!validFiles.length) return;
+
+    let codeContext = '\n\n── CODE FILES TO EDIT ──\n';
+    validFiles.forEach((f, i) => {
+      const fileName = f.name.trim() || `file_${i + 1}`;
+      codeContext += `\n### 📄 ${fileName}\n\`\`\`\n${f.content}\n\`\`\`\n`;
+    });
+    codeContext += '\n── END OF CODE FILES ──\n';
+
+    const input = document.getElementById('userInput');
+    if (input) {
+      const existing = input.value.trim();
+      input.value = existing ? codeContext + '\n\n' + existing : codeContext + '\n\nEdit the above code files. Return each edited file using the same format with the filename header.';
+      autoResize(input);
+      input.focus();
+    }
+
+    window._nexus.codeFilesSent = validFiles.map(f => f.name.trim() || 'untitled');
+
+    closeCodeModal();
+    codeFiles = [];
+    activeCodeFile = 0;
+  }
+
+  document.getElementById('codeBtn')?.addEventListener('click', openCodeModal);
+
+  // Code editor file upload
+  const codeFileInput = document.createElement('input');
+  codeFileInput.type = 'file';
+  codeFileInput.accept = '*/*';
+  codeFileInput.style.display = 'none';
+  codeFileInput.id = 'codeFileInput';
+  document.body.appendChild(codeFileInput);
+
+  document.getElementById('codeUploadBtn')?.addEventListener('click', () => codeFileInput.click());
+
+  codeFileInput.addEventListener('change', () => {
+    const file = codeFileInput.files?.[0];
+    if (!file) return;
+    codeFileInput.value = '';
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result;
+      if (typeof content !== 'string') return;
+      const name = file.name;
+      // Save current file before switching
+      if (monacoEditor && codeFiles[activeCodeFile]) codeFiles[activeCodeFile].content = monacoEditor.getValue();
+      codeFiles.push({ name, content });
+      activeCodeFile = codeFiles.length - 1;
+      renderCodeTabs();
+      if (monacoEditor) {
+        monacoEditor.setValue(content);
+        monaco.editor.setModelLanguage(monacoEditor.getModel(), detectLanguage(name));
+        monacoEditor.focus();
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  document.getElementById('codeFileName')?.addEventListener('input', () => {
+    if (codeFiles[activeCodeFile]) {
+      codeFiles[activeCodeFile].name = document.getElementById('codeFileName').value.trim();
+      renderCodeTabs();
+      if (monacoEditor) {
+        monaco.editor.setModelLanguage(monacoEditor.getModel(), detectLanguage(codeFiles[activeCodeFile].name));
+      }
+      updateStatusBar();
+    }
+  });
+
+  // ── END CODE EDITOR ──
+
   async function sendMessage() {
     const input     = document.getElementById('userInput');
     const rawPrompt = input.value.trim();
@@ -2201,9 +2612,14 @@ After your Drive operation executes, the result (including a direct link to the 
         ? `🧠 Using ${activeMemories.length} memor${activeMemories.length === 1 ? 'y' : 'ies'}…`
         : '';
 
+      const codeLabel = window._nexus.codeFilesSent?.length
+        ? `💻 ${window._nexus.codeFilesSent.length} file${window._nexus.codeFilesSent.length > 1 ? 's' : ''} · `
+        : '';
+
       updateTyping(typingId,
         (memLabel ? memLabel + ' · ' : '') +
         (webData ? '🌐 Web-grounded · ' : '') +
+        codeLabel +
         '🤖 Asking ' + agentName(agent) + '…'
       );
 
@@ -2212,6 +2628,8 @@ After your Drive operation executes, the result (including a direct link to the 
         : finalPrompt;
 
       const response = await callAgent(agent, promptWithWeb, nx.chatHistory.slice(-10), activeMemories);
+      // Reset code files flag after use
+      window._nexus.codeFilesSent = null;
 
       // Process any Drive operations the LLM requested (keep typing indicator alive through this)
       let finalResponse = response;
@@ -2946,6 +3364,7 @@ After your Drive operation executes, the result (including a direct link to the 
     userInput.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } });
     userInput.addEventListener('input', () => autoResize(userInput));
     sendBtn.addEventListener('click', sendMessage);
+    document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'K') { e.preventDefault(); openCodeModal(); } });
     document.getElementById('settingsModal').addEventListener('click', e => { if (e.target === document.getElementById('settingsModal')) closeSettings(); });
 
     renderMemoryPanel();
