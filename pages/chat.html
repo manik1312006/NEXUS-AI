@@ -778,8 +778,6 @@
 .debate-error .debate-turn-content { color: #ff6b9d; }
 .debate-progress-bar-wrap { width: 100%; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
 .debate-progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--c-neon-amber), var(--c-neon-green)); transition: width 0.4s ease; box-shadow: 0 0 8px var(--c-neon-amber); }
-#debateStartBtn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,190,0,0.45); }
-#debateStartBtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 .debate-round-pill { display:flex; flex-direction:column; align-items:center; flex:1; padding:6px 4px 5px; border-radius:10px; border:1px solid var(--c-border); background:rgba(0,0,0,0.2); cursor:pointer; transition:all 0.2s; user-select:none; }
 .debate-round-pill:hover { border-color:rgba(255,190,0,0.3); background:rgba(255,190,0,0.05); }
 .debate-round-pill.active { border-color:var(--c-neon-amber); background:rgba(255,190,0,0.1); box-shadow:0 0 10px rgba(255,190,0,0.12); }
@@ -918,7 +916,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     <div class="debate-toggle-section" style="padding:14px 16px; border-bottom:1px solid var(--c-border);">
       <div class="enhance-row">
         <div class="enhance-info">
-          <div class="enhance-title" style="color:var(--c-neon-amber)">🗣️ Debate Mode</div>
+          <div class="enhance-title" style="color:var(--c-neon-amber)"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor" style="vertical-align:middle;margin-right:4px;"><path d="M711-480Zm209 80H737q-3-21-9.5-41T711-480h126q-4-7-9-12t-12-9q-26-15-59.5-22t-76.5-7h-3q-20-23-43.5-40T582-599q23-5 47.5-8t50.5-3q53 0 99 11t86 32q26 14 40.5 41.5T920-463v63ZM680-640q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0-40ZM249-480ZM40-400v-63q0-35 14.5-62.5T95-567q40-21 86-32t99-11q26 0 50.5 3t47.5 8q-28 12-51.5 29T283-530h-3q-43 0-76.5 7T144-501q-7 4-12 9t-9 12h126q-10 19-16.5 39t-9.5 41H40Zm240-240q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T320-760q0-17-11.5-28.5T280-800q-17 0-28.5 11.5T240-760q0 17 11.5 28.5T280-720Zm0-40Zm200 480q-33 0-56.5-23.5T400-360v-120q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480v120q0 33-23.5 56.5T480-280ZM450-80v-82q-72-11-121-67t-49-131h60q0 58 41 99t99 41q58 0 99-41t41-99h60q0 75-49 131t-121 67v82h-60Z"/></svg> Debate Mode</div>
           <div class="enhance-sub">Multi-agent debate with<br>structured discussion & consensus</div>
         </div>
         <label class="toggle toggle-debate">
@@ -949,9 +947,6 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
               <span class="drp-label">Maximum</span>
             </div>
           </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
-          <button id="debateStartBtn" class="btn-primary" style="flex:1;padding:10px;font-size:0.82rem;font-family:'Syne',sans-serif;font-weight:700;border:none;border-radius:10px;background:linear-gradient(135deg,var(--c-neon-amber),#d97706);color:#fff;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 16px rgba(255,190,0,0.3);">🎤 Start Debate</button>
         </div>
         <div style="font-size:0.68rem;color:var(--c-muted);font-family:'Space Mono',monospace;">
           Select 2–5 agents above <span id="debateAgentCount" style="color:var(--c-neon-amber)">(0 selected)</span>
@@ -1003,7 +998,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       <div id="enhanceBadgeHeader" class="enhance-badge-header">✨ Enhancer ON</div>
       <div id="memoryBadgeHeader" class="memory-badge-header" style="display:none">🧠 Memory</div>
       <div id="researchBadgeHeader" class="research-badge-header" style="display:none; padding:4px 12px; border-radius:20px; background:rgba(0,255,157,0.1); border:1px solid rgba(0,255,157,0.3); color:var(--c-neon-green); font-size:0.72rem; font-family:'Space Mono',monospace;">🔬 Research ON</div>
-      <div id="debateBadgeHeader" class="debate-badge-header" style="display:none; padding:4px 12px; border-radius:20px; background:rgba(255,190,0,0.1); border:1px solid rgba(255,190,0,0.3); color:var(--c-neon-amber); font-size:0.72rem; font-family:'Space Mono',monospace;">🗣️ Debate ON</div>
+      <div id="debateBadgeHeader" class="debate-badge-header" style="display:none; padding:4px 12px; border-radius:20px; background:rgba(255,190,0,0.1); border:1px solid rgba(255,190,0,0.3); color:var(--c-neon-amber); font-size:0.72rem; font-family:'Space Mono',monospace;"><svg xmlns="http://www.w3.org/2000/svg" height="14px" viewBox="0 -960 960 960" width="14px" fill="currentColor" style="vertical-align:middle;margin-right:2px;"><path d="M711-480Zm209 80H737q-3-21-9.5-41T711-480h126q-4-7-9-12t-12-9q-26-15-59.5-22t-76.5-7h-3q-20-23-43.5-40T582-599q23-5 47.5-8t50.5-3q53 0 99 11t86 32q26 14 40.5 41.5T920-463v63ZM680-640q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0-40ZM249-480ZM40-400v-63q0-35 14.5-62.5T95-567q40-21 86-32t99-11q26 0 50.5 3t47.5 8q-28 12-51.5 29T283-530h-3q-43 0-76.5 7T144-501q-7 4-12 9t-9 12h126q-10 19-16.5 39t-9.5 41H40Zm240-240q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T320-760q0-17-11.5-28.5T280-800q-17 0-28.5 11.5T240-760q0 17 11.5 28.5T280-720Zm0-40Zm200 480q-33 0-56.5-23.5T400-360v-120q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480v120q0 33-23.5 56.5T480-280ZM450-80v-82q-72-11-121-67t-49-131h60q0 58 41 99t99 41q58 0 99-41t41-99h60q0 75-49 131t-121 67v82h-60Z"/></svg> Debate ON</div>
       <div id="webSearchBadgeHeader" class="web-search-badge-header">🌐 Web ON</div>
       <label id="theme-toggle-button" title="Toggle light/dark mode" aria-label="Toggle theme">
         <input type="checkbox" id="toggle" onchange="toggleTheme()">
@@ -2376,22 +2371,25 @@ After your Drive operation executes, the result (including a direct link to the 
     if (!rawPrompt) return;
     input.value = ''; autoResize(input);
 
+    if (document.getElementById('debateToggle')?.checked) {
+      await runDebate(rawPrompt);
+      return;
+    }
+
+    if (document.getElementById('researchToggle')?.checked) {
+      const finalPrompt = document.getElementById('enhanceToggle').checked
+        ? await enhancePrompt(rawPrompt, window._nexus.selectedAgent)
+        : rawPrompt;
+      await runDeepResearch(finalPrompt, window._nexus.selectedAgent);
+      return;
+    }
+
     const nx    = window._nexus;
     const agent = nx.selectedAgent;
     const enhance    = document.getElementById('enhanceToggle').checked;
     const webEnabled = document.getElementById('webSearchToggle')?.checked;
 
-    // Enhance first for both normal and deep research modes
     let finalPrompt = rawPrompt;
-    if (enhance && document.getElementById('researchToggle')?.checked) {
-      finalPrompt = await enhancePrompt(rawPrompt, agent);
-    }
-
-    if (document.getElementById('researchToggle')?.checked) {
-      await runDeepResearch(finalPrompt, agent);
-      return;
-    }
-
     const userBubbleNode = appendMessage('user', rawPrompt, true);
     const userHistoryEntry = { role: 'user', content: rawPrompt };
     nx.chatHistory.push(userHistoryEntry);
@@ -2524,8 +2522,6 @@ After your Drive operation executes, the result (including a direct link to the 
     const count = (window._nexus.debateAgents || []).length;
     const el = document.getElementById('debateAgentCount');
     if (el) el.textContent = `(${count} selected)`;
-    const btn = document.getElementById('debateStartBtn');
-    if (btn) btn.disabled = count < 2;
   }
 
   function clearDebateAgentSelection() {
@@ -2823,7 +2819,7 @@ After your Drive operation executes, the result (including a direct link to the 
   }
 
   // ══════════════════════════════════════════════════════════
-  //  🗣️ DEBATE MODE
+  //  DEBATE MODE
   // ══════════════════════════════════════════════════════════
 
   function selectDebateRound(el) {
@@ -2868,9 +2864,9 @@ After your Drive operation executes, the result (including a direct link to the 
     wrap.style.animation = 'msgIn 0.3s ease';
 
     wrap.innerHTML = `
-      <div class="msg-avatar agent-avatar" style="background:linear-gradient(135deg,var(--c-neon-amber),#d97706)">🗣️</div>
+      <div class="msg-avatar agent-avatar" style="background:linear-gradient(135deg,var(--c-neon-amber),#d97706)"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#e3e3e3"><path d="M711-480Zm209 80H737q-3-21-9.5-41T711-480h126q-4-7-9-12t-12-9q-26-15-59.5-22t-76.5-7h-3q-20-23-43.5-40T582-599q23-5 47.5-8t50.5-3q53 0 99 11t86 32q26 14 40.5 41.5T920-463v63ZM680-640q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0-40ZM249-480ZM40-400v-63q0-35 14.5-62.5T95-567q40-21 86-32t99-11q26 0 50.5 3t47.5 8q-28 12-51.5 29T283-530h-3q-43 0-76.5 7T144-501q-7 4-12 9t-9 12h126q-10 19-16.5 39t-9.5 41H40Zm240-240q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T320-760q0-17-11.5-28.5T280-800q-17 0-28.5 11.5T240-760q0 17 11.5 28.5T280-720Zm0-40Zm200 480q-33 0-56.5-23.5T400-360v-120q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480v120q0 33-23.5 56.5T480-280ZM450-80v-82q-72-11-121-67t-49-131h60q0 58 41 99t99 41q58 0 99-41t41-99h60q0 75-49 131t-121 67v82h-60Z"/></svg></div>
       <div class="message-bubble assistant" style="width:100%;max-width:100%;">
-        <div class="agent-label" style="color:var(--c-neon-amber)">🗣️ Multi-Agent Debate</div>
+        <div class="agent-label" style="color:var(--c-neon-amber)"><svg xmlns="http://www.w3.org/2000/svg" height="14px" viewBox="0 -960 960 960" width="14px" fill="currentColor" style="vertical-align:middle;margin-right:4px;"><path d="M711-480Zm209 80H737q-3-21-9.5-41T711-480h126q-4-7-9-12t-12-9q-26-15-59.5-22t-76.5-7h-3q-20-23-43.5-40T582-599q23-5 47.5-8t50.5-3q53 0 99 11t86 32q26 14 40.5 41.5T920-463v63ZM680-640q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0-40ZM249-480ZM40-400v-63q0-35 14.5-62.5T95-567q40-21 86-32t99-11q26 0 50.5 3t47.5 8q-28 12-51.5 29T283-530h-3q-43 0-76.5 7T144-501q-7 4-12 9t-9 12h126q-10 19-16.5 39t-9.5 41H40Zm240-240q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T320-760q0-17-11.5-28.5T280-800q-17 0-28.5 11.5T240-760q0 17 11.5 28.5T280-720Zm0-40Zm200 480q-33 0-56.5-23.5T400-360v-120q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480v120q0 33-23.5 56.5T480-280ZM450-80v-82q-72-11-121-67t-49-131h60q0 58 41 99t99 41q58 0 99-41t41-99h60q0 75-49 131t-121 67v82h-60Z"/></svg> Multi-Agent Debate</div>
         <div class="message-content" id="debateDashboardContainer">
           <div class="debate-dashboard">
             <div class="debate-status-container">
@@ -2905,11 +2901,9 @@ After your Drive operation executes, the result (including a direct link to the 
       return;
     }
 
-    // Disable the debate toggle and start button while running
+    // Disable the debate toggle while running
     const debateToggleEl = document.getElementById('debateToggle');
-    const startBtn = document.getElementById('debateStartBtn');
     if (debateToggleEl) debateToggleEl.disabled = true;
-    if (startBtn) startBtn.disabled = true;
 
     // Wire up cancel button
     const cancelBtn = wrap.querySelector('#debateCancelBtn');
@@ -2995,7 +2989,7 @@ After your Drive operation executes, the result (including a direct link to the 
               </span>`;
             }).join('');
             totalTurns = participants.length * rounds;
-            statusText.textContent = `🗣️ ${participants.length} participants, ${rounds} round${rounds > 1 ? 's' : ''}`;
+            statusText.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" height="16px" viewBox="0 -960 960 960" width="16px" fill="currentColor" style="vertical-align:middle;margin-right:4px;"><path d="M711-480Zm209 80H737q-3-21-9.5-41T711-480h126q-4-7-9-12t-12-9q-26-15-59.5-22t-76.5-7h-3q-20-23-43.5-40T582-599q23-5 47.5-8t50.5-3q53 0 99 11t86 32q26 14 40.5 41.5T920-463v63ZM680-640q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0-40ZM249-480ZM40-400v-63q0-35 14.5-62.5T95-567q40-21 86-32t99-11q26 0 50.5 3t47.5 8q-28 12-51.5 29T283-530h-3q-43 0-76.5 7T144-501q-7 4-12 9t-9 12h126q-10 19-16.5 39t-9.5 41H40Zm240-240q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T320-760q0-17-11.5-28.5T280-800q-17 0-28.5 11.5T240-760q0 17 11.5 28.5T280-720Zm0-40Zm200 480q-33 0-56.5-23.5T400-360v-120q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480v120q0 33-23.5 56.5T480-280ZM450-80v-82q-72-11-121-67t-49-131h60q0 58 41 99t99 41q58 0 99-41t41-99h60q0 75-49 131t-121 67v82h-60Z"/></svg> ${participants.length} participants, ${rounds} round${rounds > 1 ? 's' : ''}`;
 
           } else if (event.type === 'status') {
             statusText.textContent = event.message;
@@ -3027,7 +3021,7 @@ After your Drive operation executes, the result (including a direct link to the 
             // Persist turn to chat history so it survives session reload
             nx.chatHistory.push({
               role: 'assistant',
-              content: `🗣️ **${event.name}** (${event.persona.role}, Round ${event.round}):\n\n${event.content}`
+              content: `**${event.name}** (${event.persona.role}, Round ${event.round}):\n\n${event.content}`
             });
 
           } else if (event.type === 'completed') {
@@ -3065,11 +3059,8 @@ After your Drive operation executes, the result (including a direct link to the 
       appendMessage('error', `Debate failed: ${err.message}`, true);
     } finally {
       debateActive = false;
-      // Re-enable toggle and start button
       const dt = document.getElementById('debateToggle');
-      const sb = document.getElementById('debateStartBtn');
       if (dt) dt.disabled = false;
-      if (sb) { sb.disabled = (window._nexus.debateAgents || []).length < 2; }
     }
   }
 
@@ -3440,6 +3431,18 @@ After your Drive operation executes, the result (including a direct link to the 
     const researchToggle = document.getElementById('researchToggle');
     if (researchToggle) {
       researchToggle.addEventListener('change', function() {
+        if (this.checked) {
+          const dt = document.getElementById('debateToggle');
+          if (dt && dt.checked) {
+            dt.checked = false;
+            const dc = document.getElementById('debateConfig');
+            if (dc) dc.style.display = 'none';
+            const dbh = document.getElementById('debateBadgeHeader');
+            if (dbh) dbh.style.display = 'none';
+            document.querySelectorAll('.agent-btn').forEach(b => b.classList.remove('debate-select'));
+            clearDebateAgentSelection();
+          }
+        }
         const badge = document.getElementById('researchBadgeHeader');
         if (badge) badge.style.display = this.checked ? 'block' : 'none';
       });
@@ -3455,33 +3458,23 @@ After your Drive operation executes, the result (including a direct link to the 
           this.checked = true;
           return;
         }
+        if (this.checked) {
+          const rt = document.getElementById('researchToggle');
+          if (rt && rt.checked) {
+            rt.checked = false;
+            const rbh = document.getElementById('researchBadgeHeader');
+            if (rbh) rbh.style.display = 'none';
+          }
+        }
         const on = this.checked;
         debateConfig.style.display = on ? 'block' : 'none';
         if (debateBadge) debateBadge.style.display = on ? 'block' : 'none';
-        // Toggle visual multi-select indicator on agent buttons
         document.querySelectorAll('.agent-btn').forEach(b => b.classList.toggle('debate-select', on));
         if (on) {
           updateDebateAgentCount();
         } else {
           clearDebateAgentSelection();
         }
-      });
-    }
-
-    const debateStartBtn = document.getElementById('debateStartBtn');
-    if (debateStartBtn) {
-      debateStartBtn.addEventListener('click', function() {
-        const input = document.getElementById('userInput');
-        const topic = input.value.trim();
-        if (!topic) {
-          input.focus();
-          input.style.borderColor = 'var(--c-neon-pink)';
-          setTimeout(() => input.style.borderColor = '', 1500);
-          return;
-        }
-        input.value = '';
-        autoResize(input);
-        runDebate(topic);
       });
     }
 
