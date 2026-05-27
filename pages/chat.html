@@ -2126,7 +2126,7 @@ After your Drive operation executes, the result (including a direct link to the 
     } catch { return prompt; }
   }
 
-  const BASE_SYSTEM_PROMPT = "You are NEXUS AI, a helpful, advanced AI assistant. IMPORTANT: Always use proper punctuation (periods, commas, question marks, etc.) in every response. Structure your response using clear bullet points or numbered lists where appropriate, keeping paragraphs short and highly structured so that new users see an appealing, readable, and structured output. Do not output raw walls of text.";
+  const BASE_SYSTEM_PROMPT = "You are NEXUS AI, a helpful, advanced AI assistant with live web search capabilities. When web search results are provided below the user's message, you MUST ground your answer in that data, cite sources by number like [1], and defer to web data if it conflicts with your training knowledge. When no web results are provided, answer from your training knowledge. IMPORTANT: Always use proper punctuation (periods, commas, question marks, etc.) in every response. Structure your response using clear bullet points or numbered lists where appropriate, keeping paragraphs short and highly structured so that new users see an appealing, readable, and structured output. Do not output raw walls of text.";
 
   async function callAgent(agent, prompt, history, memories = []) {
     const recentHistory = history.slice(-8).filter(m => m.role !== 'system');
@@ -2184,41 +2184,59 @@ After your Drive operation executes, the result (including a direct link to the 
 
   function shouldFetchWeb(prompt) {
     const text = prompt.toLowerCase().trim();
-    // Skip trivial greetings
+    // Skip trivial greetings and single-word messages
     if (/^(hi|hello|hey|hiya|yo|sup|thanks|thank you|bye|good morning|good night|good afternoon|good evening)[\s!?.]*$/.test(text)) return false;
+    if (/^(yes|no|ok|okay|sure|alright|fine|lol|haha|nice|great|awesome| cool)$/i.test(text)) return false;
+    if (text.length < 10 && !text.includes('?')) return false;
 
     // ── DEFINITE search triggers (user explicitly asks for live data) ──
-    if (/\b(search|google|web lookup|browse|find (recent|current|latest|online)|look up|lookup)\b/i.test(text)) return true;
+    if (/\b(search|google|web lookup|browse|find (recent|current|latest|online)|look up|lookup|tell me about|what is|what are|what's)\b/i.test(text)) return true;
 
     // ── Topics that inherently require live data ──
     if (/\b(weather|forecast|temperature|rain|storm|hurricane)\b/i.test(text)) return true;
-    if (/\b(stock (price|market)|crypto|bitcoin|ethereum|btc|eth|solana|share price)\b/i.test(text)) return true;
-    if (/\b(headline|breaking news|trending|latest news|current events)\b/i.test(text)) return true;
+    if (/\b(stock (price|market)|crypto|bitcoin|ethereum|btc|eth|solana|share price|nifty|sensex|index)\b/i.test(text)) return true;
+    if (/\b(headline|breaking news|trending|latest news|current events|news about)\b/i.test(text)) return true;
 
     // ── Freshness signals: user asks about recency specifically ──
-    // These patterns indicate the user wants up-to-date information
-    const freshnessPattern = /\b(what('s| is) new|what happened|latest (on|in|about)|recent (update|development|change|news|event)|as of (today|now)|currently happening|right now|at the moment)\b/i;
+    const freshnessPattern = /\b(what('s| is) new|what happened|latest (on|in|about)|recent (update|development|change|news|event|article|report|study|finding)|as of (today|now)|currently happening|right now|at the moment|update (on|about)|status of)\b/i;
     if (freshnessPattern.test(text)) return true;
 
-    // ── Temporal context + question = likely needs web ──
-    // Only trigger on actual questions with time context, not casual mentions
-    const hasTemporal = /\b(today|yesterday|tonight|this (week|month|year|quarter)|in \d{4})\b/i.test(text);
-    const isQuestion = /(\b(who|what|when|where|why|how|which)\b.*\?|^.*\?$)/i.test(text);
-    if (hasTemporal && isQuestion) return true;
+    // ── Temporal context = likely needs web ──
+    // Any mention of specific timeframes strongly suggests need for live data
+    const hasTemporal = /\b(today|yesterday|tonight|tomorrow|this (week|month|year|quarter|morning|afternoon|evening)|in \d{4}|in 20\d{2}|last (week|month|year|night|decade)|next (week|month|year|quarter)|currently|present|ongoing)\b/i.test(text);
 
-    // ── Price / rate lookups (specific patterns) ──
-    if (/\b(how much (is|does|are)|what('s| is) the price|price of|cost of|rate of|exchange rate)\b/i.test(text)) return true;
+    // ── Question detection ──
+    const isQuestion = /(\b(who|what|when|where|why|how|which|does|do|did|can|could|will|would|should|is|are|was|were|has|have|had)\b.*\?|^.*\?$)/i.test(text);
+    const hasQuestionMark = text.includes('?');
 
-    // ── Election / score / match results ──
-    if (/\b(who (won|lost)|election (result|outcome)|score of|match result|game (today|last night))\b/i.test(text)) return true;
+    if (hasTemporal && (isQuestion || hasQuestionMark)) return true;
 
-    // ── Version / release lookups for known products ──
-    if (/\b(latest (version|release|update) of|what('s| is) the (latest|newest)|new (version|release) of)\b/i.test(text)) return true;
+    // ── Any question with 5+ words that's not purely conversational ──
+    // This catches a broad range of informational queries
+    const wordCount = text.split(/\s+/).length;
+    if (hasQuestionMark && wordCount >= 5) return true;
 
-    // ── Comparison questions (often benefit from live data) ──
-    if (/\b(versus|vs\.?|compare|comparison between|difference between)\b/i.test(text)) return true;
+    // ── Price / rate / value lookups ──
+    if (/\b(how much (is|does|are|would|will)|what('s| is) the (price|cost|rate|value)|price of|cost of|rate of|exchange rate|conversion rate|worth|valuation)\b/i.test(text)) return true;
 
-    // ── Do NOT search for static knowledge or casual conversation ──
+    // ── Election / score / match / event results ──
+    if (/\b(who (won|lost|is winning)|election (result|outcome|polls)|score of|match result|game (today|last night|yesterday)|winner of|results of|outcome of)\b/i.test(text)) return true;
+
+    // ── Version / release / launch lookups ──
+    if (/\b(latest (version|release|update|edition|model) of|what('s| is) the (latest|newest|most recent)|new (version|release|update|edition|model|feature) of|newly (released|launched|announced)|recently (released|launched|announced|published))\b/i.test(text)) return true;
+
+    // ── Comparison questions ──
+    if (/\b(versus|vs\.?|compare|comparison between|difference between|better than|worse than|how does.*compare)\b/i.test(text)) return true;
+
+    // ── Any substantive informational question (>= 8 words, has a question word) ──
+    // Broad catch-all: if the user is asking a substantive question, get web data
+    const questionWords = /\b(who|what|when|where|why|how|which)\b/i;
+    if (questionWords.test(text) && wordCount >= 8) return true;
+
+    // ── Technology / current affairs / trending topics often need fresh data ──
+    if (/\b(AI|artificial intelligence|GPT|ChatGPT|LLM|machine learning|deep learning|Neuralink|Tesla|SpaceX|Apple|Google|Microsoft|Meta|Amazon|Twitter|X\.com)\b/i.test(text)) return true;
+
+    // ── Do NOT search for very short static knowledge or casual conversation ──
     return false;
   }
 
@@ -2893,11 +2911,12 @@ After your Drive operation executes, the result (including a direct link to the 
 
     try {
       // Fetch web context if web search is enabled
+      // Use the original topic (not the enhanced one) for web search detection
       let webContext = null;
       const webSearchEnabled = document.getElementById('webSearchToggle')?.checked;
-      if (webSearchEnabled && shouldFetchWeb(finalTopic)) {
+      if (webSearchEnabled && shouldFetchWeb(topic)) {
         statusText.textContent = '🌐 Fetching live web data for debate...';
-        webContext = await fetchWebContext(finalTopic);
+        webContext = await fetchWebContext(topic);
         if (webContext) statusText.textContent = `🌐 Web-grounded debate with ${webContext.results.length} sources`;
       }
 
