@@ -2126,7 +2126,7 @@ After your Drive operation executes, the result (including a direct link to the 
     } catch { return prompt; }
   }
 
-  const BASE_SYSTEM_PROMPT = "You are NEXUS AI, a helpful, advanced AI assistant with live web search capabilities. When web search results are provided below the user's message, you MUST ground your answer in that data, cite sources by number like [1], and defer to web data if it conflicts with your training knowledge. When no web results are provided, answer from your training knowledge. IMPORTANT: Always use proper punctuation (periods, commas, question marks, etc.) in every response. Structure your response using clear bullet points or numbered lists where appropriate, keeping paragraphs short and highly structured so that new users see an appealing, readable, and structured output. Do not output raw walls of text.";
+  const BASE_SYSTEM_PROMPT = "You are NEXUS AI, a helpful, advanced AI assistant with live web search capabilities. When web search results are provided below the user's message, you MUST synthesize BOTH your training knowledge AND the web data to produce the best possible answer. Use real-time numbers, figures, and information from the web to make your response accurate and current, while also leveraging your training knowledge to provide context, trends across years, and deeper understanding. Cite web sources by number like [1]. When no web results are provided, answer from your training knowledge only. IMPORTANT: Always use proper punctuation (periods, commas, question marks, etc.) in every response. Structure your response using clear bullet points or numbered lists where appropriate, keeping paragraphs short and highly structured so that new users see an appealing, readable, and structured output. Do not output raw walls of text.";
 
   async function callAgent(agent, prompt, history, memories = []) {
     const recentHistory = history.slice(-8).filter(m => m.role !== 'system');
@@ -2227,155 +2227,17 @@ After your Drive operation executes, the result (including a direct link to the 
    *   - Strong stable-topic signals (ancient history, definitions, etc.)
    *     apply a penalty that reduces the score.
    */
-  function needsInternetAccess(question) {
-    const text = question.toLowerCase().trim();
-    const words = text.split(/\s+/);
-    const wordCount = words.length;
-
-    // ── STAGE 0: Quick reject for non-informational messages ──
-    if (/^(hi|hello|hey|hiya|yo|sup|thanks|thank you|bye|good morning|good night|good afternoon|good evening|good day)[\s!?.]*$/.test(text)) return false;
-    if (/^(yes|no|ok|okay|sure|alright|fine|lol|haha|nice|great|awesome|cool|maybe|idk)$/i.test(text)) return false;
-    if (text.length < 8 && !text.includes('?')) return false;
-
-    // ── Explicit web request — always search ──
-    if (/\b(search(\s+(for|the|up|online|web|internet))?|google\s|look\s*up|browse\s|find\s+(out|online|information|data|details?|the\s+(latest|current|recent))|web\s+search|internet\s+search|check\s+(online|the\s+web|the\s+internet)|lookup)\b/i.test(text)) return true;
-
-    let score = 0;
-
-    // ════════════════════════════════════════════════════════════
-    //  FACTOR 1: KNOWLEDGE CURRENCY GAP  (0-30)
-    // ════════════════════════════════════════════════════════════
-
-    // 1a. Recent time references (strong signal)
-    if (/\b(today|yesterday|tonight|this\s+(week|month|year|quarter|morning|afternoon|evening|decade)|last\s+(night|hour|week|month|year|quarter|decade)|right\s+now|currently|ongoing|as\s+of|at\s+the\s+moment)\b/i.test(text)) {
-      score += 18;
-    }
-
-    // 1b. Year beyond typical training cutoff (2024+)
-    if (/\b(202[4-9]|20[3-9]\d)\b/.test(text)) {
-      score += 20;
-    }
-
-    // 1c. Time-sensitive topic keywords
-    if (/\b(weather|forecast|temperature|storm|hurricane|earthquake|flood|wildfire)\b/i.test(text)) score += 12;
-    if (/\b(stock\s*(price|market)?|crypto|bitcoin|ethereum|btc|eth|solana|share\s*price|nifty|sensex|index|market\s+cap|trading)\b/i.test(text)) score += 14;
-    if (/\b(news|headlines?|headlined|breaking|trending|current\s+events|latest|update)\b/i.test(text)) score += 12;
-
-    // 1d. Tomorrow / next-week references (future events that might have occurred)
-    if (/\b(tomorrow|next\s+(week|month|year|quarter|monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b/i.test(text)) {
-      score += 10;
-    }
-
-    // ════════════════════════════════════════════════════════════
-    //  FACTOR 2: TRAINING DATA COVERAGE  (0-25)
-    // ════════════════════════════════════════════════════════════
-
-    // 2a. Highly specific / niche query (many qualifying words → likely absent from training)
-    const specificityWords = (text.match(/\b(specific|detail|exact|precise|particular|current|latest|recent|upcoming|new|updated|fresh|live|real.time)\b/gi) || []).length;
-    if (specificityWords >= 2) score += 8;
-    if (specificityWords >= 3) score += 5;
-
-    // 2b. Current events / recent developments phrasing
-    if (/\b(what('s| is)\s+new|what\s+happened|what('s| is)\s+happening|update\s+(on|about)|status\s+of|developments?\s+in|developments?\s+on|progress\s+(on|of|in)|latest\s+(on|in|about|news|update|report|study|finding))\b/i.test(text)) score += 15;
-
-    // 2b2. Ranked / top / countdown lists (e.g. "top 10 news", "best phones 2025")
-    if (/\b(top\s+\d+|best\s+\w+|worst\s+\w+|highest\s+|lowest\s+|leading\s+|most\s+(popular|valuable|influential|powerful|expensive|anticipated))\b/i.test(text)) score += 10;
-
-    // 2c. Long, detailed question about specific entity (more likely beyond training)
-    if (wordCount >= 12 && /\b(company|organization|startup|product|service|platform|framework|library|tool|software|app|device|technology)\b/i.test(text)) {
-      score += 8;
-    }
-
-    // 2d. Data / statistics request (often not memorized precisely)
-    if (/\b(how\s+many|how\s+much|statistics?|data\s+(on|about|for|shows)|figures?|numbers?|percentage|rate\s+of|ratio|total|population|GDP|revenue|profit|loss|growth|decline|increase|decrease|survey|poll)\b/i.test(text)) {
-      score += 10;
-    }
-
-    // ════════════════════════════════════════════════════════════
-    //  FACTOR 3: ANSWER DYNAMISM  (0-20)
-    // ════════════════════════════════════════════════════════════
-
-    // 3a. Rapidly-changing domains
-    if (/\b(price|pricing|cost|rate|fees|salary|valuation|worth|budget|funding|investment|revenue|profit|quarterly)\b/i.test(text)) score += 8;
-    if (/\b(version|release|update|launch|announce|beta|alpha|patch|rollout|deprecat)\b/i.test(text)) score += 8;
-    if (/\b(election|poll|vote|approval.rating|candidate|campaign|legislation|bill|policy|regulation|ruling|judgment)\b/i.test(text)) score += 8;
-
-    // 3b. Dynamic entities (companies, products, people in news)
-    const dynamicEntityCount = (text.match(/\b(AI|artificial\s+intelligence|GPT|ChatGPT|LLM|machine\s+learning|deep\s+learning|Apple|Google|Microsoft|Meta|Amazon|Tesla|SpaceX|OpenAI|Anthropic|NVIDIA|AMD|Intel|Samsung|Twitter|X\.com|Netflix|Uber|Airbnb|Spotify|Zoom|Slack|Notion|Figma|Vercel|Netlify|Adobe|Oracle|IBM|Salesforce|Palantir|ByteDance|Tencent|Alibaba|Sony|IPO|acquisition|merger|lawsuit|antitrust)\b/gi) || []).length;
-    if (dynamicEntityCount >= 1) score += 6;
-    if (dynamicEntityCount >= 2) score += 4;
-
-    // 3c. Comparison questions (often need current data for fair assessment)
-    if (/\b(versus|vs\.?|compare|comparison|difference\s+between|better\s+than|worse\s+than|how\s+does\s+\w+\s+compare|which\s+is\s+(better|worse|faster|cheaper|more))\b/i.test(text)) score += 6;
-
-    // ════════════════════════════════════════════════════════════
-    //  FACTOR 4: RISK OF HARM  (0-15)
-    // ════════════════════════════════════════════════════════════
-
-    // 4a. High-risk domains where outdated info could cause real harm
-    if (/\b(medical|health|treatment|therapy|medication|dosage|symptom|disease|diagnosis|prognosis|surgery|drug|vaccine|clinical|patient|hospital)\b/i.test(text)) score += 15;
-    if (/\b(legal|law|lawsuit|statute|regulation|compliance|attorney|lawyer|court|judge|ruling|precedent|contract|liability)\b/i.test(text)) score += 12;
-    if (/\b(financial\s+advice|investment|retirement|mortgage|loan|interest\s+rate|credit\s+score|tax|insurance|portfolio|trading)\b/i.test(text)) score += 10;
-    if (/\b(safety|security|emergency|disaster|evacuation|warning|alert|recall|hazard|toxic|poison)\b/i.test(text)) score += 12;
-
-    // 4b. User explicitly requests accuracy or verification
-    if (/\b(accurate|correct|reliable|up.to.date|up\s+to\s+date|current|verify|confirm|fact.?check|true|real|actual|ensure|make\s+sure|double.check)\b/i.test(text)) score += 8;
-
-    // ════════════════════════════════════════════════════════════
-    //  FACTOR 5: CONFIDENCE GAP  (0-10)
-    // ════════════════════════════════════════════════════════════
-
-    // 5a. Specific factual / data questions where precision matters
-    if (/\b(what\s+(is|are|was|were)\s+(the|a|an)\s+\w+\s+(of|in|for)\s+\w+|how\s+(many|much|large|long|far|old|tall|wide|deep|fast|often)\s+is|when\s+(did|was|were|will|does)\s+\w+|where\s+(is|are|was|were|did|does)\s+\w+)\b/i.test(text)) score += 6;
-
-    // 5b. Questions asking for exact numbers, dates, names
-    if (/\b(\d{4}|\d+%\s|\$\d+|€\d+|£\d+|INR\s+\d+|\d+\s+(million|billion|trillion|thousand|hundred)|born\s+in|founded\s+in|launched\s+in|released\s+in)\b/i.test(text)) score += 5;
-
-    // 5c. Broad conceptual / "explain" questions → model is confident → lower score
-    if (/\b(explain|define|what\s+is\s+(a|an|the)\s+\w+\s*$|describe|overview|introduction|meaning\s+of|definition\s+of|concept\s+of|theory\s+of|history\s+of|origins?\s+of)\b/i.test(text)) {
-      score -= 8;
-    }
-
-    // 5d. Opinion / analysis / creative → model can answer from training
-    if (/\b(think|believe|opinion|thoughts?\s+on|your\s+(take|perspective|view)|what\s+do\s+you\s+(think|know)\s+about|how\s+do\s+you\s+(feel|view)|in\s+your\s+opinion)\b/i.test(text)) {
-      score -= 6;
-    }
-
-    // ════════════════════════════════════════════════════════════
-    //  PENALTIES: Stable / timeless topics need less internet
-    // ════════════════════════════════════════════════════════════
-
-    // Strong stable-topic signals reduce the score
-    if (/\b(ancient|classical|medieval|historical|century|b\.c\.|a\.d\.|prehistoric|origin\s+of|etymology|definition|meaning\s+of|derived\s+from|roots?\s+in)\b/i.test(text)) score -= 15;
-    if (/\b(mathematical|theorem|proof|formula|equation|scientific\s+(law|principle|theory|method)|physics|chemistry|biology|photosynthesis|gravity|evolution|atom|molecule|cell|DNA)\b/i.test(text)) score -= 12;
-    if (/\b(philosophy|philosophical|metaphysics|ethics|morality|existential|consciousness|free\s+will)\b/i.test(text)) score -= 10;
-    if (/\b(grammar|syntax|vocabulary|translat\w+|synonym|antonym|spelling|pronunciation|language)\b/i.test(text)) score -= 5;
-
-    // Very short questions about well-known facts → no web needed
-    // Skip this penalty if the query already has strong temporal or dynamic signals
-    if (wordCount <= 4 && !text.includes('?')) {
-      const hasStrongSignal = /\b(today|yesterday|tonight|latest|update|news|weather|stock|price|crypto|election)\b/i.test(text);
-      if (!hasStrongSignal) score -= 10;
-    }
-
-    // ════════════════════════════════════════════════════════════
-    //  COMBINED SIGNAL BONUS: temporal + dynamic-interest overlap
-    //  When a query has BOTH a recency signal AND a dynamic-topic
-    //  signal, it is very likely the user wants live data.
-    // ════════════════════════════════════════════════════════════
-
-    const hasTemporalSignal = /\b(today|yesterday|tonight|tomorrow|this\s+(week|month|year|quarter)|last\s+(night|week|month|year)|next\s+(week|month|year)|in\s+20\d{2}|currently|ongoing|recent|latest|upcoming|new)\b/i.test(text);
-    const hasDynamicInterest = /\b(news|headlines?|headlined|weather|stock|price|market|crypto|election|score|match|result|winner|version|release|launch|update|trending|breaking)\b/i.test(text);
-    if (hasTemporalSignal && hasDynamicInterest) {
-      score += 15;
-    }
-
-    // ════════════════════════════════════════════════════════════
-    //  FINAL DECISION
-    // ════════════════════════════════════════════════════════════
-
-    const THRESHOLD = 55;
-    return score >= THRESHOLD;
+  /**
+   * Returns true for messages that are clearly trivial noise — greetings,
+   * single-word acknowledgments, etc. — where fetching web data would be
+   * wasteful. Everything else gets web data when the toggle is ON.
+   */
+  function isTrivialMessage(text) {
+    const t = text.toLowerCase().trim();
+    if (/^(hi|hello|hey|hiya|yo|sup|thanks|thank you|bye|good morning|good night|good afternoon|good evening|good day)[\s!?.]*$/.test(t)) return true;
+    if (/^(yes|no|ok|okay|sure|alright|fine|lol|haha|nice|great|awesome|cool|maybe|idk|oh|ah|um|hmm)$/i.test(t)) return true;
+    if (t.length < 3) return true;
+    return false;
   }
 
   // Simple in-memory search cache (cleared on new chat)
@@ -2428,9 +2290,11 @@ After your Drive operation executes, the result (including a direct link to the 
     });
     ctx += `────────────────────────────────────────\n`;
     ctx += `INSTRUCTIONS:\n`;
-    ctx += `• Ground your answer in the web data above. Cite sources by number, e.g. [1].\n`;
-    ctx += `• If web data conflicts with your training knowledge, defer to the web data.\n`;
-    ctx += `• If results lack sufficient info, state what is known and what is uncertain.\n`;
+    ctx += `• SYNTHESIZE both your training knowledge AND the web data above to produce the best answer.\n`;
+    ctx += `• Use real-time numbers, figures, and facts from the web to make your response accurate and current.\n`;
+    ctx += `• Use your training knowledge to provide context, historical trends across years, and deeper understanding.\n`;
+    ctx += `• Cite web sources by number, e.g. [1]. When combining both sources, note what comes from web vs training.\n`;
+    ctx += `• If web data conflicts with your training knowledge, defer to the web data (it is more current).\n`;
     ctx += `• Prefer more recent sources (dates shown where available) for time-sensitive topics.\n\n`;
     return ctx;
   }
@@ -2545,7 +2409,7 @@ After your Drive operation executes, the result (including a direct link to the 
 
       let webData = null;
       let webAttempted = false;
-      if (webEnabled && needsInternetAccess(rawPrompt)) {
+      if (webEnabled && !isTrivialMessage(rawPrompt)) {
         webAttempted = true;
         updateTyping(typingId, '🌐 Fetching live web data…');
         webData = await fetchWebContext(rawPrompt);
@@ -3065,7 +2929,7 @@ After your Drive operation executes, the result (including a direct link to the 
       // Use the original topic (not the enhanced one) for web search detection
       let webContext = null;
       const webSearchEnabled = document.getElementById('webSearchToggle')?.checked;
-      if (webSearchEnabled && needsInternetAccess(topic)) {
+      if (webSearchEnabled && !isTrivialMessage(topic)) {
         statusText.textContent = '🌐 Fetching live web data for debate...';
         webContext = await fetchWebContext(topic);
         const badge = wrap.querySelector('#debateWebBadge');
