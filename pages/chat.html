@@ -2996,6 +2996,7 @@ After your Drive operation executes, the result (including a direct link to the 
             <div class="debate-status-container">
               <div class="debate-spinner" id="debateSpinner"></div>
               <div class="debate-status-text" id="debateStatusText">Initializing debate...</div>
+              <span id="debateWebBadge" style="display:none;margin-left:8px;padding:2px 8px;border-radius:6px;background:rgba(0,255,255,0.1);border:1px solid rgba(0,255,255,0.25);color:var(--c-neon-cyan);font-size:0.65rem;font-family:'Space Mono',monospace;white-space:nowrap;flex-shrink:0;">🌐 Web</span>
               <button id="debateCancelBtn" style="margin-left:auto;padding:4px 10px;border-radius:8px;border:1px solid rgba(255,45,120,0.3);background:transparent;color:var(--c-neon-pink);font-size:0.7rem;cursor:pointer;font-family:'Space Mono',monospace;transition:all 0.2s;">⏹ Stop</button>
             </div>
             <div class="debate-progress-bar-wrap">
@@ -3051,7 +3052,11 @@ After your Drive operation executes, the result (including a direct link to the 
       if (webSearchEnabled && needsInternetAccess(topic)) {
         statusText.textContent = '🌐 Fetching live web data for debate...';
         webContext = await fetchWebContext(topic);
-        if (webContext) statusText.textContent = `🌐 Web-grounded debate with ${webContext.results.length} sources`;
+        if (webContext) {
+          statusText.textContent = `🌐 Web-grounded debate with ${webContext.results.length} sources`;
+          const badge = wrap.querySelector('#debateWebBadge');
+          if (badge) badge.style.display = 'inline-flex';
+        }
       }
 
       const res = await fetch(`${BACKEND}/api/debate`, {
