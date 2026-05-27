@@ -2259,7 +2259,7 @@ After your Drive operation executes, the result (including a direct link to the 
     // 1c. Time-sensitive topic keywords
     if (/\b(weather|forecast|temperature|storm|hurricane|earthquake|flood|wildfire)\b/i.test(text)) score += 12;
     if (/\b(stock\s*(price|market)?|crypto|bitcoin|ethereum|btc|eth|solana|share\s*price|nifty|sensex|index|market\s+cap|trading)\b/i.test(text)) score += 14;
-    if (/\b(news|headline|breaking|trending|current\s+events|latest)\b/i.test(text)) score += 12;
+    if (/\b(news|headlines?|headlined|breaking|trending|current\s+events|latest)\b/i.test(text)) score += 12;
 
     // 1d. Tomorrow / next-week references (future events that might have occurred)
     if (/\b(tomorrow|next\s+(week|month|year|quarter|monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b/i.test(text)) {
@@ -2277,6 +2277,9 @@ After your Drive operation executes, the result (including a direct link to the 
 
     // 2b. Current events / recent developments phrasing
     if (/\b(what('s| is)\s+new|what\s+happened|what('s| is)\s+happening|update\s+(on|about)|status\s+of|developments?\s+in|developments?\s+on|progress\s+(on|of|in)|latest\s+(on|in|about|news|update|report|study|finding))\b/i.test(text)) score += 15;
+
+    // 2b2. Ranked / top / countdown lists (e.g. "top 10 news", "best phones 2025")
+    if (/\b(top\s+\d+|best\s+\w+|worst\s+\w+|highest\s+|lowest\s+|leading\s+|most\s+(popular|valuable|influential|powerful|expensive|anticipated))\b/i.test(text)) score += 10;
 
     // 2c. Long, detailed question about specific entity (more likely beyond training)
     if (wordCount >= 12 && /\b(company|organization|startup|product|service|platform|framework|library|tool|software|app|device|technology)\b/i.test(text)) {
@@ -2350,6 +2353,18 @@ After your Drive operation executes, the result (including a direct link to the 
 
     // Very short questions about well-known facts → no web needed
     if (wordCount <= 4 && !text.includes('?')) score -= 10;
+
+    // ════════════════════════════════════════════════════════════
+    //  COMBINED SIGNAL BONUS: temporal + dynamic-interest overlap
+    //  When a query has BOTH a recency signal AND a dynamic-topic
+    //  signal, it is very likely the user wants live data.
+    // ════════════════════════════════════════════════════════════
+
+    const hasTemporalSignal = /\b(today|yesterday|tonight|tomorrow|this\s+(week|month|year|quarter)|last\s+(night|week|month|year)|next\s+(week|month|year)|in\s+20\d{2}|currently|ongoing|recent|latest|upcoming|new)\b/i.test(text);
+    const hasDynamicInterest = /\b(news|headlines?|headlined|weather|stock|price|market|crypto|election|score|match|result|winner|version|release|launch|update|trending|breaking)\b/i.test(text);
+    if (hasTemporalSignal && hasDynamicInterest) {
+      score += 15;
+    }
 
     // ════════════════════════════════════════════════════════════
     //  FINAL DECISION
