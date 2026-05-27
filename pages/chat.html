@@ -2259,7 +2259,7 @@ After your Drive operation executes, the result (including a direct link to the 
     // 1c. Time-sensitive topic keywords
     if (/\b(weather|forecast|temperature|storm|hurricane|earthquake|flood|wildfire)\b/i.test(text)) score += 12;
     if (/\b(stock\s*(price|market)?|crypto|bitcoin|ethereum|btc|eth|solana|share\s*price|nifty|sensex|index|market\s+cap|trading)\b/i.test(text)) score += 14;
-    if (/\b(news|headlines?|headlined|breaking|trending|current\s+events|latest)\b/i.test(text)) score += 12;
+    if (/\b(news|headlines?|headlined|breaking|trending|current\s+events|latest|update)\b/i.test(text)) score += 12;
 
     // 1d. Tomorrow / next-week references (future events that might have occurred)
     if (/\b(tomorrow|next\s+(week|month|year|quarter|monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b/i.test(text)) {
@@ -2301,7 +2301,7 @@ After your Drive operation executes, the result (including a direct link to the 
     if (/\b(election|poll|vote|approval.rating|candidate|campaign|legislation|bill|policy|regulation|ruling|judgment)\b/i.test(text)) score += 8;
 
     // 3b. Dynamic entities (companies, products, people in news)
-    const dynamicEntityCount = (text.match(/\b(Apple|Google|Microsoft|Meta|Amazon|Tesla|SpaceX|OpenAI|Anthropic|NVIDIA|AMD|Intel|Samsung|Twitter|X\.com|Netflix|Uber|Airbnb|Spotify|Zoom|Slack|Notion|Figma|Vercel|Netlify|Adobe|Oracle|IBM|Salesforce|Palantir|ByteDance|Tencent|Alibaba|Sony|Microsoft|Meta|Amazon|Alphabet|Berkshire|JPMorgan|Goldman|Sachs|IPO|acquisition|merger|lawsuit|antitrust)\b/gi) || []).length;
+    const dynamicEntityCount = (text.match(/\b(AI|artificial\s+intelligence|GPT|ChatGPT|LLM|machine\s+learning|deep\s+learning|Apple|Google|Microsoft|Meta|Amazon|Tesla|SpaceX|OpenAI|Anthropic|NVIDIA|AMD|Intel|Samsung|Twitter|X\.com|Netflix|Uber|Airbnb|Spotify|Zoom|Slack|Notion|Figma|Vercel|Netlify|Adobe|Oracle|IBM|Salesforce|Palantir|ByteDance|Tencent|Alibaba|Sony|IPO|acquisition|merger|lawsuit|antitrust)\b/gi) || []).length;
     if (dynamicEntityCount >= 1) score += 6;
     if (dynamicEntityCount >= 2) score += 4;
 
@@ -2352,7 +2352,11 @@ After your Drive operation executes, the result (including a direct link to the 
     if (/\b(grammar|syntax|vocabulary|translat\w+|synonym|antonym|spelling|pronunciation|language)\b/i.test(text)) score -= 5;
 
     // Very short questions about well-known facts → no web needed
-    if (wordCount <= 4 && !text.includes('?')) score -= 10;
+    // Skip this penalty if the query already has strong temporal or dynamic signals
+    if (wordCount <= 4 && !text.includes('?')) {
+      const hasStrongSignal = /\b(today|yesterday|tonight|latest|update|news|weather|stock|price|crypto|election)\b/i.test(text);
+      if (!hasStrongSignal) score -= 10;
+    }
 
     // ════════════════════════════════════════════════════════════
     //  COMBINED SIGNAL BONUS: temporal + dynamic-interest overlap
@@ -2540,7 +2544,9 @@ After your Drive operation executes, the result (including a direct link to the 
       }
 
       let webData = null;
+      let webAttempted = false;
       if (webEnabled && needsInternetAccess(rawPrompt)) {
+        webAttempted = true;
         updateTyping(typingId, '🌐 Fetching live web data…');
         webData = await fetchWebContext(rawPrompt);
       }
@@ -2581,9 +2587,19 @@ After your Drive operation executes, the result (including a direct link to the 
       const safeResponse = (typeof finalResponse === 'string' && finalResponse.trim()) ? finalResponse : '_(No response returned)_';
       const msgWrap = appendMessage('assistant', safeResponse, true);
 
-      if (webData) {
+      if (webAttempted) {
         const bubble = msgWrap?.querySelector('.message-bubble');
-        if (bubble) appendWebSources(bubble, webData);
+        if (bubble) {
+          if (webData) {
+            appendWebSources(bubble, webData);
+          } else {
+            const badge = document.createElement('span');
+            badge.className = 'ws-indicator';
+            badge.style.cssText = 'margin-top:6px;font-size:0.7rem;color:var(--c-muted);opacity:0.7;';
+            badge.textContent = '🌐 Web search attempted — no live results found';
+            bubble.appendChild(badge);
+          }
+        }
       }
 
       nx.chatHistory.push({ role: 'assistant', content: safeResponse });
@@ -2859,7 +2875,7 @@ After your Drive operation executes, the result (including a direct link to the 
               if (wsEl) wsEl.innerHTML = `<span class="web-done-badge">${icon} ${svc} · ${count} source${count!==1?'s':''}</span>`;
               if (statEl) statEl.textContent = 'Analyzing…';
             } else {
-              if (wsEl) wsEl.innerHTML = '';
+              if (wsEl) wsEl.innerHTML = `<span style="font-size:0.65rem;color:var(--c-muted);opacity:0.5;">🌐 no results</span>`;
               if (statEl) statEl.textContent = 'Analyzing…';
             }
 
@@ -2876,7 +2892,7 @@ After your Drive operation executes, the result (including a direct link to the 
               const svc = event.service || 'Web';
               synthRow.innerHTML = `<div class="synthesis-search-row" style="background:rgba(0,255,157,0.04);border-color:rgba(0,255,157,0.2);color:var(--c-neon-green)"><span style="width:7px;height:7px;border-radius:50%;background:var(--c-neon-green);flex-shrink:0;box-shadow:0 0 5px var(--c-neon-green)"></span>✓ Synthesis grounded with live ${svc} data</div>`;
             } else {
-              synthRow.innerHTML = '';
+              synthRow.innerHTML = `<div class="synthesis-search-row" style="background:transparent;border-color:transparent;color:var(--c-muted);opacity:0.5;font-size:0.7rem;">🌐 Synthesis web search — no results found</div>`;
             }
 
           // ── BRANCH END ──
@@ -3052,10 +3068,12 @@ After your Drive operation executes, the result (including a direct link to the 
       if (webSearchEnabled && needsInternetAccess(topic)) {
         statusText.textContent = '🌐 Fetching live web data for debate...';
         webContext = await fetchWebContext(topic);
+        const badge = wrap.querySelector('#debateWebBadge');
         if (webContext) {
           statusText.textContent = `🌐 Web-grounded debate with ${webContext.results.length} sources`;
-          const badge = wrap.querySelector('#debateWebBadge');
-          if (badge) badge.style.display = 'inline-flex';
+          if (badge) { badge.textContent = `🌐 Web (${webContext.results.length})`; badge.style.display = 'inline-flex'; }
+        } else {
+          if (badge) { badge.textContent = '🌐 Web (no results)'; badge.style.display = 'inline-flex'; badge.style.borderColor = 'rgba(255,255,255,0.1)'; badge.style.color = 'var(--c-muted)'; badge.style.opacity = '0.6'; }
         }
       }
 
