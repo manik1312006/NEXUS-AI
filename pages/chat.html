@@ -558,18 +558,6 @@
     #userInput::placeholder { color:var(--c-muted); }
     .send-btn { width:40px; height:40px; border-radius:12px; border:1px solid var(--c-border); background:transparent; color:var(--c-text); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; flex-shrink:0; }
     .send-btn:hover { border-color:var(--c-neon-purple); color:var(--c-neon-purple); }
-    .voice-btn { width:36px; height:36px; border-radius:10px; border:1px solid var(--c-border); background:transparent; color:var(--c-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; flex-shrink:0; }
-    .voice-btn:hover { border-color:var(--c-neon-cyan); color:var(--c-neon-cyan); }
-    .voice-btn.recording { border-color:var(--c-neon-pink); color:var(--c-neon-pink); background:rgba(255,45,120,0.08); animation:voicePulse 1.2s ease-in-out infinite; }
-    .voice-btn.recording svg { animation:voiceScale 1.2s ease-in-out infinite; }
-    @keyframes voicePulse {
-      0%, 100% { box-shadow:0 0 0 0 rgba(255,45,120,0.3); }
-      50% { box-shadow:0 0 12px 2px rgba(255,45,120,0.15); }
-    }
-    @keyframes voiceScale {
-      0%, 100% { transform:scale(1); }
-      50% { transform:scale(1.15); }
-    }
     .upload-btn { width:36px; height:36px; border-radius:10px; border:1px solid var(--c-border); background:transparent; color:var(--c-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; flex-shrink:0; }
     .upload-btn:hover { border-color:var(--c-neon-cyan); color:var(--c-neon-cyan); }
     .upload-btn:disabled { opacity:0.35; cursor:not-allowed; }
@@ -743,7 +731,6 @@
       .input-area { padding:10px 12px; padding-bottom:max(16px,env(safe-area-inset-bottom,16px)); }
       .input-box { padding:10px 12px; gap:8px; border-radius:14px; }
       .upload-btn { width:32px; height:32px; }
-      .voice-btn { width:32px; height:32px; }
       #userInput { font-size:0.9rem; }
       .send-btn { width:36px; height:36px; border-radius:10px; font-size:1rem; }
       .welcome-state { padding:40px 16px; }
@@ -1082,7 +1069,6 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     <div class="input-box">
       <button class="upload-btn" id="uploadBtn" title="Upload file to Google Drive (Google users only)"><svg xmlns="http://www.w3.org/2000/svg" height="22px" viewBox="0 -960 960 960" width="22px" fill="currentColor"><path d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg></button>
       <textarea id="userInput" rows="1" placeholder="Ask anything… your prompt will be enhanced before sending"></textarea>
-      <button class="voice-btn" id="voiceBtn" title="Tap and hold to speak"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="m798-322-62-62q44-41 69-97t25-119q0-63-25-118t-69-96l62-64q56 53 89 125t33 153q0 81-33 153t-89 125ZM670-450l-64-64q18-17 29-38.5t11-47.5q0-26-11-47.5T606-686l64-64q32 29 50 67.5t18 82.5q0 44-18 82.5T670-450Zm-310 10q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47ZM40-120v-112q0-33 17-62t47-44q51-26 115-44t141-18q77 0 141 18t115 44q30 15 47 44t17 62v112H40Zm80-80h480v-32q0-11-5.5-20T580-266q-36-18-92.5-36T360-320q-71 0-127.5 18T140-266q-9 5-14.5 14t-5.5 20v32Zm296.5-343.5Q440-567 440-600t-23.5-56.5Q393-680 360-680t-56.5 23.5Q280-633 280-600t23.5 56.5Q327-520 360-520t56.5-23.5ZM360-600Zm0 400Z"/></svg></button>
       <button class="send-btn" id="sendBtn"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Zm0 0v-400 400Z"/></svg></button>
     </div>
     <input type="file" id="fileInput" multiple style="display:none">
@@ -3507,93 +3493,6 @@ After your Drive operation executes, the result (including a direct link to the 
     userInput.addEventListener('input', () => autoResize(userInput));
     sendBtn.addEventListener('click', sendMessage);
     document.getElementById('settingsModal').addEventListener('click', e => { if (e.target === document.getElementById('settingsModal')) closeSettings(); });
-
-    // ── VOICE INPUT (Tap-and-Hold Speech-to-Text) ──
-    const voiceBtn = document.getElementById('voiceBtn');
-    if (voiceBtn) {
-      let recognition = null;
-      let isRecording = false;
-      let holdTimer = null;
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-      function startVoiceInput() {
-        if (isRecording || !SpeechRecognition) return;
-        const recordingSupported = document.getElementById('voiceBtn');
-        if (!SpeechRecognition) {
-          voiceBtn.title = 'Speech recognition not supported in this browser';
-          return;
-        }
-        isRecording = true;
-        voiceBtn.classList.add('recording');
-        voiceBtn.title = 'Release to stop';
-
-        recognition = new SpeechRecognition();
-        recognition.lang = 'en-US';
-        recognition.interimResults = true;
-        recognition.continuous = true;
-        recognition.maxAlternatives = 1;
-
-        let finalTranscript = '';
-
-        recognition.onresult = (event) => {
-          let interimTranscript = '';
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            const result = event.results[i];
-            if (result.isFinal) {
-              finalTranscript += result[0].transcript;
-            } else {
-              interimTranscript += result[0].transcript;
-            }
-          }
-          const textarea = document.getElementById('userInput');
-          const cursorPos = textarea.selectionStart;
-          const textBefore = textarea.value.slice(0, cursorPos);
-          const textAfter = textarea.value.slice(cursorPos);
-          textarea.value = textBefore + finalTranscript + interimTranscript + textAfter;
-          textarea.selectionStart = textarea.selectionEnd = cursorPos + finalTranscript.length + interimTranscript.length;
-          autoResize(textarea);
-        };
-
-        recognition.onerror = (event) => {
-          if (event.error !== 'no-speech' && event.error !== 'aborted') {
-            voiceBtn.title = `Error: ${event.error}`;
-          }
-          stopVoiceInput();
-        };
-
-        recognition.onend = () => {
-          // If still recording (not manually stopped), restart
-          if (isRecording) {
-            try { recognition.start(); } catch (_) {}
-          }
-        };
-
-        try {
-          recognition.start();
-        } catch (_) {
-          stopVoiceInput();
-        }
-      }
-
-      function stopVoiceInput() {
-        if (!isRecording) return;
-        isRecording = false;
-        voiceBtn.classList.remove('recording');
-        voiceBtn.title = 'Tap and hold to speak';
-        if (recognition) {
-          try { recognition.stop(); } catch (_) {}
-          recognition.onend = null;
-          recognition = null;
-        }
-      }
-
-      voiceBtn.addEventListener('mousedown', (e) => { e.preventDefault(); startVoiceInput(); });
-      voiceBtn.addEventListener('mouseup', stopVoiceInput);
-      voiceBtn.addEventListener('mouseleave', stopVoiceInput);
-      voiceBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startVoiceInput(); });
-      voiceBtn.addEventListener('touchend', stopVoiceInput);
-      voiceBtn.addEventListener('touchcancel', stopVoiceInput);
-    }
 
     renderMemoryPanel();
 
