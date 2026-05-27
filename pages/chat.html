@@ -335,12 +335,15 @@
     .agent-panel.open::-webkit-scrollbar-thumb { background: var(--c-border); border-radius: 2px; }
     .section-label { font-family:'Space Mono',monospace; font-size:0.6rem; color:var(--c-muted); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:0; }
     .agent-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:5px; padding: 12px; }
-    .agent-btn { padding:8px 4px; border-radius:10px; border:1px solid var(--c-border); background:rgba(0,0,0,0.3); color:var(--c-muted); font-size:0.72rem; cursor:pointer; text-align:center; transition:all 0.2s; font-family:'DM Sans',sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:88px; }
+    .agent-btn { padding:8px 4px; border-radius:10px; border:1px solid var(--c-border); background:rgba(0,0,0,0.3); color:var(--c-muted); font-size:0.72rem; cursor:pointer; text-align:center; transition:all 0.2s; font-family:'DM Sans',sans-serif; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:88px; position:relative; }
     .agent-btn:hover { border-color:rgba(255,255,255,0.2); color:var(--c-text); }
     .agent-btn.active { border-color:var(--c-neon-cyan); color:var(--c-neon-cyan); background:rgba(0,245,255,0.08); box-shadow:0 0 12px rgba(0,245,255,0.15); }
+    .agent-btn.debate-select { cursor: pointer; }
+    .agent-btn.debate-select::before { content:'☐'; font-size:0.75rem; position:absolute; top:4px; right:4px; opacity:0.5; transition:all 0.2s; }
+    .agent-btn.debate-select.active::before { content:'☑'; opacity:1; color:var(--c-neon-cyan); }
+    .agent-btn .a-name { display:block; font-weight:500; line-height:1.2; }
     .agent-btn .a-emoji { display:flex; align-items:center; justify-content:center; width:28px; height:28px; margin-bottom:4px; }
     .agent-btn .a-emoji svg { width:22px; height:22px; display:block; }
-    .agent-btn .a-name  { display:block; font-weight:500; line-height:1.2; }
     .agent-btn.nvidia-agent { border-color:rgba(118,185,0,0.3); }
     .agent-btn.nvidia-agent.active { border-color:#76b900; color:#76b900; background:rgba(118,185,0,0.08); box-shadow:0 0 12px rgba(118,185,0,0.2); }
     .agent-btn.nvidia-agent:hover { border-color:rgba(118,185,0,0.5); color:#76b900; }
@@ -811,7 +814,50 @@
       pre { background: #f4f4f4 !important; color: black !important; border: 1px solid #ccc !important; }
     }
 
-    /* ── WEB SEARCH (chat mode) ── */
+    /* ── DEBATE MODE ── */
+.toggle-debate input:checked + .slider-debate { background: linear-gradient(135deg, var(--c-neon-amber), #d97706); border-color: var(--c-neon-amber); box-shadow: 0 0 10px rgba(255,190,0,0.4); }
+.debate-dashboard { background: rgba(13,13,43,0.6); border: 1px solid var(--c-border); border-radius: 16px; padding: 20px; margin: 10px 0; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 0 16px rgba(255,190,0,0.05); animation: msgIn 0.4s ease; }
+.debate-status-container { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.debate-spinner { width: 24px; height: 24px; border: 3px solid rgba(255,190,0,0.1); border-top-color: var(--c-neon-amber); border-radius: 50%; animation: wspin 1s linear infinite; }
+.debate-spinner-done { display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: rgba(0,255,157,0.12); border: 1px solid rgba(0,255,157,0.35); color: var(--c-neon-green); box-shadow: 0 0 8px rgba(0,255,157,0.2); }
+.debate-status-text { font-family: 'Space Mono', monospace; font-size: 0.85rem; color: var(--c-neon-amber); text-shadow: 0 0 8px rgba(255,190,0,0.3); }
+.debate-participants { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.debate-participant-pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; font-size: 0.72rem; font-family: 'Space Mono', monospace; border: 1px solid; line-height: 1.3; }
+.debate-transcript { display: flex; flex-direction: column; gap: 14px; margin-top: 12px; }
+.debate-turn { border-radius: 12px; padding: 14px 16px; border: 1px solid var(--c-border); animation: msgIn 0.35s ease; }
+.debate-turn-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.debate-turn-name { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.04em; }
+.debate-turn-persona { font-family: 'Space Mono', monospace; font-size: 0.62rem; opacity: 0.7; letter-spacing: 0.05em; }
+.debate-turn-round { font-family: 'Space Mono', monospace; font-size: 0.6rem; color: var(--c-muted); margin-left: auto; }
+.debate-turn-content { font-size: 0.85rem; line-height: 1.65; color: var(--c-text); }
+.debate-turn-content p { margin-bottom: 6px; }
+.debate-consensus { margin-top: 16px; background: rgba(0,255,157,0.05); border: 1px solid rgba(0,255,157,0.25); border-radius: 16px; padding: 20px; animation: msgIn 0.5s ease; }
+.debate-consensus-header { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1rem; color: var(--c-neon-green); margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.debate-consensus-content { font-size: 0.88rem; line-height: 1.7; color: var(--c-text); }
+.debate-consensus-content p { margin-bottom: 8px; }
+.debate-consensus-content h3 { font-family: 'Syne', sans-serif; color: var(--c-text); margin: 14px 0 6px; font-size: 0.95rem; }
+.debate-consensus-content ul { padding-left: 20px; margin: 6px 0; }
+.debate-consensus-content li { margin: 3px 0; }
+.debate-error { background: rgba(255,45,120,0.08); border-color: rgba(255,45,120,0.25); color: #ff6b9d; }
+.debate-error .debate-turn-content { color: #ff6b9d; }
+.debate-progress-bar-wrap { width: 100%; height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; margin-bottom: 16px; overflow: hidden; }
+.debate-progress-bar { width: 0%; height: 100%; background: linear-gradient(90deg, var(--c-neon-amber), var(--c-neon-green)); transition: width 0.4s ease; box-shadow: 0 0 8px var(--c-neon-amber); }
+#debateStartBtn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255,190,0,0.45); }
+#debateStartBtn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.debate-round-pill { display:flex; flex-direction:column; align-items:center; flex:1; padding:6px 4px 5px; border-radius:10px; border:1px solid var(--c-border); background:rgba(0,0,0,0.2); cursor:pointer; transition:all 0.2s; user-select:none; }
+.debate-round-pill:hover { border-color:rgba(255,190,0,0.3); background:rgba(255,190,0,0.05); }
+.debate-round-pill.active { border-color:var(--c-neon-amber); background:rgba(255,190,0,0.1); box-shadow:0 0 10px rgba(255,190,0,0.12); }
+.debate-round-pill .drp-num { font-family:'Syne',sans-serif; font-weight:800; font-size:1rem; color:var(--c-muted); line-height:1.2; transition:color 0.2s; }
+.debate-round-pill.active .drp-num { color:var(--c-neon-amber); }
+.debate-round-pill .drp-label { font-family:'Space Mono',monospace; font-size:0.58rem; color:var(--c-muted); opacity:0.6; letter-spacing:0.03em; transition:opacity 0.2s; }
+.debate-round-pill.active .drp-label { opacity:0.9; color:var(--c-neon-amber); }
+html.light .debate-round-pill { background:rgba(0,0,0,0.03); }
+html.light .debate-round-pill.active { background:rgba(255,190,0,0.1); border-color:#d97706; }
+html.light .debate-dashboard { background: rgba(245,245,255,0.8); }
+html.light .debate-turn { background: #fff; }
+html.light .debate-consensus { background: rgba(5,150,105,0.06); }
+
+/* ── WEB SEARCH (chat mode) ── */
     .web-search-badge-header {
       padding: 4px 12px; border-radius: 20px;
       background: rgba(0,245,255,0.1); border: 1px solid rgba(0,245,255,0.3);
@@ -933,6 +979,50 @@
       </div>
     </div>
 
+    <div class="debate-toggle-section" style="padding:14px 16px; border-bottom:1px solid var(--c-border);">
+      <div class="enhance-row">
+        <div class="enhance-info">
+          <div class="enhance-title" style="color:var(--c-neon-amber)">🗣️ Debate Mode</div>
+          <div class="enhance-sub">Multi-agent debate with<br>structured discussion & consensus</div>
+        </div>
+        <label class="toggle toggle-debate">
+          <input type="checkbox" id="debateToggle">
+          <span class="slider slider-debate"></span>
+        </label>
+      </div>
+      <div id="debateConfig" style="display:none;margin-top:12px;padding-top:10px;border-top:1px solid var(--c-border);">
+        <div style="margin-bottom:10px;">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+            <span style="font-size:0.68rem;color:var(--c-muted);font-family:'Space Mono',monospace;letter-spacing:0.04em;">ROUNDS</span>
+          </div>
+          <div id="debateRoundPills" style="display:flex;gap:6px;">
+            <div class="debate-round-pill" data-value="1" onclick="selectDebateRound(this)">
+              <span class="drp-num">1</span>
+              <span class="drp-label">Quick</span>
+            </div>
+            <div class="debate-round-pill active" data-value="2" onclick="selectDebateRound(this)">
+              <span class="drp-num">2</span>
+              <span class="drp-label">Standard</span>
+            </div>
+            <div class="debate-round-pill" data-value="3" onclick="selectDebateRound(this)">
+              <span class="drp-num">3</span>
+              <span class="drp-label">Deep</span>
+            </div>
+            <div class="debate-round-pill" data-value="4" onclick="selectDebateRound(this)">
+              <span class="drp-num">4</span>
+              <span class="drp-label">Maximum</span>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <button id="debateStartBtn" class="btn-primary" style="flex:1;padding:10px;font-size:0.82rem;font-family:'Syne',sans-serif;font-weight:700;border:none;border-radius:10px;background:linear-gradient(135deg,var(--c-neon-amber),#d97706);color:#fff;cursor:pointer;transition:all 0.2s;box-shadow:0 4px 16px rgba(255,190,0,0.3);">🎤 Start Debate</button>
+        </div>
+        <div style="font-size:0.68rem;color:var(--c-muted);font-family:'Space Mono',monospace;">
+          Select 2–5 agents above <span id="debateAgentCount" style="color:var(--c-neon-amber)">(0 selected)</span>
+        </div>
+      </div>
+    </div>
+
     <div class="memory-section" id="memorySection">
       <div class="memory-section-header" onclick="toggleMemoryPanel()">
         <div class="memory-section-left">
@@ -977,6 +1067,7 @@
       <div id="enhanceBadgeHeader" class="enhance-badge-header">✨ Enhancer ON</div>
       <div id="memoryBadgeHeader" class="memory-badge-header" style="display:none">🧠 Memory</div>
       <div id="researchBadgeHeader" class="research-badge-header" style="display:none; padding:4px 12px; border-radius:20px; background:rgba(0,255,157,0.1); border:1px solid rgba(0,255,157,0.3); color:var(--c-neon-green); font-size:0.72rem; font-family:'Space Mono',monospace;">🔬 Research ON</div>
+      <div id="debateBadgeHeader" class="debate-badge-header" style="display:none; padding:4px 12px; border-radius:20px; background:rgba(255,190,0,0.1); border:1px solid rgba(255,190,0,0.3); color:var(--c-neon-amber); font-size:0.72rem; font-family:'Space Mono',monospace;">🗣️ Debate ON</div>
       <div id="webSearchBadgeHeader" class="web-search-badge-header">🌐 Web ON</div>
       <label id="theme-toggle-button" title="Toggle light/dark mode" aria-label="Toggle theme">
         <input type="checkbox" id="toggle" onchange="toggleTheme()">
@@ -1936,6 +2027,11 @@ After your Drive operation executes, the result (including a direct link to the 
   window._nexus = {
     currentUser: null, currentSessionId: null, chatHistory: [], selectedAgent: 'openai', memories: {},
     newChat() {
+      // Cancel any in-progress debate
+      if (debateActive) {
+        debateCancelRequested = true;
+        debateActive = false;
+      }
       this.currentSessionId = 'session_' + Date.now(); this.chatHistory = [];
       this.activeResearchReport = null;
       this.activeResearchTopic = null;
@@ -1944,6 +2040,10 @@ After your Drive operation executes, the result (including a direct link to the 
       if (typeof closeArtifactPanel === 'function') closeArtifactPanel();
     },
     loadSession(id, session) {
+      if (debateActive) {
+        debateCancelRequested = true;
+        debateActive = false;
+      }
       this.currentSessionId = id; this.chatHistory = session.messages || [];
       document.getElementById('chatMessages').innerHTML = '';
       this.chatHistory.forEach(m => appendMessage(m.role, m.content, false));
@@ -2197,38 +2297,51 @@ The user has sent code files for you to edit. The files are embedded in the mess
 
   function shouldFetchWeb(prompt) {
     const text = prompt.toLowerCase().trim();
+    // Skip trivial greetings
     if (/^(hi|hello|hey|hiya|yo|sup|thanks|thank you|bye|good morning|good night|good afternoon|good evening)[\s!?.]*$/.test(text)) return false;
-    
-    // Explicit requests to search the web
-    const explicitSearchRegex = /\b(search|google|web|internet|lookup|find|browse|weather|news|stock|price|rate|crypto|btc|eth|sol|near|info|details|recent|current|latest)\b/i;
-    if (explicitSearchRegex.test(text)) return true;
-    
-    // Temporal expressions for recent or future dates
-    const temporalRegex = /\b(today|tonight|yesterday|tomorrow|this week|this month|this year|now|currently|recent|recently|upcoming|latest|newest|released|launched|announced|2024|2025|2026)\b/i;
-    if (temporalRegex.test(text)) return true;
-    
-    // Specific question patterns that usually require live info (who is/did, who won, when did, latest status of)
-    const questionPatternRegex = /\b(who is|who was|who won|who leads|who is the|what is the price of|how much is|when did|when is|where is|is there a|status of|happen to|incident at|developments in|news about|events in|versus|vs|compare|comparison between)\b/i;
-    if (questionPatternRegex.test(text)) return true;
 
-    const WEB_SIGNALS = [
-      'today','tonight','yesterday','this week','this month','this year',
-      'right now','just now','at the moment','as of','currently','at present',
-      'latest','recent','new release','newest','update','updated','upcoming',
-      'released','launched','announced','announcement',
-      'news','headline','breaking','trending','happening',
-      'election','result','winner','score','match','game today',
-      'price','cost','rate','stock','market','crypto','bitcoin',
-      'weather','forecast','temperature','rain',
-      'who is the','who won','who leads','ceo of','president of',
-      'prime minister','is still','does still',
-      'version','changelog','gpt-','gemini ','claude ',
-      'ios ','android ','macos ','windows ','2025','2026',
-    ];
-    return WEB_SIGNALS.some(s => text.includes(s));
+    // ── DEFINITE search triggers (user explicitly asks for live data) ──
+    if (/\b(search|google|web lookup|browse|find (recent|current|latest|online)|look up|lookup)\b/i.test(text)) return true;
+
+    // ── Topics that inherently require live data ──
+    if (/\b(weather|forecast|temperature|rain|storm|hurricane)\b/i.test(text)) return true;
+    if (/\b(stock (price|market)|crypto|bitcoin|ethereum|btc|eth|solana|share price)\b/i.test(text)) return true;
+    if (/\b(headline|breaking news|trending|latest news|current events)\b/i.test(text)) return true;
+
+    // ── Freshness signals: user asks about recency specifically ──
+    // These patterns indicate the user wants up-to-date information
+    const freshnessPattern = /\b(what('s| is) new|what happened|latest (on|in|about)|recent (update|development|change|news|event)|as of (today|now)|currently happening|right now|at the moment)\b/i;
+    if (freshnessPattern.test(text)) return true;
+
+    // ── Temporal context + question = likely needs web ──
+    // Only trigger on actual questions with time context, not casual mentions
+    const hasTemporal = /\b(today|yesterday|tonight|this (week|month|year|quarter)|in \d{4})\b/i.test(text);
+    const isQuestion = /(\b(who|what|when|where|why|how|which)\b.*\?|^.*\?$)/i.test(text);
+    if (hasTemporal && isQuestion) return true;
+
+    // ── Price / rate lookups (specific patterns) ──
+    if (/\b(how much (is|does|are)|what('s| is) the price|price of|cost of|rate of|exchange rate)\b/i.test(text)) return true;
+
+    // ── Election / score / match results ──
+    if (/\b(who (won|lost)|election (result|outcome)|score of|match result|game (today|last night))\b/i.test(text)) return true;
+
+    // ── Version / release lookups for known products ──
+    if (/\b(latest (version|release|update) of|what('s| is) the (latest|newest)|new (version|release) of)\b/i.test(text)) return true;
+
+    // ── Comparison questions (often benefit from live data) ──
+    if (/\b(versus|vs\.?|compare|comparison between|difference between)\b/i.test(text)) return true;
+
+    // ── Do NOT search for static knowledge or casual conversation ──
+    return false;
   }
 
+  // Simple in-memory search cache (cleared on new chat)
+  const _webSearchCache = {};
+
   async function fetchWebContext(query) {
+    const cacheKey = query.toLowerCase().trim().slice(0, 100);
+    if (_webSearchCache[cacheKey]) return _webSearchCache[cacheKey];
+
     try {
       const res = await fetch(`${BACKEND}/api/search`, {
         method: 'POST',
@@ -2238,8 +2351,18 @@ The user has sent code files for you to edit. The files are embedded in the mess
       if (!res.ok) return null;
       const data = await res.json();
       if (!data.success || !data.results?.length) return null;
+      _webSearchCache[cacheKey] = data;
       return data;
     } catch { return null; }
+  }
+
+  // Clear search cache on new chat
+  const _origNewChat = window._nexus.newChat;
+  if (_origNewChat) {
+    window._nexus.newChat = function() {
+      for (const k in _webSearchCache) delete _webSearchCache[k];
+      return _origNewChat.apply(this, arguments);
+    };
   }
 
   function buildWebPromptContext(webData, originalQuery) {
@@ -2250,16 +2373,22 @@ The user has sent code files for you to edit. The files are embedded in the mess
     ctx += `Query: "${originalQuery}"\n`;
     ctx += `Retrieved: ${today} | Source: ${webData.service || 'Web'}\n`;
     ctx += `────────────────────────────────────────\n`;
-    if (webData.answer) ctx += `Quick Answer: ${webData.answer}\n\n`;
-    webData.results.slice(0, 5).forEach((r, i) => {
-      ctx += `[${i + 1}] ${r.title || 'Result'}\n`;
-      const snippet = (r.snippet || r.content || '').slice(0, 300).trim();
-      if (snippet) ctx += `    ${snippet}\n`;
-      if (r.url) ctx += `    🔗 ${r.url}\n`;
+    if (webData.answer) ctx += `📋 AI Summary: ${webData.answer}\n\n`;
+    webData.results.slice(0, 6).forEach((r, i) => {
+      ctx += `[${i + 1}] ${r.title || 'Result'}`;
+      if (r.date) ctx += ` (${r.date})`;
+      ctx += '\n';
+      const snippet = (r.snippet || r.content || '').slice(0, 350).trim();
+      if (snippet) ctx += `   ${snippet}\n`;
+      if (r.url) ctx += `   🔗 ${r.url}\n`;
       ctx += '\n';
     });
     ctx += `────────────────────────────────────────\n`;
-    ctx += `INSTRUCTION: Use the above real-time web data to answer accurately. Cite sources by number (e.g. [1]) where relevant. If web results conflict with training knowledge, defer to web data as it is more current.\n\n`;
+    ctx += `INSTRUCTIONS:\n`;
+    ctx += `• Ground your answer in the web data above. Cite sources by number, e.g. [1].\n`;
+    ctx += `• If web data conflicts with your training knowledge, defer to the web data.\n`;
+    ctx += `• If results lack sufficient info, state what is known and what is uncertain.\n`;
+    ctx += `• Prefer more recent sources (dates shown where available) for time-sensitive topics.\n\n`;
     return ctx;
   }
 
@@ -2287,9 +2416,13 @@ The user has sent code files for you to edit. The files are embedded in the mess
 
     const list = document.createElement('div');
     list.className = 'ws-source-list';
-    webData.results.slice(0, 5).forEach((r, i) => {
+    webData.results.slice(0, 6).forEach((r, i) => {
       const row = document.createElement('div');
-      row.append(`[${i + 1}] `);
+      row.style.cssText = 'padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:0.78rem;line-height:1.4;';
+
+      const header = document.createElement('div');
+      header.style.cssText = 'display:flex;align-items:baseline;gap:4px;';
+      header.append(`[${i + 1}] `);
       const title = (r.title || `Result ${i + 1}`).slice(0, 80);
       if (r.url) {
         const link = document.createElement('a');
@@ -2297,10 +2430,28 @@ The user has sent code files for you to edit. The files are embedded in the mess
         link.target = '_blank';
         link.rel = 'noopener';
         link.textContent = title;
-        row.appendChild(link);
+        link.style.cssText = 'color:var(--c-neon-cyan);text-decoration:none;font-weight:500;';
+        header.appendChild(link);
       } else {
-        row.append(title);
+        const span = document.createElement('span');
+        span.textContent = title;
+        header.appendChild(span);
       }
+      if (r.date) {
+        const dateSpan = document.createElement('span');
+        dateSpan.style.cssText = 'font-size:0.65rem;color:var(--c-muted);margin-left:4px;';
+        dateSpan.textContent = r.date;
+        header.appendChild(dateSpan);
+      }
+      row.appendChild(header);
+
+      if (r.snippet) {
+        const snippetEl = document.createElement('div');
+        snippetEl.style.cssText = 'font-size:0.72rem;color:var(--c-muted);margin-top:1px;padding-left:18px;opacity:0.8;';
+        snippetEl.textContent = r.snippet.slice(0, 200);
+        row.appendChild(snippetEl);
+      }
+
       list.appendChild(row);
     });
 
@@ -2680,14 +2831,48 @@ The user has sent code files for you to edit. The files are embedded in the mess
   }
   function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); document.body.style.overflow=''; }
 
+  // ── DEBATE STATE ──
+  let debateActive = false;
+  let debateCancelRequested = false;
+
   function selectAgent(id, el) {
-    document.querySelectorAll('.agent-btn').forEach(b => b.classList.remove('active'));
-    el.classList.add('active');
-    window._nexus.selectedAgent = id;
-    const name = agentName(id);
-    document.getElementById('agentLabel').textContent  = name;
-    document.getElementById('agentHint2').textContent  = name;
-    if (window.innerWidth <= 768) closeSidebar();
+    const isDebate = document.getElementById('debateToggle')?.checked;
+    if (isDebate) {
+      // Multi-select mode for debate
+      const isActive = el.classList.contains('active');
+      if (isActive) {
+        el.classList.remove('active');
+        window._nexus.debateAgents = (window._nexus.debateAgents || []).filter(a => a !== id);
+      } else {
+        const current = window._nexus.debateAgents || [];
+        if (current.length >= 5) return; // Max 5 agents for debate
+        el.classList.add('active');
+        window._nexus.debateAgents = [...current, id];
+      }
+      updateDebateAgentCount();
+    } else {
+      document.querySelectorAll('.agent-btn').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      window._nexus.selectedAgent = id;
+      const name = agentName(id);
+      document.getElementById('agentLabel').textContent  = name;
+      document.getElementById('agentHint2').textContent  = name;
+      if (window.innerWidth <= 768) closeSidebar();
+    }
+  }
+
+  function updateDebateAgentCount() {
+    const count = (window._nexus.debateAgents || []).length;
+    const el = document.getElementById('debateAgentCount');
+    if (el) el.textContent = `(${count} selected)`;
+    const btn = document.getElementById('debateStartBtn');
+    if (btn) btn.disabled = count < 2;
+  }
+
+  function clearDebateAgentSelection() {
+    document.querySelectorAll('.agent-btn.active').forEach(b => b.classList.remove('active'));
+    window._nexus.debateAgents = [];
+    updateDebateAgentCount();
   }
 
   async function showBackendStatus() {
@@ -2975,6 +3160,249 @@ The user has sent code files for you to edit. The files are embedded in the mess
       statusText.style.color = 'var(--c-neon-pink)';
       if (spinner) { spinner.className = ''; spinner.style.width = '24px'; spinner.style.height = '24px'; spinner.innerHTML = '⚠️'; spinner.style.fontSize = '1.2rem'; }
       appendMessage('error', `Research execution failed: ${err.message}`, true);
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  🗣️ DEBATE MODE
+  // ══════════════════════════════════════════════════════════
+
+  function selectDebateRound(el) {
+    document.querySelectorAll('.debate-round-pill').forEach(p => p.classList.remove('active'));
+    el.classList.add('active');
+  }
+
+  function getDebateColor(idx) {
+    const colors = ['#00f5ff', '#ff2d78', '#ffbe00', '#7c3aed', '#00ff9d'];
+    return colors[idx % colors.length];
+  }
+
+  async function runDebate(topic) {
+    const nx = window._nexus;
+    const agents = nx.debateAgents || [];
+    if (agents.length < 2) {
+      appendMessage('error', '⚠ Select at least 2 agents for the debate.', true);
+      return;
+    }
+
+    const roundPill = document.querySelector('#debateRoundPills .debate-round-pill.active');
+    const rounds = parseInt(roundPill?.dataset?.value || '2');
+    const container = document.getElementById('chatMessages');
+    container.querySelector('.welcome-state')?.remove();
+
+    const userMsgNode = appendMessage('user', topic, true);
+
+    // ── Prompt Enhancement ──
+    let finalTopic = topic;
+    const enhanceOn = document.getElementById('enhanceToggle')?.checked;
+    if (enhanceOn) {
+      const firstAgent = (window._nexus.debateAgents || [])[0] || window._nexus.selectedAgent;
+      const enhanced = await enhancePrompt(topic, firstAgent);
+      if (enhanced && enhanced !== topic) {
+        finalTopic = enhanced;
+        animatePromptReplacement(userMsgNode, enhanced);
+      }
+    }
+
+    const wrap = document.createElement('div');
+    wrap.className = 'message-wrap assistant';
+    wrap.style.animation = 'msgIn 0.3s ease';
+
+    wrap.innerHTML = `
+      <div class="msg-avatar agent-avatar" style="background:linear-gradient(135deg,var(--c-neon-amber),#d97706)">🗣️</div>
+      <div class="message-bubble assistant" style="width:100%;max-width:100%;">
+        <div class="agent-label" style="color:var(--c-neon-amber)">🗣️ Multi-Agent Debate</div>
+        <div class="message-content" id="debateDashboardContainer">
+          <div class="debate-dashboard">
+            <div class="debate-status-container">
+              <div class="debate-spinner" id="debateSpinner"></div>
+              <div class="debate-status-text" id="debateStatusText">Initializing debate...</div>
+              <button id="debateCancelBtn" style="margin-left:auto;padding:4px 10px;border-radius:8px;border:1px solid rgba(255,45,120,0.3);background:transparent;color:var(--c-neon-pink);font-size:0.7rem;cursor:pointer;font-family:'Space Mono',monospace;transition:all 0.2s;">⏹ Stop</button>
+            </div>
+            <div class="debate-progress-bar-wrap">
+              <div class="debate-progress-bar" id="debateProgressBar" style="width:2%;"></div>
+            </div>
+            <div id="debateParticipants" class="debate-participants"></div>
+            <div id="debateTranscript" class="debate-transcript"></div>
+            <div id="debateConsensus"></div>
+          </div>
+        </div>
+      </div>`;
+
+    container.appendChild(wrap);
+    container.scrollTop = container.scrollHeight;
+
+    const statusText = wrap.querySelector('#debateStatusText');
+    const progressBar = wrap.querySelector('#debateProgressBar');
+    const spinner = wrap.querySelector('#debateSpinner');
+    const transcriptEl = wrap.querySelector('#debateTranscript');
+    const participantsEl = wrap.querySelector('#debateParticipants');
+    const consensusEl = wrap.querySelector('#debateConsensus');
+
+    // Prevent starting a second debate while one is running
+    if (debateActive) {
+      appendMessage('error', '⚠ A debate is already in progress. Wait for it to finish or start a new chat.', true);
+      return;
+    }
+
+    // Disable the debate toggle and start button while running
+    const debateToggleEl = document.getElementById('debateToggle');
+    const startBtn = document.getElementById('debateStartBtn');
+    if (debateToggleEl) debateToggleEl.disabled = true;
+    if (startBtn) startBtn.disabled = true;
+
+    // Wire up cancel button
+    const cancelBtn = wrap.querySelector('#debateCancelBtn');
+    if (cancelBtn) {
+      cancelBtn.onclick = () => {
+        debateCancelRequested = true;
+        cancelBtn.textContent = '⏹ Stopping...';
+        cancelBtn.disabled = true;
+      };
+    }
+
+    debateActive = true;
+    debateCancelRequested = false;
+
+    try {
+      // Fetch web context if web search is enabled
+      let webContext = null;
+      const webSearchEnabled = document.getElementById('webSearchToggle')?.checked;
+      if (webSearchEnabled && shouldFetchWeb(finalTopic)) {
+        statusText.textContent = '🌐 Fetching live web data for debate...';
+        webContext = await fetchWebContext(finalTopic);
+        if (webContext) statusText.textContent = `🌐 Web-grounded debate with ${webContext.results.length} sources`;
+      }
+
+      const res = await fetch(`${BACKEND}/api/debate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: finalTopic, agents, rounds, webContext })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({ error: 'Unknown server error' }));
+        throw new Error(errData.error || `Server responded with ${res.status}`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let totalTurns = 0;
+      let completedTurns = 0;
+      let consensusHtml = null;
+
+      while (true) {
+        if (debateCancelRequested) {
+          reader.cancel();
+          statusText.textContent = '⏹️ Debate cancelled.';
+          statusText.style.color = 'var(--c-neon-pink)';
+          if (spinner) { spinner.className = ''; spinner.innerHTML = '⏹️'; spinner.style.fontSize = '1.2rem'; }
+          debateActive = false;
+          return;
+        }
+
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop();
+
+        for (const line of lines) {
+          if (!line.trim() || !line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr) continue;
+
+          let event;
+          try { event = JSON.parse(jsonStr); } catch { continue; }
+
+          if (event.type === 'start') {
+            // Render participant badges
+            const participants = event.participants || [];
+            participantsEl.innerHTML = participants.map((p, i) => {
+              const color = getDebateColor(i);
+              return `<span class="debate-participant-pill" style="border-color:${color};color:${color};background:${color}11;">
+                <span style="width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0;"></span>
+                ${escapeHTML(p.name)}
+                <span style="opacity:0.6">· ${p.persona.role}</span>
+              </span>`;
+            }).join('');
+            totalTurns = participants.length * rounds;
+            statusText.textContent = `🗣️ ${participants.length} participants, ${rounds} round${rounds > 1 ? 's' : ''}`;
+
+          } else if (event.type === 'status') {
+            statusText.textContent = event.message;
+
+          } else if (event.type === 'speaker_start') {
+            statusText.textContent = `💬 ${event.name} (${event.persona.role}) is speaking...`;
+            const pct = 2 + Math.floor((completedTurns / totalTurns) * 90);
+            progressBar.style.width = `${pct}%`;
+            container.scrollTop = container.scrollHeight;
+
+          } else if (event.type === 'speaker_end') {
+            completedTurns++;
+            const color = event.color || getDebateColor(0);
+            const turnHtml = `
+              <div class="debate-turn ${event.error ? 'debate-error' : ''}" style="border-left:3px solid ${color};">
+                <div class="debate-turn-header">
+                  <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></span>
+                  <span class="debate-turn-name" style="color:${color}">${escapeHTML(event.name)}</span>
+                  <span class="debate-turn-persona">${escapeHTML(event.persona.role)}</span>
+                  <span class="debate-turn-round">Round ${event.round}</span>
+                </div>
+                <div class="debate-turn-content">${event.error ? escapeHTML(event.content) : marked.parse(event.content)}</div>
+              </div>`;
+            transcriptEl.insertAdjacentHTML('beforeend', turnHtml);
+            const pct = 2 + Math.floor((completedTurns / totalTurns) * 90);
+            progressBar.style.width = `${pct}%`;
+            container.scrollTop = container.scrollHeight;
+
+            // Persist turn to chat history so it survives session reload
+            nx.chatHistory.push({
+              role: 'assistant',
+              content: `🗣️ **${event.name}** (${event.persona.role}, Round ${event.round}):\n\n${event.content}`
+            });
+
+          } else if (event.type === 'completed') {
+            progressBar.style.width = '100%';
+            statusText.textContent = '✅ Debate concluded!';
+            statusText.style.color = 'var(--c-neon-green)';
+            if (spinner) { spinner.className = 'debate-spinner-done'; spinner.innerHTML = '✓'; }
+
+            const consensusHtml = `
+              <div class="debate-consensus">
+                <div class="debate-consensus-header">🏁 Final Consensus</div>
+                <div class="debate-consensus-content">${marked.parse(event.result)}</div>
+              </div>`;
+            consensusEl.innerHTML = consensusHtml;
+            container.scrollTop = container.scrollHeight;
+
+            nx.chatHistory.push({ role: 'assistant', content: `[Debate Conclusion] ${event.result}` });
+            if (nx.currentUser && nx.currentSessionId && typeof window._saveSession === 'function') {
+              const title = nx.chatHistory[0]?.content?.slice(0, 60) || 'Debate: ' + finalTopic.slice(0, 40);
+              window._saveSession(nx.currentUser.uid, nx.currentSessionId, {
+                title, messages: nx.chatHistory, createdAt: Date.now(), agent: nx.selectedAgent
+              });
+            }
+
+          } else if (event.type === 'error') {
+            throw new Error(event.message);
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Debate execution error:", err);
+      statusText.textContent = `❌ Debate Failed: ${err.message}`;
+      statusText.style.color = 'var(--c-neon-pink)';
+      if (spinner) { spinner.className = ''; spinner.innerHTML = '⚠️'; spinner.style.fontSize = '1.2rem'; }
+      appendMessage('error', `Debate failed: ${err.message}`, true);
+    } finally {
+      debateActive = false;
+      // Re-enable toggle and start button
+      const dt = document.getElementById('debateToggle');
+      const sb = document.getElementById('debateStartBtn');
+      if (dt) dt.disabled = false;
+      if (sb) { sb.disabled = (window._nexus.debateAgents || []).length < 2; }
     }
   }
 
@@ -3347,6 +3775,46 @@ The user has sent code files for you to edit. The files are embedded in the mess
       researchToggle.addEventListener('change', function() {
         const badge = document.getElementById('researchBadgeHeader');
         if (badge) badge.style.display = this.checked ? 'block' : 'none';
+      });
+    }
+
+    // ── DEBATE MODE TOGGLE ──
+    const debateToggle = document.getElementById('debateToggle');
+    const debateConfig = document.getElementById('debateConfig');
+    const debateBadge = document.getElementById('debateBadgeHeader');
+    if (debateToggle && debateConfig) {
+      debateToggle.addEventListener('change', function() {
+        if (!this.checked && debateActive) {
+          this.checked = true;
+          return;
+        }
+        const on = this.checked;
+        debateConfig.style.display = on ? 'block' : 'none';
+        if (debateBadge) debateBadge.style.display = on ? 'block' : 'none';
+        // Toggle visual multi-select indicator on agent buttons
+        document.querySelectorAll('.agent-btn').forEach(b => b.classList.toggle('debate-select', on));
+        if (on) {
+          updateDebateAgentCount();
+        } else {
+          clearDebateAgentSelection();
+        }
+      });
+    }
+
+    const debateStartBtn = document.getElementById('debateStartBtn');
+    if (debateStartBtn) {
+      debateStartBtn.addEventListener('click', function() {
+        const input = document.getElementById('userInput');
+        const topic = input.value.trim();
+        if (!topic) {
+          input.focus();
+          input.style.borderColor = 'var(--c-neon-pink)';
+          setTimeout(() => input.style.borderColor = '', 1500);
+          return;
+        }
+        input.value = '';
+        autoResize(input);
+        runDebate(topic);
       });
     }
 
