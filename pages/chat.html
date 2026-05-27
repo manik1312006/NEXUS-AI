@@ -2182,62 +2182,181 @@ After your Drive operation executes, the result (including a direct link to the 
     return d.result;
   }
 
-  function shouldFetchWeb(prompt) {
-    const text = prompt.toLowerCase().trim();
-    // Skip trivial greetings and single-word messages
-    if (/^(hi|hello|hey|hiya|yo|sup|thanks|thank you|bye|good morning|good night|good afternoon|good evening)[\s!?.]*$/.test(text)) return false;
-    if (/^(yes|no|ok|okay|sure|alright|fine|lol|haha|nice|great|awesome| cool)$/i.test(text)) return false;
-    if (text.length < 10 && !text.includes('?')) return false;
+  /**
+   * Multi-factor decision framework for determining whether the LLM needs
+   * internet access to answer a user question reliably.
+   *
+   * Evaluates five factors, each contributing to a total score (0-100):
+   *
+   *   1. KNOWLEDGE CURRENCY GAP  (0-30)
+   *      How recently might the target information have changed?
+   *      - Explicit time references to recent periods
+   *      - Time-sensitive topics (weather, stocks, news)
+   *      - Mentions of years after the model's knowledge cutoff
+   *
+   *   2. TRAINING DATA COVERAGE  (0-25)
+   *      Is the topic likely well-covered in the model's training corpus?
+   *      - Niche / highly specific queries → less coverage → higher score
+   *      - Current events, recent developments → likely absent → higher score
+   *      - Well-known, widely documented concepts → lower score
+   *
+   *   3. ANSWER DYNAMISM  (0-20)
+   *      How frequently does the correct answer change?
+   *      - Rapidly changing fields (tech, finance, politics) → high score
+   *      - Stable fields (math, history, science fundamentals) → low score
+   *      - Dynamic entities (companies, products, prices) → high score
+   *
+   *   4. RISK OF HARM  (0-15)
+   *      What is the potential impact of providing outdated / inaccurate data?
+   *      - Health, finance, legal, safety domains → high score
+   *      - General knowledge, opinions → low score
+   *      - User explicitly requests accuracy / verification → bonus
+   *
+   *   5. CONFIDENCE GAP  (0-10)
+   *      How confident would the model be in its training-only answer?
+   *      - Specific factual / data queries → likely low confidence → higher score
+   *      - Broad conceptual / explanatory queries → higher confidence → lower score
+   *
+   * ── Decision ──
+   *   Total score ≥ 55  →  fetch web data to supplement the answer.
+   *   Score < 55        →  rely on training knowledge (answer is likely safe).
+   *
+   * Special rules:
+   *   - Explicit web-search commands → ALWAYS search (bypass scoring).
+   *   - Trivial greetings / very short non-questions → NEVER search.
+   *   - Strong stable-topic signals (ancient history, definitions, etc.)
+   *     apply a penalty that reduces the score.
+   */
+  function needsInternetAccess(question) {
+    const text = question.toLowerCase().trim();
+    const words = text.split(/\s+/);
+    const wordCount = words.length;
 
-    // ── DEFINITE search triggers (user explicitly asks for live data) ──
-    if (/\b(search|google|web lookup|browse|find (recent|current|latest|online)|look up|lookup|tell me about|what is|what are|what's)\b/i.test(text)) return true;
+    // ── STAGE 0: Quick reject for non-informational messages ──
+    if (/^(hi|hello|hey|hiya|yo|sup|thanks|thank you|bye|good morning|good night|good afternoon|good evening|good day)[\s!?.]*$/.test(text)) return false;
+    if (/^(yes|no|ok|okay|sure|alright|fine|lol|haha|nice|great|awesome|cool|maybe|idk)$/i.test(text)) return false;
+    if (text.length < 8 && !text.includes('?')) return false;
 
-    // ── Topics that inherently require live data ──
-    if (/\b(weather|forecast|temperature|rain|storm|hurricane)\b/i.test(text)) return true;
-    if (/\b(stock (price|market)|crypto|bitcoin|ethereum|btc|eth|solana|share price|nifty|sensex|index)\b/i.test(text)) return true;
-    if (/\b(headline|breaking news|trending|latest news|current events|news about)\b/i.test(text)) return true;
+    // ── Explicit web request — always search ──
+    if (/\b(search(\s+(for|the|up|online|web|internet))?|google\s|look\s*up|browse\s|find\s+(out|online|information|data|details?|the\s+(latest|current|recent))|web\s+search|internet\s+search|check\s+(online|the\s+web|the\s+internet)|lookup)\b/i.test(text)) return true;
 
-    // ── Freshness signals: user asks about recency specifically ──
-    const freshnessPattern = /\b(what('s| is) new|what happened|latest (on|in|about)|recent (update|development|change|news|event|article|report|study|finding)|as of (today|now)|currently happening|right now|at the moment|update (on|about)|status of)\b/i;
-    if (freshnessPattern.test(text)) return true;
+    let score = 0;
 
-    // ── Temporal context = likely needs web ──
-    // Any mention of specific timeframes strongly suggests need for live data
-    const hasTemporal = /\b(today|yesterday|tonight|tomorrow|this (week|month|year|quarter|morning|afternoon|evening)|in \d{4}|in 20\d{2}|last (week|month|year|night|decade)|next (week|month|year|quarter)|currently|present|ongoing)\b/i.test(text);
+    // ════════════════════════════════════════════════════════════
+    //  FACTOR 1: KNOWLEDGE CURRENCY GAP  (0-30)
+    // ════════════════════════════════════════════════════════════
 
-    // ── Question detection ──
-    const isQuestion = /(\b(who|what|when|where|why|how|which|does|do|did|can|could|will|would|should|is|are|was|were|has|have|had)\b.*\?|^.*\?$)/i.test(text);
-    const hasQuestionMark = text.includes('?');
+    // 1a. Recent time references (strong signal)
+    if (/\b(today|yesterday|tonight|this\s+(week|month|year|quarter|morning|afternoon|evening|decade)|last\s+(night|hour|week|month|year|quarter|decade)|right\s+now|currently|ongoing|as\s+of|at\s+the\s+moment)\b/i.test(text)) {
+      score += 18;
+    }
 
-    if (hasTemporal && (isQuestion || hasQuestionMark)) return true;
+    // 1b. Year beyond typical training cutoff (2024+)
+    if (/\b(202[4-9]|20[3-9]\d)\b/.test(text)) {
+      score += 20;
+    }
 
-    // ── Any question with 5+ words that's not purely conversational ──
-    // This catches a broad range of informational queries
-    const wordCount = text.split(/\s+/).length;
-    if (hasQuestionMark && wordCount >= 5) return true;
+    // 1c. Time-sensitive topic keywords
+    if (/\b(weather|forecast|temperature|storm|hurricane|earthquake|flood|wildfire)\b/i.test(text)) score += 12;
+    if (/\b(stock\s*(price|market)?|crypto|bitcoin|ethereum|btc|eth|solana|share\s*price|nifty|sensex|index|market\s+cap|trading)\b/i.test(text)) score += 14;
+    if (/\b(news|headline|breaking|trending|current\s+events|latest)\b/i.test(text)) score += 12;
 
-    // ── Price / rate / value lookups ──
-    if (/\b(how much (is|does|are|would|will)|what('s| is) the (price|cost|rate|value)|price of|cost of|rate of|exchange rate|conversion rate|worth|valuation)\b/i.test(text)) return true;
+    // 1d. Tomorrow / next-week references (future events that might have occurred)
+    if (/\b(tomorrow|next\s+(week|month|year|quarter|monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b/i.test(text)) {
+      score += 10;
+    }
 
-    // ── Election / score / match / event results ──
-    if (/\b(who (won|lost|is winning)|election (result|outcome|polls)|score of|match result|game (today|last night|yesterday)|winner of|results of|outcome of)\b/i.test(text)) return true;
+    // ════════════════════════════════════════════════════════════
+    //  FACTOR 2: TRAINING DATA COVERAGE  (0-25)
+    // ════════════════════════════════════════════════════════════
 
-    // ── Version / release / launch lookups ──
-    if (/\b(latest (version|release|update|edition|model) of|what('s| is) the (latest|newest|most recent)|new (version|release|update|edition|model|feature) of|newly (released|launched|announced)|recently (released|launched|announced|published))\b/i.test(text)) return true;
+    // 2a. Highly specific / niche query (many qualifying words → likely absent from training)
+    const specificityWords = (text.match(/\b(specific|detail|exact|precise|particular|current|latest|recent|upcoming|new|updated|fresh|live|real.time)\b/gi) || []).length;
+    if (specificityWords >= 2) score += 8;
+    if (specificityWords >= 3) score += 5;
 
-    // ── Comparison questions ──
-    if (/\b(versus|vs\.?|compare|comparison between|difference between|better than|worse than|how does.*compare)\b/i.test(text)) return true;
+    // 2b. Current events / recent developments phrasing
+    if (/\b(what('s| is)\s+new|what\s+happened|what('s| is)\s+happening|update\s+(on|about)|status\s+of|developments?\s+in|developments?\s+on|progress\s+(on|of|in)|latest\s+(on|in|about|news|update|report|study|finding))\b/i.test(text)) score += 15;
 
-    // ── Any substantive informational question (>= 8 words, has a question word) ──
-    // Broad catch-all: if the user is asking a substantive question, get web data
-    const questionWords = /\b(who|what|when|where|why|how|which)\b/i;
-    if (questionWords.test(text) && wordCount >= 8) return true;
+    // 2c. Long, detailed question about specific entity (more likely beyond training)
+    if (wordCount >= 12 && /\b(company|organization|startup|product|service|platform|framework|library|tool|software|app|device|technology)\b/i.test(text)) {
+      score += 8;
+    }
 
-    // ── Technology / current affairs / trending topics often need fresh data ──
-    if (/\b(AI|artificial intelligence|GPT|ChatGPT|LLM|machine learning|deep learning|Neuralink|Tesla|SpaceX|Apple|Google|Microsoft|Meta|Amazon|Twitter|X\.com)\b/i.test(text)) return true;
+    // 2d. Data / statistics request (often not memorized precisely)
+    if (/\b(how\s+many|how\s+much|statistics?|data\s+(on|about|for|shows)|figures?|numbers?|percentage|rate\s+of|ratio|total|population|GDP|revenue|profit|loss|growth|decline|increase|decrease|survey|poll)\b/i.test(text)) {
+      score += 10;
+    }
 
-    // ── Do NOT search for very short static knowledge or casual conversation ──
-    return false;
+    // ════════════════════════════════════════════════════════════
+    //  FACTOR 3: ANSWER DYNAMISM  (0-20)
+    // ════════════════════════════════════════════════════════════
+
+    // 3a. Rapidly-changing domains
+    if (/\b(price|pricing|cost|rate|fees|salary|valuation|worth|budget|funding|investment|revenue|profit|quarterly)\b/i.test(text)) score += 8;
+    if (/\b(version|release|update|launch|announce|beta|alpha|patch|rollout|deprecat)\b/i.test(text)) score += 8;
+    if (/\b(election|poll|vote|approval.rating|candidate|campaign|legislation|bill|policy|regulation|ruling|judgment)\b/i.test(text)) score += 8;
+
+    // 3b. Dynamic entities (companies, products, people in news)
+    const dynamicEntityCount = (text.match(/\b(Apple|Google|Microsoft|Meta|Amazon|Tesla|SpaceX|OpenAI|Anthropic|NVIDIA|AMD|Intel|Samsung|Twitter|X\.com|Netflix|Uber|Airbnb|Spotify|Zoom|Slack|Notion|Figma|Vercel|Netlify|Adobe|Oracle|IBM|Salesforce|Palantir|ByteDance|Tencent|Alibaba|Sony|Microsoft|Meta|Amazon|Alphabet|Berkshire|JPMorgan|Goldman|Sachs|IPO|acquisition|merger|lawsuit|antitrust)\b/gi) || []).length;
+    if (dynamicEntityCount >= 1) score += 6;
+    if (dynamicEntityCount >= 2) score += 4;
+
+    // 3c. Comparison questions (often need current data for fair assessment)
+    if (/\b(versus|vs\.?|compare|comparison|difference\s+between|better\s+than|worse\s+than|how\s+does\s+\w+\s+compare|which\s+is\s+(better|worse|faster|cheaper|more))\b/i.test(text)) score += 6;
+
+    // ════════════════════════════════════════════════════════════
+    //  FACTOR 4: RISK OF HARM  (0-15)
+    // ════════════════════════════════════════════════════════════
+
+    // 4a. High-risk domains where outdated info could cause real harm
+    if (/\b(medical|health|treatment|therapy|medication|dosage|symptom|disease|diagnosis|prognosis|surgery|drug|vaccine|clinical|patient|hospital)\b/i.test(text)) score += 15;
+    if (/\b(legal|law|lawsuit|statute|regulation|compliance|attorney|lawyer|court|judge|ruling|precedent|contract|liability)\b/i.test(text)) score += 12;
+    if (/\b(financial\s+advice|investment|retirement|mortgage|loan|interest\s+rate|credit\s+score|tax|insurance|portfolio|trading)\b/i.test(text)) score += 10;
+    if (/\b(safety|security|emergency|disaster|evacuation|warning|alert|recall|hazard|toxic|poison)\b/i.test(text)) score += 12;
+
+    // 4b. User explicitly requests accuracy or verification
+    if (/\b(accurate|correct|reliable|up.to.date|up\s+to\s+date|current|verify|confirm|fact.?check|true|real|actual|ensure|make\s+sure|double.check)\b/i.test(text)) score += 8;
+
+    // ════════════════════════════════════════════════════════════
+    //  FACTOR 5: CONFIDENCE GAP  (0-10)
+    // ════════════════════════════════════════════════════════════
+
+    // 5a. Specific factual / data questions where precision matters
+    if (/\b(what\s+(is|are|was|were)\s+(the|a|an)\s+\w+\s+(of|in|for)\s+\w+|how\s+(many|much|large|long|far|old|tall|wide|deep|fast|often)\s+is|when\s+(did|was|were|will|does)\s+\w+|where\s+(is|are|was|were|did|does)\s+\w+)\b/i.test(text)) score += 6;
+
+    // 5b. Questions asking for exact numbers, dates, names
+    if (/\b(\d{4}|\d+%\s|\$\d+|€\d+|£\d+|INR\s+\d+|\d+\s+(million|billion|trillion|thousand|hundred)|born\s+in|founded\s+in|launched\s+in|released\s+in)\b/i.test(text)) score += 5;
+
+    // 5c. Broad conceptual / "explain" questions → model is confident → lower score
+    if (/\b(explain|define|what\s+is\s+(a|an|the)\s+\w+\s*$|describe|overview|introduction|meaning\s+of|definition\s+of|concept\s+of|theory\s+of|history\s+of|origins?\s+of)\b/i.test(text)) {
+      score -= 8;
+    }
+
+    // 5d. Opinion / analysis / creative → model can answer from training
+    if (/\b(think|believe|opinion|thoughts?\s+on|your\s+(take|perspective|view)|what\s+do\s+you\s+(think|know)\s+about|how\s+do\s+you\s+(feel|view)|in\s+your\s+opinion)\b/i.test(text)) {
+      score -= 6;
+    }
+
+    // ════════════════════════════════════════════════════════════
+    //  PENALTIES: Stable / timeless topics need less internet
+    // ════════════════════════════════════════════════════════════
+
+    // Strong stable-topic signals reduce the score
+    if (/\b(ancient|classical|medieval|historical|century|b\.c\.|a\.d\.|prehistoric|origin\s+of|etymology|definition|meaning\s+of|derived\s+from|roots?\s+in)\b/i.test(text)) score -= 15;
+    if (/\b(mathematical|theorem|proof|formula|equation|scientific\s+(law|principle|theory|method)|physics|chemistry|biology|photosynthesis|gravity|evolution|atom|molecule|cell|DNA)\b/i.test(text)) score -= 12;
+    if (/\b(philosophy|philosophical|metaphysics|ethics|morality|existential|consciousness|free\s+will)\b/i.test(text)) score -= 10;
+    if (/\b(grammar|syntax|vocabulary|translat\w+|synonym|antonym|spelling|pronunciation|language)\b/i.test(text)) score -= 5;
+
+    // Very short questions about well-known facts → no web needed
+    if (wordCount <= 4 && !text.includes('?')) score -= 10;
+
+    // ════════════════════════════════════════════════════════════
+    //  FINAL DECISION
+    // ════════════════════════════════════════════════════════════
+
+    const THRESHOLD = 55;
+    return score >= THRESHOLD;
   }
 
   // Simple in-memory search cache (cleared on new chat)
@@ -2406,7 +2525,7 @@ After your Drive operation executes, the result (including a direct link to the 
       }
 
       let webData = null;
-      if (webEnabled && shouldFetchWeb(rawPrompt)) {
+      if (webEnabled && needsInternetAccess(rawPrompt)) {
         updateTyping(typingId, '🌐 Fetching live web data…');
         webData = await fetchWebContext(rawPrompt);
       }
@@ -2914,7 +3033,7 @@ After your Drive operation executes, the result (including a direct link to the 
       // Use the original topic (not the enhanced one) for web search detection
       let webContext = null;
       const webSearchEnabled = document.getElementById('webSearchToggle')?.checked;
-      if (webSearchEnabled && shouldFetchWeb(topic)) {
+      if (webSearchEnabled && needsInternetAccess(topic)) {
         statusText.textContent = '🌐 Fetching live web data for debate...';
         webContext = await fetchWebContext(topic);
         if (webContext) statusText.textContent = `🌐 Web-grounded debate with ${webContext.results.length} sources`;
