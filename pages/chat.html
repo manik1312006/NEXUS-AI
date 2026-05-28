@@ -262,6 +262,31 @@
     input:checked + .slider { background:var(--c-neon-purple); border-color:var(--c-neon-purple); }
     input:checked + .slider::before { left:23px; }
     .memory-section { border-bottom: 1px solid var(--c-border); flex-shrink: 0; }
+    .skill-library-row { display:flex; gap:8px; align-items:center; margin-top:10px; }
+    .skill-library-btn { flex:1; padding:7px 10px; border-radius:8px; border:1px solid var(--c-border); background:transparent; color:var(--c-muted); font-size:0.72rem; cursor:pointer; transition:all 0.2s; font-family:'DM Sans',sans-serif; }
+    .skill-library-btn:hover { border-color:var(--c-neon-cyan); color:var(--c-neon-cyan); background:rgba(0,245,255,0.04); }
+    .skill-badge-header { display:none; padding:4px 12px; border-radius:20px; background:rgba(124,58,237,0.1); border:1px solid rgba(124,58,237,0.3); color:var(--c-neon-purple); font-size:0.72rem; font-family:'Space Mono',monospace; }
+    .skill-indicator { display:inline-flex; align-items:center; gap:6px; flex-wrap:wrap; padding:4px 10px; border-radius:20px; border:1px solid rgba(124,58,237,0.28); background:rgba(124,58,237,0.08); color:var(--c-neon-purple); font-size:0.68rem; font-family:'Space Mono',monospace; margin-top:8px; }
+    .skill-chip { display:inline-flex; align-items:center; gap:4px; padding:2px 7px; border-radius:999px; border:1px solid rgba(0,245,255,0.2); color:var(--c-neon-cyan); background:rgba(0,245,255,0.04); }
+    .skill-modal { width:min(860px,92vw); max-height:88vh; display:flex; flex-direction:column; overflow:hidden; }
+    .skill-toolbar { display:flex; gap:8px; align-items:center; margin-bottom:14px; }
+    .skill-search { flex:1; border:1px solid var(--c-border); background:rgba(0,0,0,0.18); color:var(--c-text); border-radius:10px; padding:10px 12px; outline:none; font-family:'DM Sans',sans-serif; }
+    .skill-search:focus { border-color:rgba(0,245,255,0.45); box-shadow:0 0 14px rgba(0,245,255,0.08); }
+    .skill-grid { flex:1; overflow-y:auto; display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; padding-right:4px; }
+    .skill-grid::-webkit-scrollbar { width:4px; }
+    .skill-grid::-webkit-scrollbar-thumb { background:var(--c-border); border-radius:2px; }
+    .skill-card { border:1px solid var(--c-border); border-radius:12px; padding:12px; background:rgba(255,255,255,0.025); display:flex; flex-direction:column; gap:8px; min-height:170px; }
+    .skill-card-top { display:flex; justify-content:space-between; gap:8px; align-items:flex-start; }
+    .skill-card-name { font-family:'Syne',sans-serif; font-weight:800; color:var(--c-text); font-size:0.9rem; line-height:1.25; }
+    .skill-card-cat { font-family:'Space Mono',monospace; font-size:0.58rem; color:var(--c-neon-cyan); text-transform:uppercase; letter-spacing:0.08em; }
+    .skill-demand { font-family:'Space Mono',monospace; font-size:0.58rem; color:var(--c-neon-amber); border:1px solid rgba(255,190,0,0.25); border-radius:999px; padding:2px 7px; white-space:nowrap; }
+    .skill-summary { color:var(--c-muted); font-size:0.78rem; line-height:1.55; }
+    .skill-tags { display:flex; flex-wrap:wrap; gap:5px; margin-top:auto; }
+    .skill-tag { font-size:0.64rem; color:var(--c-muted); border:1px solid rgba(255,255,255,0.08); border-radius:999px; padding:2px 7px; }
+    .artifact-file-bar { margin-top:10px; padding:9px; border:1px solid rgba(0,245,255,0.16); border-radius:10px; background:rgba(0,245,255,0.035); display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+    .artifact-file-label { font-family:'Space Mono',monospace; font-size:0.66rem; color:var(--c-neon-cyan); margin-right:2px; }
+    .artifact-file-btn { padding:5px 10px; border-radius:8px; border:1px solid var(--c-border); background:rgba(0,0,0,0.08); color:var(--c-text); font-size:0.72rem; cursor:pointer; font-family:'Space Mono',monospace; transition:all 0.2s; }
+    .artifact-file-btn:hover { border-color:var(--c-neon-cyan); color:var(--c-neon-cyan); transform:translateY(-1px); }
     .memory-section-header { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; transition: background 0.2s; }
     .memory-section-header:hover { background: rgba(0,245,255,0.03); }
     .memory-section-left { display: flex; align-items: center; gap: 8px; }
@@ -595,6 +620,19 @@
     .artifact-action-btn:hover { border-color: var(--c-neon-cyan); color: var(--c-neon-cyan); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 245, 255, 0.25); }
     .artifact-action-btn.primary { background: linear-gradient(135deg, var(--c-neon-purple), var(--c-neon-cyan)); border: none; color: #fff; }
     .artifact-action-btn.primary:hover { box-shadow: 0 6px 20px rgba(0, 245, 255, 0.4); }
+    .code-artifact-meta { font-family:'Space Mono',monospace; font-size:0.66rem; color:var(--c-muted); margin-top:3px; }
+    .code-artifact-tabs { display:flex; gap:8px; padding:12px 18px; border-bottom:1px solid var(--c-border); background:rgba(0,0,0,0.12); flex-shrink:0; }
+    .code-tab-btn { padding:7px 13px; border-radius:9px; border:1px solid var(--c-border); background:transparent; color:var(--c-muted); font-family:'Space Mono',monospace; font-size:0.72rem; cursor:pointer; transition:all 0.2s; }
+    .code-tab-btn:hover, .code-tab-btn.active { border-color:var(--c-neon-cyan); color:var(--c-neon-cyan); background:rgba(0,245,255,0.06); }
+    .code-artifact-body { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+    .code-artifact-code { flex:1; margin:0; border-radius:0; border:none; border-bottom:1px solid var(--c-border); background:rgba(0,0,0,0.42); padding:22px; overflow:auto; }
+    .code-artifact-code code { white-space:pre; font-family:'Space Mono',monospace; font-size:0.82rem; line-height:1.6; }
+    .code-artifact-preview { flex:1; width:100%; border:0; background:#fff; display:none; }
+    .code-artifact-empty { display:none; padding:32px; color:var(--c-muted); line-height:1.7; }
+    .code-artifact-panel.preview-mode .code-artifact-code { display:none; }
+    .code-artifact-panel.preview-mode .code-artifact-preview { display:block; }
+    .code-artifact-panel.no-preview.preview-mode .code-artifact-preview { display:none; }
+    .code-artifact-panel.no-preview.preview-mode .code-artifact-empty { display:block; }
     .cot-accordion { background: rgba(124, 58, 237, 0.04); border: 1px dashed rgba(124, 58, 237, 0.3); border-radius: 12px; padding: 14px 18px; margin: 16px 0; transition: all 0.3s ease; }
     .cot-accordion[open] { background: rgba(124, 58, 237, 0.08); border-color: var(--c-neon-purple); box-shadow: 0 4px 16px rgba(124, 58, 237, 0.1); }
     .cot-accordion summary { cursor: pointer; font-weight: bold; color: var(--c-neon-purple); font-family: 'Space Mono', monospace; font-size: 0.82rem; user-select: none; outline: none; display: flex; align-items: center; gap: 8px; }
@@ -782,6 +820,22 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       </div>
     </div>
 
+    <div class="skill-toggle-section" style="padding:14px 16px; border-bottom:1px solid var(--c-border);">
+      <div class="enhance-row">
+        <div class="enhance-info">
+          <div class="enhance-title" style="color:var(--c-neon-purple)">Skill Sets</div>
+          <div class="enhance-sub">Auto-selects coding knowledge<br>and artifact guidance</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="skillsToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="skill-library-row">
+        <button class="skill-library-btn" onclick="openSkillLibrary()">View Skill Library</button>
+      </div>
+    </div>
+
     <div class="research-toggle-section" style="padding:14px 16px; border-bottom:1px solid var(--c-border);">
       <div class="enhance-row">
         <div class="enhance-info">
@@ -881,6 +935,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       <div id="researchBadgeHeader" class="research-badge-header" style="display:none; padding:4px 12px; border-radius:20px; background:rgba(0,255,157,0.1); border:1px solid rgba(0,255,157,0.3); color:var(--c-neon-green); font-size:0.72rem; font-family:'Space Mono',monospace;">🔬 Research ON</div>
       <div id="debateBadgeHeader" class="debate-badge-header" style="display:none; padding:4px 12px; border-radius:20px; background:rgba(255,190,0,0.1); border:1px solid rgba(255,190,0,0.3); color:var(--c-neon-amber); font-size:0.72rem; font-family:'Space Mono',monospace;"><svg xmlns="http://www.w3.org/2000/svg" height="14px" viewBox="0 -960 960 960" width="14px" fill="currentColor" style="vertical-align:middle;margin-right:2px;"><path d="M711-480Zm209 80H737q-3-21-9.5-41T711-480h126q-4-7-9-12t-12-9q-26-15-59.5-22t-76.5-7h-3q-20-23-43.5-40T582-599q23-5 47.5-8t50.5-3q53 0 99 11t86 32q26 14 40.5 41.5T920-463v63ZM680-640q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T720-760q0-17-11.5-28.5T680-800q-17 0-28.5 11.5T640-760q0 17 11.5 28.5T680-720Zm0-40ZM249-480ZM40-400v-63q0-35 14.5-62.5T95-567q40-21 86-32t99-11q26 0 50.5 3t47.5 8q-28 12-51.5 29T283-530h-3q-43 0-76.5 7T144-501q-7 4-12 9t-9 12h126q-10 19-16.5 39t-9.5 41H40Zm240-240q-50 0-85-35t-35-85q0-50 35-85t85-35q50 0 85 35t35 85q0 50-35 85t-85 35Zm0-80q17 0 28.5-11.5T320-760q0-17-11.5-28.5T280-800q-17 0-28.5 11.5T240-760q0 17 11.5 28.5T280-720Zm0-40Zm200 480q-33 0-56.5-23.5T400-360v-120q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480v120q0 33-23.5 56.5T480-280ZM450-80v-82q-72-11-121-67t-49-131h60q0 58 41 99t99 41q58 0 99-41t41-99h60q0 75-49 131t-121 67v82h-60Z"/></svg> Debate ON</div>
       <div id="webSearchBadgeHeader" class="web-search-badge-header">🌐 Web ON</div>
+      <div id="skillBadgeHeader" class="skill-badge-header">Skills</div>
       <label id="theme-toggle-button" title="Toggle light/dark mode" aria-label="Toggle theme">
         <input type="checkbox" id="toggle" onchange="toggleTheme()">
         <svg viewBox="0 0 69.667 44" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns="http://www.w3.org/2000/svg">
@@ -974,6 +1029,33 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
   </div>
 </div>
 
+<!-- CODE ARTIFACT PANEL -->
+<div class="artifact-panel code-artifact-panel" id="codeArtifactPanel">
+  <div class="artifact-header">
+    <div class="artifact-title-area">
+      <span class="artifact-title-icon">{} </span>
+      <div>
+        <div class="artifact-title" id="codeArtifactTitle">Code Artifact</div>
+        <div class="code-artifact-meta" id="codeArtifactMeta">No file selected</div>
+      </div>
+    </div>
+    <button class="artifact-close-btn" onclick="closeCodeArtifactPanel()">×</button>
+  </div>
+  <div class="code-artifact-tabs">
+    <button class="code-tab-btn active" id="artifactCodeTab" onclick="showArtifactTab('code')">Code</button>
+    <button class="code-tab-btn" id="artifactPreviewTab" onclick="showArtifactTab('preview')">Preview</button>
+  </div>
+  <div class="code-artifact-body">
+    <pre class="code-artifact-code"><code id="codeArtifactCode"></code></pre>
+    <iframe class="code-artifact-preview" id="codeArtifactPreview" sandbox="allow-scripts"></iframe>
+    <div class="code-artifact-empty" id="codeArtifactEmpty">No HTML artifact is available to preview in this bundle.</div>
+  </div>
+  <div class="artifact-actions-bar">
+    <button class="artifact-action-btn" onclick="downloadActiveArtifact()">Download File</button>
+    <button class="artifact-action-btn primary" onclick="downloadArtifactBundle()">Download All</button>
+  </div>
+</div>
+
 <!-- BACKEND STATUS MODAL -->
 <div class="modal-overlay" id="settingsModal">
   <div class="modal">
@@ -985,6 +1067,24 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       <div style="text-align:center;padding:20px">Checking backend…</div>
     </div>
     <div class="modal-note">🔒 All API keys are secured on the server. Your browser never sees them.</div>
+  </div>
+</div>
+
+<!-- SKILL LIBRARY MODAL -->
+<div class="modal-overlay" id="skillLibraryModal" onclick="handleSkillModalOverlayClick(event)">
+  <div class="modal skill-modal">
+    <div class="modal-header" style="flex-shrink:0">
+      <div>
+        <div class="modal-title">Skill Library</div>
+        <div class="code-artifact-meta" id="skillLibraryMeta">Loading skills...</div>
+      </div>
+      <button class="modal-close" onclick="closeSkillLibrary()">×</button>
+    </div>
+    <div class="skill-toolbar" style="flex-shrink:0">
+      <input class="skill-search" id="skillSearchInput" placeholder="Search skills" oninput="renderSkillLibrary(this.value)">
+      <button class="skill-library-btn" style="flex:0 0 auto;width:auto;margin:0" onclick="refreshSkillTrends()">Refresh Trends</button>
+    </div>
+    <div class="skill-grid" id="skillGrid"></div>
   </div>
 </div>
 
@@ -1266,7 +1366,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
   // ── CORE APP ──
   window._nexus = {
-    currentUser: null, currentSessionId: null, chatHistory: [], selectedAgent: 'openai', memories: {},
+    currentUser: null, currentSessionId: null, chatHistory: [], selectedAgent: 'openai', memories: {}, artifacts: {}, artifactBundles: {}, activeSkills: [],
     newChat() {
       // Cancel any in-progress debate
       if (debateActive) {
@@ -1403,40 +1503,160 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     }, 350);
   }
 
-  function injectFileDownloads(bubbleEl, content) {
-    const regex = /###\s*📄\s*(\S+)\s*\n(?:```\w*\n)?([\s\S]*?)```/g;
+  function inferLanguage(filename, fallback) {
+    if (fallback && fallback !== 'artifact') return fallback;
+    const ext = (filename.split('.').pop() || '').toLowerCase();
+    const map = { html:'html', css:'css', js:'javascript', jsx:'jsx', ts:'typescript', tsx:'tsx', json:'json', md:'markdown', py:'python', yml:'yaml', yaml:'yaml', sql:'sql', sh:'bash' };
+    return map[ext] || 'text';
+  }
+
+  function normalizeArtifactName(name) {
+    return String(name || '').replace(/^file:\s*/i, '').replace(/["'`]/g, '').trim();
+  }
+
+  function extractArtifacts(content) {
     const files = [];
+    const seen = new Set();
+    const addFile = (filename, language, body) => {
+      const cleanName = normalizeArtifactName(filename);
+      const text = String(body || '').replace(/^\n+|\n+$/g, '');
+      if (!cleanName || !/\.[a-z0-9]{1,8}$/i.test(cleanName) || !text.trim()) return;
+      const key = cleanName.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      files.push({ filename: cleanName, language: inferLanguage(cleanName, language), content: text });
+    };
+
+    const headingFence = /###\s*(?:[^\w\n`]*\s*)?([A-Za-z0-9][\w./ -]*\.[A-Za-z0-9]{1,8})\s*\n```([A-Za-z0-9_-]*)[^\n]*\n([\s\S]*?)```/g;
     let match;
-    while ((match = regex.exec(content)) !== null) {
-      const filename = match[1].trim();
-      const fileContent = match[2].trim();
-      if (filename && fileContent) files.push({ filename, content: fileContent });
-    }
+    while ((match = headingFence.exec(content)) !== null) addFile(match[1], match[2], match[3]);
+
+    const artifactFence = /```artifact:([^\n`]+)\n([\s\S]*?)```/g;
+    while ((match = artifactFence.exec(content)) !== null) addFile(match[1], '', match[2]);
+
+    const namedFence = /```([A-Za-z0-9_-]+)\s+(?:file=|filename=)?([A-Za-z0-9][\w./ -]*\.[A-Za-z0-9]{1,8})\n([\s\S]*?)```/g;
+    while ((match = namedFence.exec(content)) !== null) addFile(match[2], match[1], match[3]);
+
+    return files;
+  }
+
+  function injectFileDownloads(bubbleEl, content) {
+    const files = extractArtifacts(content);
     if (!files.length) return;
 
-    const btnWrap = document.createElement('div');
-    btnWrap.className = 'file-download-bar';
+    const nx = window._nexus;
+    const bundleId = 'bundle_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+    nx.artifacts = nx.artifacts || {};
+    nx.artifactBundles = nx.artifactBundles || {};
+    nx.artifactBundles[bundleId] = { id: bundleId, files: [] };
 
-    files.forEach(f => {
+    const btnWrap = document.createElement('div');
+    btnWrap.className = 'artifact-file-bar';
+    const label = document.createElement('span');
+    label.className = 'artifact-file-label';
+    label.textContent = 'Artifacts';
+    btnWrap.appendChild(label);
+
+    files.forEach((file, index) => {
+      const id = bundleId + '_' + index;
+      const artifact = { ...file, id, bundleId };
+      nx.artifacts[id] = artifact;
+      nx.artifactBundles[bundleId].files.push(artifact);
+
       const btn = document.createElement('button');
-      btn.className = 'copy-btn';
-      btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" height="14px" viewBox="0 -960 960 960" width="14px" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>' + f.filename;
-      btn.title = 'Download ' + f.filename;
-      btn.onclick = () => {
-        const blob = new Blob([f.content], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = f.filename;
-        document.body.appendChild(a); a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        btn.innerHTML = '✓ Downloaded';
-        setTimeout(() => btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" height="14px" viewBox="0 -960 960 960" width="14px" fill="currentColor" style="vertical-align:middle;margin-right:4px"><path d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg>' + f.filename, 2000);
-      };
+      btn.className = 'artifact-file-btn';
+      btn.textContent = file.filename;
+      btn.title = 'Open ' + file.filename;
+      btn.onclick = () => openCodeArtifactPanel(id);
       btnWrap.appendChild(btn);
     });
 
     bubbleEl.appendChild(btnWrap);
+  }
+
+  function getActiveArtifactBundle() {
+    const nx = window._nexus;
+    const active = nx.activeArtifact;
+    if (!active) return null;
+    return nx.artifactBundles?.[active.bundleId] || null;
+  }
+
+  function buildArtifactPreviewDoc(bundle) {
+    if (!bundle?.files?.length) return null;
+    const htmlFile = bundle.files.find(f => /\.html?$/i.test(f.filename));
+    if (!htmlFile) return null;
+    const css = bundle.files.filter(f => /\.css$/i.test(f.filename)).map(f => f.content).join('\n\n');
+    const js = bundle.files.filter(f => /\.(js|mjs)$/i.test(f.filename)).map(f => f.content).join('\n\n');
+    let html = htmlFile.content;
+    if (css) {
+      html = /<\/head>/i.test(html)
+        ? html.replace(/<\/head>/i, `<style>\n${css}\n</style>\n</head>`)
+        : `<style>\n${css}\n</style>\n${html}`;
+    }
+    if (js) {
+      html = /<\/body>/i.test(html)
+        ? html.replace(/<\/body>/i, `<script>\n${js}\n<\/script>\n</body>`)
+        : `${html}\n<script>\n${js}\n<\/script>`;
+    }
+    return html;
+  }
+
+  function openCodeArtifactPanel(id) {
+    const nx = window._nexus;
+    const artifact = nx.artifacts?.[id];
+    if (!artifact) return;
+    nx.activeArtifact = artifact;
+
+    const panel = document.getElementById('codeArtifactPanel');
+    const bundle = getActiveArtifactBundle();
+    document.getElementById('codeArtifactTitle').textContent = artifact.filename;
+    document.getElementById('codeArtifactMeta').textContent = `${artifact.language.toUpperCase()} · ${artifact.content.length.toLocaleString()} chars · ${bundle?.files?.length || 1} file bundle`;
+    const codeEl = document.getElementById('codeArtifactCode');
+    codeEl.className = 'language-' + artifact.language;
+    codeEl.textContent = artifact.content;
+    try { hljs.highlightElement(codeEl); } catch {}
+
+    const previewDoc = buildArtifactPreviewDoc(bundle);
+    panel.classList.toggle('no-preview', !previewDoc);
+    document.getElementById('codeArtifactPreview').srcdoc = previewDoc || '';
+    panel.classList.add('open');
+    showArtifactTab('code');
+  }
+
+  function closeCodeArtifactPanel() {
+    document.getElementById('codeArtifactPanel').classList.remove('open');
+  }
+
+  function showArtifactTab(tab) {
+    const panel = document.getElementById('codeArtifactPanel');
+    const isPreview = tab === 'preview';
+    panel.classList.toggle('preview-mode', isPreview);
+    document.getElementById('artifactCodeTab').classList.toggle('active', !isPreview);
+    document.getElementById('artifactPreviewTab').classList.toggle('active', isPreview);
+  }
+
+  function downloadTextFile(filename, content) {
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function downloadActiveArtifact() {
+    const artifact = window._nexus.activeArtifact;
+    if (!artifact) return;
+    downloadTextFile(artifact.filename, artifact.content);
+  }
+
+  function downloadArtifactBundle() {
+    const bundle = getActiveArtifactBundle();
+    if (!bundle?.files?.length) return;
+    bundle.files.forEach((file, index) => {
+      setTimeout(() => downloadTextFile(file.filename, file.content), index * 120);
+    });
   }
 
   function copyMsg(btn) {
@@ -1461,6 +1681,131 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
   function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 160)+'px'; }
 
+  const _skillState = { repository: null, sources: [], refresh: null };
+
+  async function loadSkillRepository(force) {
+    if (_skillState.repository && !force) return _skillState.repository;
+    const res = await fetch(`${BACKEND}/api/skills`);
+    if (!res.ok) throw new Error('Skill library unavailable');
+    const data = await res.json();
+    _skillState.repository = data.skills || [];
+    _skillState.sources = data.sources || [];
+    return _skillState.repository;
+  }
+
+  function renderSkillLibrary(filter = '') {
+    const grid = document.getElementById('skillGrid');
+    const meta = document.getElementById('skillLibraryMeta');
+    if (!grid) return;
+    const skills = _skillState.repository || [];
+    const q = filter.toLowerCase().trim();
+    const filtered = skills.filter(skill => {
+      if (!q) return true;
+      const text = [skill.name, skill.category, skill.horizon, skill.summary, ...(skill.tags || []), ...(skill.aliases || [])].join(' ').toLowerCase();
+      return text.includes(q);
+    });
+
+    grid.innerHTML = '';
+    if (meta) {
+      const sourceCount = _skillState.sources.length;
+      meta.textContent = `${filtered.length} of ${skills.length} skills · ${sourceCount} research source${sourceCount === 1 ? '' : 's'}`;
+    }
+    if (!filtered.length) {
+      grid.innerHTML = '<div class="mem-empty" style="grid-column:1/-1">No matching skills.</div>';
+      return;
+    }
+
+    filtered.forEach(skill => {
+      const card = document.createElement('div');
+      card.className = 'skill-card';
+      const tags = (skill.tags || []).slice(0, 5).map(tag => `<span class="skill-tag">${escapeHTML(tag)}</span>`).join('');
+      card.innerHTML = `
+        <div class="skill-card-top">
+          <div>
+            <div class="skill-card-name">${escapeHTML(skill.name)}</div>
+            <div class="skill-card-cat">${escapeHTML(skill.category)} · ${escapeHTML(skill.horizon)}</div>
+          </div>
+          <span class="skill-demand">${escapeHTML(skill.demand)}</span>
+        </div>
+        <div class="skill-summary">${escapeHTML(skill.summary)}</div>
+        <div class="skill-tags">${tags}</div>`;
+      grid.appendChild(card);
+    });
+  }
+
+  async function openSkillLibrary() {
+    document.getElementById('skillLibraryModal').classList.add('show');
+    const grid = document.getElementById('skillGrid');
+    if (grid) grid.innerHTML = '<div class="mem-empty" style="grid-column:1/-1">Loading skills...</div>';
+    try {
+      await loadSkillRepository();
+      renderSkillLibrary(document.getElementById('skillSearchInput')?.value || '');
+    } catch (err) {
+      if (grid) grid.innerHTML = `<div class="mem-empty" style="grid-column:1/-1">${escapeHTML(err.message)}</div>`;
+    }
+  }
+
+  function closeSkillLibrary() {
+    document.getElementById('skillLibraryModal').classList.remove('show');
+  }
+
+  function handleSkillModalOverlayClick(e) {
+    if (e.target === document.getElementById('skillLibraryModal')) closeSkillLibrary();
+  }
+
+  async function refreshSkillTrends() {
+    const meta = document.getElementById('skillLibraryMeta');
+    if (meta) meta.textContent = 'Refreshing trend signals...';
+    try {
+      const res = await fetch(`${BACKEND}/api/skills/refresh`, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({}) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Refresh failed');
+      _skillState.refresh = data;
+      if (meta) meta.textContent = `${(_skillState.repository || []).length} skills · ${data.matches?.length || 0} live trend matches via ${data.service}`;
+    } catch (err) {
+      if (meta) meta.textContent = 'Trend refresh failed: ' + err.message;
+    }
+  }
+
+  async function fetchSkillContext(query) {
+    if (!document.getElementById('skillsToggle')?.checked) return { selected: [], context: '' };
+    try {
+      const res = await fetch(`${BACKEND}/api/skills/select`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, limit: 4 })
+      });
+      if (!res.ok) return { selected: [], context: '' };
+      const data = await res.json();
+      window._nexus.activeSkills = data.selected || [];
+      return data;
+    } catch {
+      return { selected: [], context: '' };
+    }
+  }
+
+  function updateSkillBadge(skills) {
+    const badge = document.getElementById('skillBadgeHeader');
+    if (!badge) return;
+    const count = skills?.length || 0;
+    badge.style.display = count ? 'block' : 'none';
+    badge.textContent = count ? `Skills ${count}` : 'Skills';
+  }
+
+  function appendSkillSources(bubbleEl, skills) {
+    if (!bubbleEl || !skills?.length) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'skill-indicator';
+    wrap.append('Skills');
+    skills.slice(0, 4).forEach(skill => {
+      const chip = document.createElement('span');
+      chip.className = 'skill-chip';
+      chip.textContent = skill.name;
+      wrap.appendChild(chip);
+    });
+    bubbleEl.appendChild(wrap);
+  }
+
   async function enhancePrompt(prompt, targetAgent) {
     try {
       const res  = await fetch(`${BACKEND}/api/enhance`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ prompt, targetAgent: agentName(targetAgent) }) });
@@ -1471,12 +1816,15 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
   const BASE_SYSTEM_PROMPT = "You are NEXUS AI, a helpful, advanced AI assistant with live web search capabilities. When web search results are provided below the user's message, you MUST synthesize BOTH your training knowledge AND the web data to produce the best possible answer. Use real-time numbers, figures, and information from the web to make your response accurate and current, while also leveraging your training knowledge to provide context, trends across years, and deeper understanding. Cite web sources by number like [1]. When no web results are provided, answer from your training knowledge only. IMPORTANT: Always use proper punctuation (periods, commas, question marks, etc.) in every response. Structure your response using clear bullet points or numbered lists where appropriate, keeping paragraphs short and highly structured so that new users see an appealing, readable, and structured output. Do not output raw walls of text.";
 
-  async function callAgent(agent, prompt, history, memories = []) {
+  async function callAgent(agent, prompt, history, memories = [], skillContext = '') {
     const recentHistory = history.slice(-8).filter(m => m.role !== 'system');
     const userMsg = { role: 'user', content: prompt };
     let messages, promptWithContext = prompt;
     
     let sysContent = BASE_SYSTEM_PROMPT;
+    if (skillContext) {
+      sysContent += `\n\n${skillContext}`;
+    }
 
     if (memories.length > 0) {
       const memLines   = memories.map(m => `• ${m.content}`).join('\n');
@@ -1488,7 +1836,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     const memPrefix = memories.length > 0
       ? `[User background: ${memories.map(m=>m.content).join('. ')}]\n\n`
       : '';
-    promptWithContext = `[System Instruction: ${BASE_SYSTEM_PROMPT}]\n\n${memPrefix}${prompt}`;
+    const skillPrefix = skillContext ? `[Skill set context:\n${skillContext}]\n\n` : '';
+    promptWithContext = `[System Instruction: ${BASE_SYSTEM_PROMPT}]\n\n${skillPrefix}${memPrefix}${prompt}`;
 
     const map = {
       openai:         { url:`${BACKEND}/api/openai`,         body:{ messages } },
@@ -1757,12 +2106,22 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         webData = await fetchWebContext(rawPrompt);
       }
 
+      updateTyping(typingId, 'Selecting skill sets...');
+      const skillData = await fetchSkillContext(finalPrompt);
+      const activeSkills = skillData?.selected || [];
+      updateSkillBadge(activeSkills);
+
       const activeMemories = getActiveMemories();
       const memLabel = activeMemories.length > 0
         ? `🧠 Using ${activeMemories.length} memor${activeMemories.length === 1 ? 'y' : 'ies'}…`
         : '';
 
+      const skillLabel = activeSkills.length > 0
+        ? `Skills ${activeSkills.length}`
+        : '';
+
       updateTyping(typingId,
+        (skillLabel ? skillLabel + ' · ' : '') +
         (memLabel ? memLabel + ' · ' : '') +
         (webData ? '🌐 Web-grounded · ' : '') +
         '🤖 Asking ' + agentName(agent) + '…'
@@ -1772,11 +2131,12 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         ? finalPrompt + buildWebPromptContext(webData, rawPrompt)
         : finalPrompt;
 
-      const finalResponse = await callAgent(agent, promptWithWeb, nx.chatHistory.slice(-10), activeMemories);
+      const finalResponse = await callAgent(agent, promptWithWeb, nx.chatHistory.slice(-10), activeMemories, skillData?.context || '');
       removeTyping(typingId);
 
       const safeResponse = (typeof finalResponse === 'string' && finalResponse.trim()) ? finalResponse : '_(No response returned)_';
       const msgWrap = appendMessage('assistant', safeResponse, true);
+      appendSkillSources(msgWrap?.querySelector('.message-bubble'), activeSkills);
 
       if (webAttempted) {
         const bubble = msgWrap?.querySelector('.message-bubble');
@@ -2813,6 +3173,16 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       webSearchBadge.style.display = webSearchToggle.checked ? 'block' : 'none';
       webSearchToggle.addEventListener('change', function() {
         webSearchBadge.style.display = this.checked ? 'block' : 'none';
+      });
+    }
+
+    const skillsToggle = document.getElementById('skillsToggle');
+    if (skillsToggle) {
+      skillsToggle.addEventListener('change', function() {
+        if (!this.checked) {
+          window._nexus.activeSkills = [];
+          updateSkillBadge([]);
+        }
       });
     }
 
