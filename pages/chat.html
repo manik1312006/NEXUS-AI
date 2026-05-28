@@ -52,23 +52,29 @@
     onAuthStateChanged(auth, async (user) => {
       if (!user) { window.location.href = '../index.html'; return; }
       window._nexus.currentUser = user;
+      const avatarEl = document.getElementById('userAvatar');
+      const nameEl = document.getElementById('userName');
       if (user.isAnonymous) {
-        document.getElementById('userAvatar').src = 'https://ui-avatars.com/api/?name=G&background=0d0d2b&color=00f5ff';
-        document.getElementById('userName').textContent = 'Guest';
+        if (avatarEl) avatarEl.src = 'https://ui-avatars.com/api/?name=G&background=0d0d2b&color=00f5ff';
+        if (nameEl) nameEl.textContent = 'Guest';
       } else {
-        document.getElementById('userAvatar').src = user.photoURL
+        if (avatarEl) avatarEl.src = user.photoURL
           || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'U')}&background=7c3aed&color=fff`;
-        document.getElementById('userName').textContent = user.displayName || 'User';
+        if (nameEl) nameEl.textContent = user.displayName || 'User';
       }
       
 
+      if (window._unsubSessions) window._unsubSessions();
+      if (window._unsubMemories) window._unsubMemories();
+
       const sessRef = ref(db, `sessions/${user.uid}`);
-      onValue(sessRef, (snap) => {
+      window._unsubSessions = onValue(sessRef, (snap) => {
         const data = snap.val() || {};
         const list = document.getElementById('sessionList');
+        if (!list) return;
         list.innerHTML = '';
         const sessions = Object.entries(data)
-          .sort((a, b) => b[1].createdAt - a[1].createdAt)
+          .sort((a, b) => (b[1]?.createdAt || 0) - (a[1]?.createdAt || 0))
           .slice(0, 20);
         if (sessions.length === 0) {
           list.innerHTML = '<div style="color:var(--c-muted);font-size:0.78rem;text-align:center;padding:20px">No chats yet</div>';
@@ -80,7 +86,7 @@
           el.dataset.sessionId = id;
           const btn = document.createElement('button');
           btn.className = 'session-item';
-          btn.innerHTML = `<span class="session-icon">💬</span><span class="session-title">${s.title || 'New Chat'}</span>`;
+          btn.innerHTML = `<span class="session-icon">💬</span><span class="session-title">${escapeHTML(s.title || 'New Chat')}</span>`;
           btn.addEventListener('click', () => {
             window._nexus.loadSession(id, s);
             document.querySelectorAll('.session-item-wrap').forEach(w => w.classList.remove('active-session'));
@@ -102,7 +108,7 @@
       });
       if (!user.isAnonymous) {
         const memRef = ref(db, `memories/${user.uid}`);
-        onValue(memRef, (snap) => {
+        window._unsubMemories = onValue(memRef, (snap) => {
           window._nexus.memories = snap.val() || {};
           if (typeof renderMemoryPanel === 'function') renderMemoryPanel();
         });
@@ -110,7 +116,7 @@
         window._nexus.memories = {};
         if (typeof renderMemoryPanel === 'function') renderMemoryPanel();
       }
-      window._nexus.newChat();
+      if (!window._nexus.currentSessionId) window._nexus.newChat();
     });
 
   </script>
@@ -1084,17 +1090,67 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 </div>
 
 <script>
+  // ── AbortSignal.timeout polyfill ──
+  const _aborters = [];
+  const aborter = (ms) => {
+    const c = new AbortController();
+    const tid = setTimeout(() => { c.abort(); const i = _aborters.indexOf(entry); if (i !== -1) _aborters.splice(i, 1); }, ms);
+    const entry = { c, tid };
+    _aborters.push(entry);
+    return c.signal;
+  };
+  function cleanupAborters() {
+    _aborters.forEach(e => { clearTimeout(e.tid); e.c.abort(); });
+    _aborters.length = 0;
+  }
+
+  // ── Simple HTML sanitizer for XSS defense ──
+  function sanitizeHTML(html) {
+    if (!html) return '';
+    let s = html
+      .replace(/&#(\d+);/g, (_, n) => {
+        if (n === 60) return '<';
+        if (n === 62) return '>';
+        if (n === 38) return '&';
+        if (n === 34) return '"';
+        if (n === 39) return "'";
+        return `&#${n};`;
+      })
+      .replace(/&#x([0-9a-f]+);/gi, (_, h) => {
+        const n = parseInt(h, 16);
+        if (n === 60) return '<';
+        if (n === 62) return '>';
+        if (n === 38) return '&';
+        if (n === 34) return '"';
+        if (n === 39) return "'";
+        return `&#x${h};`;
+      });
+    return s
+      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+      .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
+      .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '')
+      .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, '')
+      .replace(/ on\w+\s*=\s*"[^"]*"/gi, '')
+      .replace(/ on\w+\s*=\s*'[^']*'/gi, '')
+      .replace(/ on\w+\s*=\s*[^\s>]+/gi, '')
+      .replace(/[\s\/]on\w+\s*=\s*[^\s>]+/gi, '')
+      .replace(/javascript\s*:/gi, '');
+  }
+
   // ── THEME ──
   (function() {
-    const saved = localStorage.getItem('nexus-theme');
+    let saved;
+    try { saved = localStorage.getItem('nexus-theme'); } catch {}
     const isDark = saved === 'dark';
     if (!isDark) document.documentElement.classList.add('light');
-    document.getElementById('toggle').checked = isDark;
+    const toggle = document.getElementById('toggle');
+    if (toggle) toggle.checked = isDark;
   })();
   function toggleTheme() {
     const isDark = document.getElementById('toggle').checked;
     document.documentElement.classList.toggle('light', !isDark);
-    localStorage.setItem('nexus-theme', isDark ? 'dark' : 'light');
+    try { localStorage.setItem('nexus-theme', isDark ? 'dark' : 'light'); } catch {}
   }
 
   const RENDER_BACKEND = "https://nexus-ai-backend-3csk.onrender.com";
@@ -1119,6 +1175,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
   };
   function getMemStyle(cat) { return MEMORY_CAT_STYLE[cat] || MEMORY_CAT_STYLE.context; }
   function timeAgo(ts) {
+    if (!ts) return 'unknown';
     const d = Date.now() - ts;
     if (d < 60000)     return 'just now';
     if (d < 3600000)   return Math.floor(d/60000) + 'm ago';
@@ -1127,6 +1184,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     return new Date(ts).toLocaleDateString();
   }
   function isSimilarMemory(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
     const words = s => new Set(s.toLowerCase().split(/\W+/).filter(w => w.length > 3));
     const wa = words(a), wb = words(b);
     const inter = [...wa].filter(w => wb.has(w));
@@ -1150,7 +1208,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     let html = preview.map(m => `
       <div class="memory-preview-item">
         <span class="mem-cat-icon">${m.emoji || MEMORY_EMOJI[m.category] || '💡'}</span>
-        <span class="memory-preview-text" title="${escapeHTML(m.content)}">${escapeHTML(m.content)}</span>
+        <span class="memory-preview-text" title="${escapeAttr(m.content)}">${escapeHTML(m.content)}</span>
       </div>`).join('');
     if (count > 3) html += `<button class="memory-view-all-btn" onclick="openMemoryModal()">View all ${count} memories →</button>`;
     panel.innerHTML = html;
@@ -1198,7 +1256,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
           <div class="mem-card-content">${escapeHTML(m.content)}</div>
           <div class="mem-card-time">Saved ${timeAgo(m.createdAt)}</div>
         </div>
-        <button class="mem-card-del" onclick="deleteMemory('${m.id}')" title="Delete memory">✕</button>
+        <button class="mem-card-del" onclick="deleteMemory('${m.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" title="Delete memory">✕</button>
       </div>`;
     }).join('');
   }
@@ -1208,8 +1266,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     if (!uid || !memId) return;
     const card = document.getElementById('memcard_' + memId);
     if (card) { card.style.transition = 'opacity 0.2s, transform 0.2s'; card.style.opacity = '0'; card.style.transform = 'translateX(-10px)'; await new Promise(r => setTimeout(r, 200)); }
-    delete nx.memories[memId];
     if (typeof window._deleteMemory === 'function') await window._deleteMemory(uid, memId).catch(() => {});
+    delete nx.memories[memId];
     renderMemoryPanel(); renderMemoryModal();
   }
   async function confirmClearAllMemories() {
@@ -1217,8 +1275,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     const uid = nx.currentUser?.uid;
     if (!uid) return;
     if (!confirm('Clear ALL memories? This cannot be undone.')) return;
-    nx.memories = {};
     if (typeof window._clearAllMemories === 'function') await window._clearAllMemories(uid).catch(() => {});
+    nx.memories = {};
     renderMemoryPanel(); renderMemoryModal();
   }
   let _memExtracting = false;
@@ -1231,7 +1289,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     if (Object.keys(nx.memories || {}).length >= 50) return;
     _memExtracting = true;
     try {
-      const res  = await fetch(`${BACKEND}/api/extract-memory`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: nx.chatHistory.slice(-4) }) });
+      const res  = await fetch(`${BACKEND}/api/extract-memory`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: nx.chatHistory.slice(-4) }), signal: aborter(15000) });
       if (!res.ok) return;
       const data = await res.json();
       const newMems = Array.isArray(data.memories) ? data.memories : [];
@@ -1244,8 +1302,10 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         const validCats = ['personal','preference','project','context'];
         const memObj = { id: memId, content: mem.content.trim(), category: validCats.includes(mem.category) ? mem.category : 'context', emoji: MEMORY_EMOJI[mem.category] || '💡', createdAt: Date.now(), sessionId: nx.currentSessionId || '' };
         nx.memories = nx.memories || {};
+        if (typeof window._saveMemory === 'function') {
+          try { await window._saveMemory(nx.currentUser.uid, memId, memObj); } catch (e) { console.warn("Memory save failed:", e); continue; }
+        }
         nx.memories[memId] = memObj;
-        if (typeof window._saveMemory === 'function') await window._saveMemory(nx.currentUser.uid, memId, memObj).catch(() => {});
         if (addedCount === 0) showMemoryToast(memObj);
         addedCount++;
       }
@@ -1282,6 +1342,10 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
 
 
+  // ── DEBATE STATE ──
+  let debateActive = false;
+  let debateCancelRequested = false;
+
   // ── CORE APP ──
   window._nexus = {
     currentUser: null, currentSessionId: null, chatHistory: [], selectedAgent: 'openai', memories: {},
@@ -1311,7 +1375,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         this.activeResearchReport = session.researchReport;
         this.activeResearchTopic = session.researchTopic || 'Research Report';
         document.getElementById('artifactTopic').textContent = this.activeResearchTopic;
-        document.getElementById('artifactBody').innerHTML = formatResearchMarkdown(marked.parse(session.researchReport));
+        document.getElementById('artifactBody').innerHTML = sanitizeHTML(marked.parse(formatResearchMarkdown(session.researchReport)));
         openArtifactPanel();
       } else {
         this.activeResearchReport = null;
@@ -1355,7 +1419,11 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
   function escapeHTML(s) {
     if (!s) return '';
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/\n/g,'<br>');
+  }
+  function escapeAttr(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/\n/g,' ');
   }
 
   function appendMessage(role, content, animate, noEscape) {
@@ -1368,9 +1436,9 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     const user = window._nexus.currentUser;
     const avatarSrc = user?.photoURL || 'https://ui-avatars.com/api/?name=U&background=7c3aed&color=fff';
     const avatar = role === 'user'
-      ? `<img src="${avatarSrc}" class="msg-avatar">`
+      ? `<img src="${escapeAttr(avatarSrc)}" class="msg-avatar">`
       : `<div class="msg-avatar agent-avatar">${agentEmoji(window._nexus.selectedAgent)}</div>`;
-    const rendered = noEscape ? safeContent : ((role === 'user' || role === 'error') ? escapeHTML(safeContent) : (safeContent ? marked.parse(safeContent) : ''));
+    const rendered = noEscape ? safeContent : ((role === 'user' || role === 'error') ? escapeHTML(safeContent) : (safeContent ? sanitizeHTML(typeof marked?.parse === 'function' ? marked.parse(safeContent) : safeContent) : ''));
     const buttonHTML = role === 'assistant' 
       ? `<button class="tts-listen-btn" onclick="ttsController.speak(this)" title="Listen to this response"><span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>${SVG_SPEAKER} Listen</button><button class="copy-btn" onclick="copyMsg(this)">⎘ Copy</button>`
       : (role === 'user' ? `<button class="copy-btn user-copy-btn" onclick="copyMsg(this)">⎘ Copy</button>` : '');
@@ -1383,7 +1451,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     container.appendChild(wrap);
     container.scrollTop = container.scrollHeight;
     if (role === 'assistant') {
-      wrap.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+      if (typeof hljs?.highlightElement === 'function') wrap.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
       const bubble = wrap.querySelector('.message-bubble');
       if (bubble) injectFileDownloads(bubble, safeContent);
     }
@@ -1481,10 +1549,11 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
   async function enhancePrompt(prompt, targetAgent) {
     try {
-      const res  = await fetch(`${BACKEND}/api/enhance`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ prompt, targetAgent: agentName(targetAgent) }) });
+      const res  = await fetch(`${BACKEND}/api/enhance`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ prompt, targetAgent: agentName(targetAgent) }), signal: aborter(15000) });
+      if (!res.ok) { console.warn("Enhance API returned", res.status); return prompt; }
       const data = await res.json();
       return (typeof data.result === 'string' && data.result.trim()) ? data.result : prompt;
-    } catch { return prompt; }
+    } catch (err) { console.warn("Enhance failed:", err.message); return prompt; }
   }
 
   const BASE_SYSTEM_PROMPT = "You are NEXUS AI, a helpful, advanced AI assistant with live web search capabilities. When web search results are provided below the user's message, you MUST synthesize BOTH your training knowledge AND the web data to produce the best possible answer. Use real-time numbers, figures, and information from the web to make your response accurate and current, while also leveraging your training knowledge to provide context, trends across years, and deeper understanding. Cite web sources by number like [1]. When no web results are provided, answer from your training knowledge only. IMPORTANT: Always use proper punctuation (periods, commas, question marks, etc.) in every response. Structure your response using clear bullet points or numbered lists where appropriate, keeping paragraphs short and highly structured so that new users see an appealing, readable, and structured output. Do not output raw walls of text.";
@@ -1519,7 +1588,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     };
     const target = map[agent];
     if (!target) throw new Error('Unknown agent.');
-    const r = await fetch(target.url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(target.body) });
+    const r = await fetch(target.url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(target.body), signal: aborter(120000) });
     const contentType = r.headers.get('content-type') || '';
     let d;
     if (!r.ok) {
@@ -1607,14 +1676,15 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       const res = await fetch(`${BACKEND}/api/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, service: 'auto' })
+        body: JSON.stringify({ query, service: 'auto' }),
+        signal: aborter(20000)
       });
       if (!res.ok) return null;
       const data = await res.json();
       if (!data.success || !data.results?.length) return null;
       _webSearchCache[cacheKey] = data;
       return data;
-    } catch { return null; }
+    } catch (err) { console.warn("Web search failed:", err.message); return null; }
   }
 
   // Clear search cache on new chat
@@ -1622,7 +1692,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
   if (_origNewChat) {
     window._nexus.newChat = function() {
       for (const k in _webSearchCache) delete _webSearchCache[k];
-      return _origNewChat.apply(this, arguments);
+      return _origNewChat.call(window._nexus);
     };
   }
 
@@ -1726,15 +1796,18 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
   // ══════════════════════════════════════════════════════════
 
 
+  let _sending = false;
   async function sendMessage() {
+    if (_sending) return;
+    _sending = true;
     const input     = document.getElementById('userInput');
     const rawPrompt = input.value.trim();
-    if (!rawPrompt) return;
+    if (!rawPrompt) { _sending = false; return; }
     input.value = ''; autoResize(input);
 
     if (document.getElementById('debateToggle')?.checked) {
       await runDebate(rawPrompt);
-      return;
+      _sending = false; return;
     }
 
     if (document.getElementById('researchToggle')?.checked) {
@@ -1742,7 +1815,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         ? await enhancePrompt(rawPrompt, window._nexus.selectedAgent)
         : rawPrompt;
       await runDeepResearch(finalPrompt, window._nexus.selectedAgent);
-      return;
+      _sending = false; return;
     }
 
     const nx    = window._nexus;
@@ -1792,7 +1865,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       const response = await callAgent(agent, promptWithWeb, nx.chatHistory.slice(-10), activeMemories);
       removeTyping(typingId);
 
-      const safeResponse = (typeof finalResponse === 'string' && finalResponse.trim()) ? finalResponse : '_(No response returned)_';
+      const safeResponse = (typeof response === 'string' && response.trim()) ? response : '_(No response returned)_';
       const msgWrap = appendMessage('assistant', safeResponse, true);
 
       if (webAttempted) {
@@ -1823,20 +1896,18 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       maybeExtractMemories();
     } catch (err) {
       removeTyping(typingId);
-      appendMessage('error', '⚠ ' + err.message, true);
+      appendMessage('error', '⚠ ' + (err?.message || String(err)), true);
     }
+    _sending = false;
   }
 
   function toggleSidebar() {
     const sb = document.getElementById('sidebar'), ov = document.getElementById('sidebarOverlay');
+    if (!sb || !ov) return;
     if (sb.classList.contains('open')) closeSidebar();
     else { sb.classList.add('open'); ov.classList.add('show'); document.body.style.overflow='hidden'; }
   }
-  function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); document.body.style.overflow=''; }
-
-  // ── DEBATE STATE ──
-  let debateActive = false;
-  let debateCancelRequested = false;
+  function closeSidebar() { document.getElementById('sidebar')?.classList.remove('open'); document.getElementById('sidebarOverlay')?.classList.remove('show'); document.body.style.overflow=''; }
 
   function selectAgent(id, el) {
     const isDebate = document.getElementById('debateToggle')?.checked;
@@ -1884,8 +1955,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       const res  = await fetch(BACKEND + '/');
       const data = await res.json();
       const memCount = Object.keys(window._nexus.memories || {}).length;
-      body.innerHTML = `<div style="color:var(--c-neon-green);margin-bottom:16px">✅ ${data.status}</div>
-        <div style="color:var(--c-muted);font-size:0.8rem">Version: ${data.version}</div>
+      body.innerHTML = `<div style="color:var(--c-neon-green);margin-bottom:16px">✅ ${escapeHTML(data.status)}</div>
+        <div style="color:var(--c-muted);font-size:0.8rem">Version: ${escapeHTML(data.version)}</div>
         <div style="margin-top:12px;font-size:0.82rem;color:var(--c-text)">All AI agents are powered by the secure backend.</div>
         <div style="margin-top:8px;font-size:0.8rem;color:var(--c-neon-cyan)">🧠 ${memCount} memor${memCount===1?'y':'ies'} loaded in this session.</div>`;
     } catch {
@@ -1917,7 +1988,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     let processed = md;
     const regex = /### Detailed Reasoning([\s\S]*?)(?=### Key Findings & Analytical Synthesis)/g;
     processed = processed.replace(regex, (match, cotContent) => {
-      const parsedContent = marked.parse(cotContent.trim());
+      const parsedContent = sanitizeHTML(marked.parse(cotContent.trim()));
       return `<details class="cot-accordion"><summary>🧠 View Detailed Reasoning</summary><div class="cot-content">${parsedContent}</div></details>\n\n`;
     });
     return processed;
@@ -1985,7 +2056,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       const res = await fetch(`${BACKEND}/api/deep-research`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, agent })
+        body: JSON.stringify({ prompt, agent }),
+        signal: aborter(300000)
       });
 
       if (!res.ok) {
@@ -1993,12 +2065,12 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         throw new Error(errData.error || `Server responded with ${res.status}`);
       }
 
+      if (!res.body) throw new Error('Research requires a stream-capable backend (missing response body)');
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer    = "";
       let plan = null;
       let completedBranches = 0, totalBranches = 0;
-      let webSearchesDone   = 0;  // running count across all branches
 
       while (true) {
         const { done, value } = await reader.read();
@@ -2073,8 +2145,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
             const wsEl  = treeContainer.querySelector(`#websrch_${sid}`);
             const statEl = treeContainer.querySelector(`#status_${sid}`);
             if (event.found) {
-              webSearchesDone++;
-              updateWebCounter(webSearchesDone);
+              webSearchesCompleted++;
+              updateWebCounter(webSearchesCompleted);
               const icon  = event.icon  || '🌐';
               const svc   = event.service || 'Web';
               const count = event.count || 0;
@@ -2093,8 +2165,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
           // ── SYNTHESIS SEARCH END (new event from server) ──
           } else if (event.type === 'synthesis_search_end') {
             if (event.found) {
-              webSearchesDone++;
-              updateWebCounter(webSearchesDone);
+              webSearchesCompleted++;
+              updateWebCounter(webSearchesCompleted);
               const svc = event.service || 'Web';
               synthRow.innerHTML = `<div class="synthesis-search-row" style="background:rgba(0,255,157,0.04);border-color:rgba(0,255,157,0.2);color:var(--c-neon-green)"><span style="width:7px;height:7px;border-radius:50%;background:var(--c-neon-green);flex-shrink:0;box-shadow:0 0 5px var(--c-neon-green)"></span>✓ Synthesis grounded with live ${svc} data</div>`;
             } else {
@@ -2126,15 +2198,15 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
             const processedMd = formatResearchMarkdown(event.result);
             document.getElementById('artifactTopic').textContent = plan ? plan.topic : 'Research Report';
-            document.getElementById('artifactBody').innerHTML     = marked.parse(processedMd);
-            document.querySelectorAll('#artifactBody pre code').forEach(block => hljs.highlightElement(block));
+            document.getElementById('artifactBody').innerHTML     = sanitizeHTML(marked.parse(processedMd));
+            if (typeof hljs?.highlightElement === 'function') document.querySelectorAll('#artifactBody pre code').forEach(block => hljs.highlightElement(block));
             openArtifactPanel();
 
             const summaryP = document.createElement('p');
             summaryP.style.marginTop = '15px';
             summaryP.style.color     = 'var(--c-neon-green)';
-            const webNote = webSearchesDone > 0
-              ? ` Grounded with <strong style="color:var(--c-neon-cyan)">${webSearchesDone} live web search${webSearchesDone>1?'es':''}</strong>.`
+            const webNote = webSearchesCompleted > 0
+              ? ` Grounded with <strong style="color:var(--c-neon-cyan)">${webSearchesCompleted} live web search${webSearchesCompleted>1?'es':''}</strong>.`
               : '';
             summaryP.innerHTML = `🔬 <strong>Deep Research Successful!</strong>${webNote} <a href="javascript:void(0)" onclick="openArtifactPanel()" style="color:var(--c-neon-cyan);text-decoration:underline;">Open the Research Panel →</a>`;
             wrap.querySelector('.message-bubble').appendChild(summaryP);
@@ -2157,10 +2229,11 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       }
     } catch (err) {
       console.error("Deep Research execution error:", err);
-      statusText.textContent = `❌ Research Failed: ${err.message}`;
+      const errMsg = err?.message || String(err);
+      statusText.textContent = `❌ Research Failed: ${errMsg}`;
       statusText.style.color = 'var(--c-neon-pink)';
       if (spinner) { spinner.className = ''; spinner.style.width = '24px'; spinner.style.height = '24px'; spinner.innerHTML = '⚠️'; spinner.style.fontSize = '1.2rem'; }
-      appendMessage('error', `Research execution failed: ${err.message}`, true);
+      appendMessage('error', `Research execution failed: ${errMsg}`, true);
     }
   }
 
@@ -2284,7 +2357,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       const res = await fetch(`${BACKEND}/api/debate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: finalTopic, agents, rounds, webContext })
+        body: JSON.stringify({ topic: finalTopic, agents, rounds, webContext }),
+        signal: aborter(300000)
       });
 
       if (!res.ok) {
@@ -2292,6 +2366,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         throw new Error(errData.error || `Server responded with ${res.status}`);
       }
 
+      if (!res.body) throw new Error('Debate requires a stream-capable backend (missing response body)');
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -2300,6 +2375,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       let consensusHtml = null;
 
       while (true) {
+        if (!wrap.isConnected) { reader.cancel(); debateActive = false; return; }
+
         if (debateCancelRequested) {
           reader.cancel();
           statusText.textContent = '⏹️ Debate cancelled.';
@@ -2331,7 +2408,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
               return `<span class="debate-participant-pill" style="border-color:${color};color:${color};background:${color}11;">
                 <span style="width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0;"></span>
                 ${escapeHTML(p.name)}
-                <span style="opacity:0.6">· ${p.persona.role}</span>
+                <span style="opacity:0.6">· ${escapeHTML(p.persona?.role || '')}</span>
               </span>`;
             }).join('');
             totalTurns = participants.length * rounds;
@@ -2341,7 +2418,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
             statusText.textContent = event.message;
 
           } else if (event.type === 'speaker_start') {
-            statusText.textContent = `💬 ${event.name} (${event.persona.role}) is speaking...`;
+            statusText.textContent = `💬 ${event.name} (${event.persona?.role || ''}) is speaking...`;
             const pct = 2 + Math.floor((completedTurns / totalTurns) * 90);
             progressBar.style.width = `${pct}%`;
             container.scrollTop = container.scrollHeight;
@@ -2354,34 +2431,13 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
                 <div class="debate-turn-header">
                   <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></span>
                   <span class="debate-turn-name" style="color:${color}">${escapeHTML(event.name)}</span>
-                  <span class="debate-turn-persona">${escapeHTML(event.persona.role)}</span>
+                  <span class="debate-turn-persona">${escapeHTML(event.persona?.role || '')}</span>
                   <span class="debate-turn-round">Round ${event.round}</span>
                 </div>
-                <div class="debate-turn-content">${event.error ? escapeHTML(event.content) : marked.parse(event.content)}</div>
+                <div class="debate-turn-content">${event.error ? escapeHTML(event.content) : sanitizeHTML(marked.parse(event.content))}</div>
+
               </div>`;
             transcriptEl.insertAdjacentHTML('beforeend', turnHtml);
-            const pct = 2 + Math.floor((completedTurns / totalTurns) * 90);
-            progressBar.style.width = `${pct}%`;
-            container.scrollTop = container.scrollHeight;
-
-            // Persist turn to chat history so it survives session reload
-            nx.chatHistory.push({
-              role: 'assistant',
-              content: `**${event.name}** (${event.persona.role}, Round ${event.round}):\n\n${event.content}`
-            });
-
-          } else if (event.type === 'completed') {
-            progressBar.style.width = '100%';
-            statusText.textContent = '✅ Debate concluded!';
-            statusText.style.color = 'var(--c-neon-green)';
-            if (spinner) { spinner.className = 'debate-spinner-done'; spinner.innerHTML = '✓'; }
-
-            const consensusHtml = `
-              <div class="debate-consensus">
-                <div class="debate-consensus-header">🏁 Final Consensus</div>
-                <div class="debate-consensus-content">${marked.parse(event.result)}</div>
-              </div>`;
-            consensusEl.innerHTML = consensusHtml;
             container.scrollTop = container.scrollHeight;
 
             nx.chatHistory.push({ role: 'assistant', content: `[Debate Conclusion] ${event.result}` });
@@ -2399,10 +2455,10 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       }
     } catch (err) {
       console.error("Debate execution error:", err);
-      statusText.textContent = `❌ Debate Failed: ${err.message}`;
+      const debateErrMsg = err?.message || String(err);
+      statusText.textContent = `❌ Debate Failed: ${debateErrMsg}`;
       statusText.style.color = 'var(--c-neon-pink)';
-      if (spinner) { spinner.className = ''; spinner.innerHTML = '⚠️'; spinner.style.fontSize = '1.2rem'; }
-      appendMessage('error', `Debate failed: ${err.message}`, true);
+      appendMessage('error', `Debate failed: ${debateErrMsg}`, true);
     } finally {
       debateActive = false;
       const dt = document.getElementById('debateToggle');
@@ -2467,7 +2523,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     }
 
     function restoreTtsPlayerPosition(player) {
-      const stored = localStorage.getItem('ttsPlayerPos');
+      let stored;
+      try { stored = localStorage.getItem('ttsPlayerPos'); } catch {}
       if (stored) {
         try {
           const pos = JSON.parse(stored);
@@ -2548,6 +2605,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text }),
+            signal: aborter(30000),
           });
 
           if (res.ok) return res;
@@ -2844,6 +2902,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
     // ── TTS Player Drag ──
     const ttsPlayer = document.getElementById('ttsPlayer');
+    if (!ttsPlayer) return;
     let dragState = null;
     function dragStart(e) {
       if (e.target.closest('button,select')) return;
@@ -2871,7 +2930,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       dragState = null;
       ttsPlayer.style.transition = '';
       ttsPlayer.classList.remove('dragging');
-      localStorage.setItem('ttsPlayerPos', JSON.stringify({ x: parseInt(ttsPlayer.style.left), y: parseInt(ttsPlayer.style.bottom) }));
+      try { localStorage.setItem('ttsPlayerPos', JSON.stringify({ x: parseInt(ttsPlayer.style.left), y: parseInt(ttsPlayer.style.bottom) })); } catch {}
     }
     ttsPlayer.addEventListener('mousedown', dragStart);
     document.addEventListener('mousemove', dragMove);
