@@ -1109,20 +1109,21 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     if (!html) return '';
     let s = html
       .replace(/&#(\d+);/g, (_, n) => {
-        if (n === 60) return '<';
-        if (n === 62) return '>';
-        if (n === 38) return '&';
-        if (n === 34) return '"';
-        if (n === 39) return "'";
+        const c = parseInt(n, 10);
+        if (c === 60) return '<';
+        if (c === 62) return '>';
+        if (c === 38) return '&';
+        if (c === 34) return '"';
+        if (c === 39) return "'";
         return `&#${n};`;
       })
       .replace(/&#x([0-9a-f]+);/gi, (_, h) => {
-        const n = parseInt(h, 16);
-        if (n === 60) return '<';
-        if (n === 62) return '>';
-        if (n === 38) return '&';
-        if (n === 34) return '"';
-        if (n === 39) return "'";
+        const c = parseInt(h, 16);
+        if (c === 60) return '<';
+        if (c === 62) return '>';
+        if (c === 38) return '&';
+        if (c === 34) return '"';
+        if (c === 39) return "'";
         return `&#x${h};`;
       });
     return s
@@ -1692,6 +1693,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
   if (_origNewChat) {
     window._nexus.newChat = function() {
       for (const k in _webSearchCache) delete _webSearchCache[k];
+      cleanupAborters();
       return _origNewChat.call(window._nexus);
     };
   }
@@ -2073,6 +2075,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       let completedBranches = 0, totalBranches = 0;
 
       while (true) {
+        if (!wrap.isConnected) { reader.cancel(); return; }
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
@@ -2440,7 +2443,17 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
             transcriptEl.insertAdjacentHTML('beforeend', turnHtml);
             container.scrollTop = container.scrollHeight;
 
-            nx.chatHistory.push({ role: 'assistant', content: `[Debate Conclusion] ${event.result}` });
+          } else if (event.type === 'completed') {
+            progressBar.style.width = '100%';
+            statusText.textContent = '✅ Debate Complete!';
+            statusText.style.color = 'var(--c-neon-green)';
+            if (spinner) { spinner.className = ''; spinner.innerHTML = '✓'; spinner.style.fontSize = '1.2rem'; }
+
+            if (event.result && consensusEl) {
+              consensusEl.innerHTML = `<div class="debate-consensus">${sanitizeHTML(marked.parse(event.result))}</div>`;
+            }
+
+            nx.chatHistory.push({ role: 'assistant', content: event.result || '[Debate completed]' });
             if (nx.currentUser && nx.currentSessionId && typeof window._saveSession === 'function') {
               const title = nx.chatHistory[0]?.content?.slice(0, 60) || 'Debate: ' + finalTopic.slice(0, 40);
               window._saveSession(nx.currentUser.uid, nx.currentSessionId, {
