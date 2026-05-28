@@ -52,29 +52,39 @@
     onAuthStateChanged(auth, async (user) => {
       if (!user) { window.location.href = '../index.html'; return; }
       window._nexus.currentUser = user;
-      const avatarEl = document.getElementById('userAvatar');
-      const nameEl = document.getElementById('userName');
       if (user.isAnonymous) {
-        if (avatarEl) avatarEl.src = 'https://ui-avatars.com/api/?name=G&background=0d0d2b&color=00f5ff';
-        if (nameEl) nameEl.textContent = 'Guest';
+        document.getElementById('userAvatar').src = 'https://ui-avatars.com/api/?name=G&background=0d0d2b&color=00f5ff';
+        document.getElementById('userName').textContent = 'Guest';
       } else {
-        if (avatarEl) avatarEl.src = user.photoURL
+        document.getElementById('userAvatar').src = user.photoURL
           || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'U')}&background=7c3aed&color=fff`;
-        if (nameEl) nameEl.textContent = user.displayName || 'User';
+        document.getElementById('userName').textContent = user.displayName || 'User';
       }
-      
+      updateDriveUi();
 
-      if (window._unsubSessions) window._unsubSessions();
-      if (window._unsubMemories) window._unsubMemories();
+      // Restore Drive token from Firebase RTDB (cross-device sync)
+      if (!user.isAnonymous && !window._nexus.driveToken) {
+        try {
+          const snap = await get(ref(db, `drive_tokens/${user.uid}`));
+          if (snap.exists()) {
+            const data = snap.val();
+            if (data && data.token) {
+              window._nexus.driveToken = data.token;
+              window._nexus.driveConnected = true;
+              window._nexus.driveTokenObtainedAt = data.obtainedAt || 0;
+              updateDriveUi();
+            }
+          }
+        } catch {}
+      }
 
       const sessRef = ref(db, `sessions/${user.uid}`);
-      window._unsubSessions = onValue(sessRef, (snap) => {
+      onValue(sessRef, (snap) => {
         const data = snap.val() || {};
         const list = document.getElementById('sessionList');
-        if (!list) return;
         list.innerHTML = '';
         const sessions = Object.entries(data)
-          .sort((a, b) => (b[1]?.createdAt || 0) - (a[1]?.createdAt || 0))
+          .sort((a, b) => b[1].createdAt - a[1].createdAt)
           .slice(0, 20);
         if (sessions.length === 0) {
           list.innerHTML = '<div style="color:var(--c-muted);font-size:0.78rem;text-align:center;padding:20px">No chats yet</div>';
@@ -86,7 +96,7 @@
           el.dataset.sessionId = id;
           const btn = document.createElement('button');
           btn.className = 'session-item';
-          btn.innerHTML = `<span class="session-icon">💬</span><span class="session-title">${escapeHTML(s.title || 'New Chat')}</span>`;
+          btn.innerHTML = `<span class="session-icon">💬</span><span class="session-title">${s.title || 'New Chat'}</span>`;
           btn.addEventListener('click', () => {
             window._nexus.loadSession(id, s);
             document.querySelectorAll('.session-item-wrap').forEach(w => w.classList.remove('active-session'));
@@ -108,7 +118,7 @@
       });
       if (!user.isAnonymous) {
         const memRef = ref(db, `memories/${user.uid}`);
-        window._unsubMemories = onValue(memRef, (snap) => {
+        onValue(memRef, (snap) => {
           window._nexus.memories = snap.val() || {};
           if (typeof renderMemoryPanel === 'function') renderMemoryPanel();
         });
@@ -116,9 +126,89 @@
         window._nexus.memories = {};
         if (typeof renderMemoryPanel === 'function') renderMemoryPanel();
       }
-      if (!window._nexus.currentSessionId) window._nexus.newChat();
+      window._nexus.newChat();
     });
 
+    /* ── Google Drive with auto-refresh ─────────────── */
+    window._nexus.driveToken = null;
+    window._nexus.driveConnected = false;
+    window._nexus.driveTokenObtainedAt = 0;
+
+    window.updateDriveUi = function() {
+      const btn = document.getElementById('googleDriveBtn');
+      const lbl = document.getElementById('googleDriveLabel');
+      if (!btn) return;
+      const user = window._nexus.currentUser;
+      if (!user || user.isAnonymous) {
+        btn.disabled = true; btn.classList.remove('connected');
+        lbl.textContent = 'Sign in to Connect Drive';
+        return;
+      }
+      btn.disabled = false;
+      if (window._nexus.driveConnected) {
+        btn.classList.add('connected'); btn.onclick = window.disconnectGoogleDrive;
+        lbl.textContent = 'Disconnect Google Drive';
+      } else {
+        btn.classList.remove('connected'); btn.onclick = window.connectGoogleDrive;
+        lbl.textContent = 'Connect Google Drive';
+      }
+    };
+    window.connectGoogleDrive = async function() {
+      const btn = document.getElementById('googleDriveBtn');
+      if (!btn || btn.disabled) return;
+      try {
+        const provider = new GoogleAuthProvider();
+        provider.addScope('https://www.googleapis.com/auth/drive.file');
+        provider.setCustomParameters({ access_type: 'offline' });
+        const result = await signInWithPopup(auth, provider);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        window._nexus.driveToken = credential.accessToken;
+        window._nexus.driveConnected = true;
+        window._nexus.driveTokenObtainedAt = Date.now();
+        const uid = window._nexus.currentUser?.uid;
+        if (uid) set(ref(db, 'drive_tokens/' + uid), { token: credential.accessToken, obtainedAt: Date.now() });
+        window.updateDriveUi();
+      } catch (e) {
+        if (e.code !== 'auth/popup-closed-by-user') {
+          console.error('Drive connect error:', e);
+          alert('Failed to connect Google Drive: ' + e.message);
+        }
+      }
+    };
+    window.disconnectGoogleDrive = function() {
+      window._nexus.driveToken = null;
+      window._nexus.driveConnected = false;
+      window._nexus.driveTokenObtainedAt = 0;
+      const uid = window._nexus.currentUser?.uid;
+      if (uid) remove(ref(db, 'drive_tokens/' + uid));
+      window.updateDriveUi();
+    };
+    window.ensureDriveToken = async function() {
+      if (!window._nexus.driveConnected || !window._nexus.driveToken || !window._nexus.currentUser) return false;
+      const age = Date.now() - (window._nexus.driveTokenObtainedAt || 0);
+      if (age < 50 * 60 * 1000) return true;
+      try {
+        const provider = new GoogleAuthProvider();
+        provider.addScope('https://www.googleapis.com/auth/drive.file');
+        provider.setCustomParameters({ prompt: 'none', login_hint: window._nexus.currentUser.email || '' });
+        const result = await signInWithPopup(auth, provider);
+        const credential = GoogleAuthProvider.credentialFromResult(result);
+        if (credential?.accessToken) {
+          window._nexus.driveToken = credential.accessToken;
+          window._nexus.driveTokenObtainedAt = Date.now();
+          const uid = window._nexus.currentUser?.uid;
+          if (uid) set(ref(db, 'drive_tokens/' + uid), { token: credential.accessToken, obtainedAt: Date.now() });
+          return true;
+        }
+      } catch (e) {
+        if (e.code === 'auth/popup-closed-by-user') return false;
+        window._nexus.driveConnected = false;
+        window._nexus.driveToken = null;
+        window._nexus.driveTokenObtainedAt = 0;
+        window.updateDriveUi();
+      }
+      return false;
+    };
   </script>
 
   <style>
@@ -345,7 +435,12 @@
     .btn-signout:hover { background:rgba(255,45,120,0.1); }
     .btn-settings { padding:6px 10px; border-radius:8px; border:1px solid var(--c-border); background:transparent; color:var(--c-muted); font-size:0.72rem; cursor:pointer; transition:all 0.2s; margin-bottom:8px; width:100%; font-family:'DM Sans',sans-serif; }
     .btn-settings:hover { border-color:var(--c-neon-amber); color:var(--c-neon-amber); }
-
+    .btn-drive { padding:6px 10px; border-radius:8px; border:1px solid var(--c-border); background:transparent; color:var(--c-muted); font-size:0.72rem; cursor:pointer; transition:all 0.2s; margin-bottom:4px; width:100%; font-family:'DM Sans',sans-serif; display:flex; align-items:center; gap:6px; justify-content:center; }
+    .btn-drive:hover:not(:disabled) { border-color:rgba(66,133,244,0.5); color:#4285f4; }
+    .btn-drive:disabled { opacity:0.4; cursor:not-allowed; }
+    .btn-drive.connected { border-color:rgba(52,168,83,0.4); color:#34a853; }
+    .btn-drive.connected:hover { border-color:#34a853; background:rgba(52,168,83,0.06); }
+    .btn-drive svg { width:14px; height:14px; flex-shrink:0; }
     .main { flex:1; display:flex; flex-direction:column; height:100vh; height:100dvh; overflow:hidden; }
     .main-header { padding:16px 24px; border-bottom:1px solid var(--c-border); display:flex; align-items:center; justify-content:space-between; backdrop-filter:blur(20px); background:rgba(5,5,16,0.8); flex-shrink:0; }
     .agent-indicator { display:flex; align-items:center; gap:10px; }
@@ -463,7 +558,9 @@
     #userInput::placeholder { color:var(--c-muted); }
     .send-btn { width:40px; height:40px; border-radius:12px; border:1px solid var(--c-border); background:transparent; color:var(--c-text); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; flex-shrink:0; }
     .send-btn:hover { border-color:var(--c-neon-purple); color:var(--c-neon-purple); }
-
+    .upload-btn { width:36px; height:36px; border-radius:10px; border:1px solid var(--c-border); background:transparent; color:var(--c-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; flex-shrink:0; }
+    .upload-btn:hover { border-color:var(--c-neon-cyan); color:var(--c-neon-cyan); }
+    .upload-btn:disabled { opacity:0.35; cursor:not-allowed; }
     .file-preview-wrap { margin-top:8px; display:flex; flex-wrap:wrap; gap:8px; }
     .file-card { background:rgba(0,245,255,0.06); border:1px solid rgba(0,245,255,0.15); border-radius:10px; padding:10px 12px; display:flex; align-items:center; gap:10px; font-size:0.82rem; min-width:0; }
     .file-card img { width:40px; height:40px; border-radius:6px; object-fit:cover; flex-shrink:0; }
@@ -633,7 +730,7 @@
       .message-wrap { gap:8px; }
       .input-area { padding:10px 12px; padding-bottom:max(16px,env(safe-area-inset-bottom,16px)); }
       .input-box { padding:10px 12px; gap:8px; border-radius:14px; }
-
+      .upload-btn { width:32px; height:32px; }
       #userInput { font-size:0.9rem; }
       .send-btn { width:36px; height:36px; border-radius:10px; font-size:1rem; }
       .welcome-state { padding:40px 16px; }
@@ -879,7 +976,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
   <div class="sidebar-footer">
     <button class="btn-settings" onclick="showBackendStatus()">⚙ Backend Status</button>
-
+    <button class="btn-drive" id="googleDriveBtn" onclick="connectGoogleDrive()" title="Connect Google Drive"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" fill="currentColor"><path d="M220-80 80-300l280-480 140 240-140 240 60 100H220Zm160 0 140-240 280-480 80 140-220 380-200 200h-80Zm360-420L580-340l-80-140 120-200 200 340h-80Z"/></svg> <span id="googleDriveLabel">Connect Google Drive</span></button>
     <div class="user-row">
       <img class="user-avatar-sm" id="userAvatar" src="" alt="avatar">
       <span class="user-name-sm" id="userName">User</span>
@@ -970,9 +1067,11 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
   <div class="input-area">
     <div class="input-box">
+      <button class="upload-btn" id="uploadBtn" title="Upload file to Google Drive (Google users only)"><svg xmlns="http://www.w3.org/2000/svg" height="22px" viewBox="0 -960 960 960" width="22px" fill="currentColor"><path d="M440-320v-326L336-542l-56-58 200-200 200 200-56 58-104-104v326h-80ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"/></svg></button>
       <textarea id="userInput" rows="1" placeholder="Ask anything… your prompt will be enhanced before sending"></textarea>
       <button class="send-btn" id="sendBtn"><svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Zm0 0v-400 400Z"/></svg></button>
     </div>
+    <input type="file" id="fileInput" multiple style="display:none">
     <div class="input-meta">
       <span class="input-hint">Enter to send · Shift+Enter for new line</span>
       <span class="input-hint">Agent: <span style="color:var(--c-neon-cyan)" id="agentHint2">GPT-OSS 120B</span></span>
@@ -1090,68 +1189,17 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 </div>
 
 <script>
-  // ── AbortSignal.timeout polyfill ──
-  const _aborters = [];
-  const aborter = (ms) => {
-    const c = new AbortController();
-    const tid = setTimeout(() => { c.abort(); const i = _aborters.indexOf(entry); if (i !== -1) _aborters.splice(i, 1); }, ms);
-    const entry = { c, tid };
-    _aborters.push(entry);
-    return c.signal;
-  };
-  function cleanupAborters() {
-    _aborters.forEach(e => { clearTimeout(e.tid); e.c.abort(); });
-    _aborters.length = 0;
-  }
-
-  // ── Simple HTML sanitizer for XSS defense ──
-  function sanitizeHTML(html) {
-    if (!html) return '';
-    let s = html
-      .replace(/&#(\d+);/g, (_, n) => {
-        const c = parseInt(n, 10);
-        if (c === 60) return '<';
-        if (c === 62) return '>';
-        if (c === 38) return '&';
-        if (c === 34) return '"';
-        if (c === 39) return "'";
-        return `&#${n};`;
-      })
-      .replace(/&#x([0-9a-f]+);/gi, (_, h) => {
-        const c = parseInt(h, 16);
-        if (c === 60) return '<';
-        if (c === 62) return '>';
-        if (c === 38) return '&';
-        if (c === 34) return '"';
-        if (c === 39) return "'";
-        return `&#x${h};`;
-      });
-    return s
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-      .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-      .replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '')
-      .replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '')
-      .replace(/<svg\b[^>]*>[\s\S]*?<\/svg>/gi, '')
-      .replace(/ on\w+\s*=\s*"[^"]*"/gi, '')
-      .replace(/ on\w+\s*=\s*'[^']*'/gi, '')
-      .replace(/ on\w+\s*=\s*[^\s>]+/gi, '')
-      .replace(/[\s\/]on\w+\s*=\s*[^\s>]+/gi, '')
-      .replace(/javascript\s*:/gi, '');
-  }
-
   // ── THEME ──
   (function() {
-    let saved;
-    try { saved = localStorage.getItem('nexus-theme'); } catch {}
+    const saved = localStorage.getItem('nexus-theme');
     const isDark = saved === 'dark';
     if (!isDark) document.documentElement.classList.add('light');
-    const toggle = document.getElementById('toggle');
-    if (toggle) toggle.checked = isDark;
+    document.getElementById('toggle').checked = isDark;
   })();
   function toggleTheme() {
     const isDark = document.getElementById('toggle').checked;
     document.documentElement.classList.toggle('light', !isDark);
-    try { localStorage.setItem('nexus-theme', isDark ? 'dark' : 'light'); } catch {}
+    localStorage.setItem('nexus-theme', isDark ? 'dark' : 'light');
   }
 
   const RENDER_BACKEND = "https://nexus-ai-backend-3csk.onrender.com";
@@ -1176,7 +1224,6 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
   };
   function getMemStyle(cat) { return MEMORY_CAT_STYLE[cat] || MEMORY_CAT_STYLE.context; }
   function timeAgo(ts) {
-    if (!ts) return 'unknown';
     const d = Date.now() - ts;
     if (d < 60000)     return 'just now';
     if (d < 3600000)   return Math.floor(d/60000) + 'm ago';
@@ -1185,7 +1232,6 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     return new Date(ts).toLocaleDateString();
   }
   function isSimilarMemory(a, b) {
-    if (typeof a !== 'string' || typeof b !== 'string') return false;
     const words = s => new Set(s.toLowerCase().split(/\W+/).filter(w => w.length > 3));
     const wa = words(a), wb = words(b);
     const inter = [...wa].filter(w => wb.has(w));
@@ -1209,7 +1255,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     let html = preview.map(m => `
       <div class="memory-preview-item">
         <span class="mem-cat-icon">${m.emoji || MEMORY_EMOJI[m.category] || '💡'}</span>
-        <span class="memory-preview-text" title="${escapeAttr(m.content)}">${escapeHTML(m.content)}</span>
+        <span class="memory-preview-text" title="${escapeHTML(m.content)}">${escapeHTML(m.content)}</span>
       </div>`).join('');
     if (count > 3) html += `<button class="memory-view-all-btn" onclick="openMemoryModal()">View all ${count} memories →</button>`;
     panel.innerHTML = html;
@@ -1257,7 +1303,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
           <div class="mem-card-content">${escapeHTML(m.content)}</div>
           <div class="mem-card-time">Saved ${timeAgo(m.createdAt)}</div>
         </div>
-        <button class="mem-card-del" onclick="deleteMemory('${m.id.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')" title="Delete memory">✕</button>
+        <button class="mem-card-del" onclick="deleteMemory('${m.id}')" title="Delete memory">✕</button>
       </div>`;
     }).join('');
   }
@@ -1267,8 +1313,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     if (!uid || !memId) return;
     const card = document.getElementById('memcard_' + memId);
     if (card) { card.style.transition = 'opacity 0.2s, transform 0.2s'; card.style.opacity = '0'; card.style.transform = 'translateX(-10px)'; await new Promise(r => setTimeout(r, 200)); }
-    if (typeof window._deleteMemory === 'function') await window._deleteMemory(uid, memId).catch(() => {});
     delete nx.memories[memId];
+    if (typeof window._deleteMemory === 'function') await window._deleteMemory(uid, memId).catch(() => {});
     renderMemoryPanel(); renderMemoryModal();
   }
   async function confirmClearAllMemories() {
@@ -1276,8 +1322,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     const uid = nx.currentUser?.uid;
     if (!uid) return;
     if (!confirm('Clear ALL memories? This cannot be undone.')) return;
-    if (typeof window._clearAllMemories === 'function') await window._clearAllMemories(uid).catch(() => {});
     nx.memories = {};
+    if (typeof window._clearAllMemories === 'function') await window._clearAllMemories(uid).catch(() => {});
     renderMemoryPanel(); renderMemoryModal();
   }
   let _memExtracting = false;
@@ -1290,7 +1336,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     if (Object.keys(nx.memories || {}).length >= 50) return;
     _memExtracting = true;
     try {
-      const res  = await fetch(`${BACKEND}/api/extract-memory`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: nx.chatHistory.slice(-4) }), signal: aborter(15000) });
+      const res  = await fetch(`${BACKEND}/api/extract-memory`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ messages: nx.chatHistory.slice(-4) }) });
       if (!res.ok) return;
       const data = await res.json();
       const newMems = Array.isArray(data.memories) ? data.memories : [];
@@ -1303,10 +1349,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         const validCats = ['personal','preference','project','context'];
         const memObj = { id: memId, content: mem.content.trim(), category: validCats.includes(mem.category) ? mem.category : 'context', emoji: MEMORY_EMOJI[mem.category] || '💡', createdAt: Date.now(), sessionId: nx.currentSessionId || '' };
         nx.memories = nx.memories || {};
-        if (typeof window._saveMemory === 'function') {
-          try { await window._saveMemory(nx.currentUser.uid, memId, memObj); } catch (e) { console.warn("Memory save failed:", e); continue; }
-        }
         nx.memories[memId] = memObj;
+        if (typeof window._saveMemory === 'function') await window._saveMemory(nx.currentUser.uid, memId, memObj).catch(() => {});
         if (addedCount === 0) showMemoryToast(memObj);
         addedCount++;
       }
@@ -1329,7 +1373,533 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     return Object.values(nx.memories || {}).sort((a, b) => b.createdAt - a.createdAt);
   }
 
+  // ══════════════════════════════════════════════════════════
+  //  ☁️ GOOGLE DRIVE INTEGRATION
+  // ══════════════════════════════════════════════════════════
 
+  const DRIVE_SYSTEM_PROMPT = `\n\n── GOOGLE DRIVE ACCESS & FILE OPERATIONS ──
+You have live access to the user's Google Drive. You can read, create, edit, delete, search, move, copy, and organize files and folders. The user can also upload files directly to their Drive folder "NEXUS_AI_CHAT_FILES" — when they do, file metadata (name, Drive ID) is provided in the conversation.
+
+HOW TO USE:
+To perform a Drive operation, include a JSON code block tagged with "drive". The system will execute it and feed the result back so you can continue.
+
+FORMAT:
+\`\`\`drive
+{"action":"<action>", ...params}
+\`\`\`
+
+📄 CREATING FILES (markdown & write actions):
+CRITICAL: Do NOT put file content inside the JSON block. Instead, write the content as NORMAL TEXT after the \`\`\`drive\`\`\` block. The system will automatically collect everything after that block as the file content.
+
+Example:
+\`\`\`drive
+{"action":"markdown", "name":"My Notes", "frontmatter":{"title":"My Notes","date":"2026-05-25"}}
+\`\`\`
+# My Notes
+This is the file content. It can be **very long**.
+- Unlimited length
+- No JSON escaping needed
+- All markdown formatting works
+\`\`\`javascript
+console.log("Code blocks work too");
+\`\`\`
+
+AVAILABLE ACTIONS:
+• list     → List files/folders. Params: folder? (ID or "root"), query?, pageSize?
+• read     → Read file content. Params: fileId (required)
+• write    → Create/update file. Params: name, mimeType?, parentId?, fileId?
+• markdown → ⭐ PREFERRED for Markdown files. Params: name, frontmatter?, parentId?. The .md extension is added automatically. The content you write AFTER the block is used. Returns a clickable webViewLink.
+• delete   → Delete file. Params: fileId
+• search   → Full-text search. Params: query
+• mkdir    → Create folder. Params: name, parentId?
+• move     → Move/rename file. Params: fileId, newName?, addParents?, removeParents?
+• copy     → Copy file. Params: fileId, name? (new name for copy), parentId?
+
+MARKDOWN CREATION TIPS:
+- Use headings (# ## ###) for hierarchy
+- Use bullet lists (-) and numbered lists (1.)
+- Use **bold** and \`code\` for emphasis
+- Use | tables | for | data |
+- Use \`\`\` for code blocks with language tags
+- The frontmatter parameter adds YAML metadata (title, date, tags, etc.)
+
+After your Drive operation executes, the result (including a direct link to the file) will appear in the conversation context. You can chain multiple operations across multiple rounds to accomplish complex tasks.`;
+
+  function handleDriveError(err) {
+    const msg = (typeof err === 'string' ? err : (err?.message || err?.error || ''));
+    if (msg.includes('401') || msg.includes('Unauthorized') || msg.includes('invalid_grant') || msg.includes('Token') || msg.includes('invalid authentication') || msg.includes('Expected OAuth')) {
+      window._nexus.driveToken = null;
+      window._nexus.driveConnected = false;
+      window.updateDriveUi();
+      return 'Please Reconnect Drive.';
+    }
+    return msg || 'Unknown Drive error';
+  }
+
+  async function buildDriveContext() {
+    if (!window._nexus.driveToken) return '';
+    try {
+      // Collect files across multiple pages (up to 150 items)
+      let allFiles = [];
+      let pageToken = null;
+      const pageSize = 50;
+      for (let page = 0; page < 3; page++) {
+        const body = { accessToken: window._nexus.driveToken, pageSize, query: 'trashed=false' };
+        if (pageToken) body.pageToken = pageToken;
+        const res = await fetch(`${BACKEND}/api/drive/list`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          return `\n\n── Google Drive error: ${handleDriveError(errData)} ──`;
+        }
+        const d = await res.json();
+        allFiles = allFiles.concat(d.files || []);
+        pageToken = d.nextPageToken;
+        if (!pageToken) break;
+      }
+      if (!allFiles.length) return '\n\n── Google Drive: No files found ──';
+      let ctx = '\n\n── YOUR GOOGLE DRIVE FILES ──\n';
+      allFiles.forEach(f => {
+        const isF = f.mimeType === 'application/vnd.google-apps.folder';
+        ctx += `  ${isF ? '[📁]' : '[📄]'} ${f.name}${isF ? ' (folder)' : ''} [ID:${f.id}]${f.size ? ' (' + Math.round(f.size/1024) + 'KB)' : ''}\n`;
+      });
+      return ctx;
+    } catch { return ''; }
+  }
+
+  function parseDriveOps(text) {
+    const ops = [];
+    const regex = /```drive\s*({[\s\S]*?})\s*```/g;
+    let match;
+    const blockPositions = [];
+    while ((match = regex.exec(text)) !== null) {
+      try {
+        const op = JSON.parse(match[1]);
+        if (op && op.action) {
+          ops.push(op);
+          blockPositions.push({ start: match.index, end: match.index + match[0].length });
+        }
+      } catch { /* skip invalid JSON */ }
+    }
+    // Collect content written AFTER each drive block for write/markdown actions
+    // (the content is written as normal text, not inside JSON)
+    for (let i = 0; i < ops.length; i++) {
+      const op = ops[i];
+      if ((op.action === 'write' || op.action === 'markdown') && !op.content) {
+        const blockEnd = blockPositions[i].end;
+        const nextBlockStart = i < blockPositions.length - 1 ? blockPositions[i + 1].start : text.length;
+        const collectedContent = text.slice(blockEnd, nextBlockStart).trim();
+        if (collectedContent) op.content = collectedContent;
+      }
+    }
+    return ops;
+  }
+
+  async function executeDriveOperation(op) {
+    await window.ensureDriveToken();
+    const token = window._nexus.driveToken;
+    if (!token) return { error: 'Drive not connected' };
+    const action = op.action;
+    let endpoint, body;
+    switch (action) {
+      case 'list':
+        endpoint = `${BACKEND}/api/drive/list`;
+        body = { accessToken: token, pageSize: op.pageSize || 50 };
+        if (op.folder && op.folder !== 'root') body.query = `'${op.folder}' in parents and trashed=false`;
+        else if (!op.query) body.query = 'trashed=false';
+        if (op.query) body.query = op.query;
+        break;
+      case 'read':
+        endpoint = `${BACKEND}/api/drive/read`;
+        body = { accessToken: token, fileId: op.fileId };
+        break;
+      case 'write':
+        endpoint = `${BACKEND}/api/drive/write`;
+        body = { accessToken: token, name: op.name, content: op.content, mimeType: op.mimeType || 'text/plain', parentId: op.parentId };
+        if (op.fileId) body.fileId = op.fileId;
+        break;
+      case 'delete':
+        endpoint = `${BACKEND}/api/drive/delete`;
+        body = { accessToken: token, fileId: op.fileId };
+        break;
+      case 'search':
+        endpoint = `${BACKEND}/api/drive/search`;
+        body = { accessToken: token, query: op.query };
+        break;
+      case 'mkdir':
+        endpoint = `${BACKEND}/api/drive/mkdir`;
+        body = { accessToken: token, name: op.name, parentId: op.parentId };
+        break;
+      case 'markdown':
+        endpoint = `${BACKEND}/api/drive/markdown`;
+        body = { accessToken: token, name: op.name, content: op.content, parentId: op.parentId };
+        if (op.frontmatter) body.frontmatter = op.frontmatter;
+        break;
+      case 'copy':
+        endpoint = `${BACKEND}/api/drive/copy`;
+        body = { accessToken: token, fileId: op.fileId, name: op.name, parentId: op.parentId };
+        break;
+      case 'move':
+        endpoint = `${BACKEND}/api/drive/move`;
+        body = { accessToken: token, fileId: op.fileId, newName: op.newName, addParents: op.addParents, removeParents: op.removeParents };
+        break;
+      default: return { error: `Unknown Drive action: ${action}` };
+    }
+    try {
+      const res = await fetch(endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) });
+      const data = await res.json();
+      if (!res.ok) return { error: data.error || `HTTP ${res.status}` };
+      return { ...data, action };
+    } catch (err) {
+      return { error: err.message, action };
+    }
+  }
+
+  function formatDriveResultSummary(op, result) {
+    if (result.error) return `❌ Drive ${op.action}: ${result.error}`;
+    switch (op.action) {
+      case 'list': {
+        const files = result.files || [];
+        if (!files.length) return '📁 Drive: No files found.';
+        return `📁 Drive: Found ${files.length} item${files.length > 1 ? 's' : ''}\n${files.slice(0, 15).map(f => `  ${f.mimeType === 'application/vnd.google-apps.folder' ? '📁' : '📄'} ${f.name} [${f.id}]`).join('\n')}${files.length > 15 ? '\n  ... and ' + (files.length - 15) + ' more' : ''}`;
+      }
+      case 'read': return result.content ? `📄 "${result.name}" (${(result.content.length / 1024).toFixed(1)}KB):\n${result.content.slice(0, 8000)}` : `📄 "${result.name}" [binary, ${result.mimeType}]`;
+      case 'write': {
+        const link = result.file?.webViewLink ? ` — ${result.file.webViewLink}` : '';
+        return `✅ File ${result.file?.id ? (op.fileId ? 'updated' : 'created') : 'saved'}: "${result.file?.name || op.name}"${link}`;
+      }
+      case 'delete': return `🗑️ Deleted file: ${result.fileId || op.fileId}`;
+      case 'search': {
+        const files = result.files || [];
+        if (!files.length) return '🔍 Drive search: No results.';
+        return `🔍 Drive search results:\n${files.map(f => `  📄 ${f.name} [${f.id}]`).join('\n')}`;
+      }
+      case 'markdown': {
+        const link = result.file?.webViewLink ? ` — ${result.file.webViewLink}` : '';
+        return `📄 Markdown file created: "${result.file?.name || op.name}"${link}`;
+      }
+      case 'copy': return `📋 Copied: ${result.file?.name} (ID: ${result.file?.id})`;
+      case 'mkdir': return `📁 Folder created: ${result.file?.name || op.name} (ID: ${result.file?.id})`;
+      case 'move': return `✏️ Renamed/moved: ${result.file?.name}`;
+      default: return `✅ Drive ${op.action}: completed`;
+    }
+  }
+
+  async function saveMessageToDrive(btn) {
+    const bubble = btn.closest('.message-bubble');
+    const contentEl = bubble ? bubble.querySelector('.message-content') : null;
+    if (!contentEl || !window._nexus.driveToken) return;
+    await window.ensureDriveToken();
+    // Get plain text content (strip HTML)
+    const text = contentEl.innerText || contentEl.textContent || '';
+    if (!text.trim()) return;
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Saving…';
+
+    // Generate a filename from the first line or first 50 chars
+    const firstLine = text.split('\n')[0].replace(/[^a-zA-Z0-9 _-]/g, '').trim().slice(0, 50) || 'nexus-note';
+    const fileName = firstLine.toLowerCase().replace(/\s+/g, '-') + '.md';
+    const timestamp = new Date().toISOString().split('T')[0];
+
+    try {
+      const res = await fetch(`${BACKEND}/api/drive/markdown`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          accessToken: window._nexus.driveToken,
+          name: fileName,
+          content: text,
+          frontmatter: {
+            title: firstLine,
+            date: timestamp,
+            source: 'NEXUS AI Conversation'
+          }
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Save failed');
+      btn.textContent = '✅ Saved!';
+      btn.style.color = 'var(--c-neon-green)';
+      btn.style.borderColor = 'var(--c-neon-green)';
+      if (data.file?.webViewLink) {
+        setTimeout(() => {
+          btn.textContent = '📄 Open in Drive';
+          btn.onclick = () => window.open(data.file.webViewLink, '_blank');
+          btn.disabled = false;
+        }, 2000);
+      }
+    } catch (err) {
+      const msg = handleDriveError(err.message || err);
+      btn.textContent = '❌ ' + (msg.length > 30 ? 'Failed' : msg);
+      setTimeout(() => {
+        btn.textContent = '📄 Save to Drive';
+        btn.disabled = false;
+      }, 3000);
+    }
+  }
+
+  async function processDriveResponse(agent, response, chatHistory, activeMemories, typingId) {
+    const ops = parseDriveOps(response);
+    if (!ops.length) return response;
+    await window.ensureDriveToken();
+    const nx = window._nexus;
+    const maxRounds = 3;
+    let currentResponse = response;
+    let allResults = [];
+
+    for (let round = 0; round < maxRounds; round++) {
+      const roundOps = parseDriveOps(currentResponse);
+      if (!roundOps.length) break;
+
+      for (const op of roundOps) {
+        const opLabel = op.action === 'markdown' ? '📄 Creating Markdown…' : op.action === 'write' ? '📝 Writing file…' : op.action === 'read' ? '📖 Reading file…' : op.action === 'list' ? '📂 Listing files…' : op.action === 'delete' ? '🗑️ Deleting…' : op.action === 'search' ? '🔍 Searching…' : op.action === 'mkdir' ? '📁 Creating folder…' : op.action === 'copy' ? '📋 Copying…' : op.action === 'move' ? '✏️ Moving…' : '📁 Drive ' + op.action + '…';
+        if (typingId) updateTyping(typingId, opLabel);
+        const result = await executeDriveOperation(op);
+        if (result.error) result.error = handleDriveError(result.error);
+        allResults.push({ op, result });
+      }
+
+      let resultCtx = '\n\n── DRIVE OPERATION RESULTS ──\n';
+      for (const { op, result } of allResults) {
+        resultCtx += formatDriveResultSummary(op, result) + '\n';
+      }
+
+      // Collect webViewLinks for user-facing display
+      const links = allResults
+        .filter(r => r.result?.file?.webViewLink)
+        .map(r => r.result.file.webViewLink);
+
+      const cleanResponse = currentResponse.replace(/```drive\s*[\s\S]*?```/g, '').trim();
+
+      chatHistory.push({ role: 'assistant', content: cleanResponse || `[Drive operations: ${roundOps.map(o => o.action).join(', ')}]` });
+
+      currentResponse = await callAgent(agent, resultCtx + '\n\nContinue your response using the Drive operation results above.', chatHistory.slice(-10), activeMemories);
+    }
+
+    let finalResponse = currentResponse.replace(/```drive\s*[\s\S]*?```/g, '').trim() || currentResponse;
+
+    // If drive operations created files with links, ensure the link is visible in the final message
+    const allLinks = allResults
+      .filter(r => r.result?.file?.webViewLink)
+      .map(r => r.result.file.webViewLink);
+    if (allLinks.length && !finalResponse.includes('http')) {
+      finalResponse += '\n\n🔗 **Drive file' + (allLinks.length > 1 ? 's' : '') + ':**\n' + allLinks.join('\n');
+    }
+
+    return finalResponse;
+  }
+
+  // ══════════════════════════════════════════════════════════
+  //  📁 FILE UPLOAD TO GOOGLE DRIVE
+  // ══════════════════════════════════════════════════════════
+  const NEXUS_FOLDER_NAME = 'NEXUS_AI_CHAT_FILES';
+  let nexusFolderId = null;
+
+  function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+  }
+
+  function getFileIcon(mimeType) {
+    if (mimeType.startsWith('image/')) return '🖼️';
+    if (mimeType.includes('pdf')) return '📕';
+    if (mimeType.includes('spreadsheet') || mimeType.includes('excel') || mimeType.includes('csv')) return '📊';
+    if (mimeType.includes('document') || mimeType.includes('word') || mimeType.includes('text')) return '📄';
+    if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar')) return '📦';
+    if (mimeType.includes('audio')) return '🎵';
+    if (mimeType.includes('video')) return '🎬';
+    if (mimeType.includes('code') || mimeType.includes('javascript') || mimeType.includes('json')) return '💻';
+    return '📎';
+  }
+
+  async function ensureNexusFolder() {
+    if (nexusFolderId) return nexusFolderId;
+    const token = window._nexus.driveToken;
+    if (!token) throw new Error('Drive not connected');
+    try {
+      const searchRes = await fetch(`${BACKEND}/api/drive/list`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          accessToken: token,
+          query: `name='${NEXUS_FOLDER_NAME}' and mimeType='application/vnd.google-apps.folder' and trashed=false`,
+          pageSize: 1
+        })
+      });
+      const searchData = await searchRes.json();
+      if (searchData.files && searchData.files.length > 0) {
+        nexusFolderId = searchData.files[0].id;
+        return nexusFolderId;
+      }
+      const createRes = await fetch(`${BACKEND}/api/drive/mkdir`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ accessToken: token, name: NEXUS_FOLDER_NAME })
+      });
+      const createData = await createRes.json();
+      if (!createRes.ok) throw new Error(createData.error || 'Failed to create folder');
+      nexusFolderId = createData.file.id;
+      return nexusFolderId;
+    } catch (err) {
+      nexusFolderId = null;
+      throw err;
+    }
+  }
+
+  async function uploadFilesToDrive(fileList) {
+    const token = window._nexus.driveToken;
+    if (!token || !fileList || !fileList.length) return [];
+    const folderId = await ensureNexusFolder();
+    const uploaded = [];
+    for (let i = 0; i < fileList.length; i++) {
+      const file = fileList[i];
+      const mimeType = file.type || 'application/octet-stream';
+      try {
+        const arrayBuf = await file.arrayBuffer();
+        const bytes = new Uint8Array(arrayBuf);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+        const base64 = btoa(binary);
+        const res = await fetch(`${BACKEND}/api/drive/write`, {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({
+            accessToken: token, name: file.name, mimeType,
+            contentBase64: base64, encoding: 'base64', parentId: folderId
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Upload failed');
+        uploaded.push({ name: file.name, size: file.size, mimeType, fileId: data.file.id, webViewLink: data.file.webViewLink });
+      } catch (err) {
+        uploaded.push({ name: file.name, size: file.size, mimeType, error: handleDriveError(err.message) });
+      }
+    }
+    return uploaded;
+  }
+
+  function buildFileMessageHTML(files) {
+    if (!files || !files.length) return '';
+    let html = '<div class="file-preview-wrap">';
+    for (const f of files) {
+      const icon = f.error ? '❌' : getFileIcon(f.mimeType);
+      const sizeStr = f.size ? formatFileSize(f.size) : '';
+      html += '<div class="file-card">';
+      if (f.mimeType.startsWith('image/') && !f.error) {
+        html += `<img src="https://lh3.googleusercontent.com/d/${f.fileId}=s200" alt="${f.name}" onerror="this.style.display='none'">`;
+      } else {
+        html += `<div class="file-icon">${icon}</div>`;
+      }
+      html += '<div class="file-info">';
+      html += `<div class="file-name">${escapeHTML(f.name)}</div>`;
+      html += sizeStr ? `<div class="file-size">${f.error ? '❌ ' + escapeHTML(f.error) : sizeStr}</div>` : '';
+      html += '</div></div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function initFileUpload() {
+    const btn = document.getElementById('uploadBtn');
+    const input = document.getElementById('fileInput');
+    if (!btn || !input) return;
+
+    btn.addEventListener('click', () => {
+      if (btn.disabled) return;
+      input.value = '';
+      input.click();
+    });
+
+    input.addEventListener('change', async () => {
+      const files = Array.from(input.files || []);
+      if (!files.length) return;
+      input.value = '';
+
+      const user = window._nexus.currentUser;
+      if (!user || user.isAnonymous) {
+        appendMessage('error', 'File upload is only available for signed-in Google users.', true);
+        return;
+      }
+      if (!window._nexus.driveToken || !window._nexus.driveConnected) {
+        appendMessage('error', 'Please connect Google Drive first (click the Drive icon in sidebar).', true);
+        return;
+      }
+
+      // Show typing indicator for upload
+      const typingId = showTyping();
+      updateTyping(typingId, '📁 Uploading to Google Drive…');
+
+      // Check file sizes (Drive multipart limit ~5MB total, base64 adds ~37%)
+      const MAX_BYTES = 3 * 1024 * 1024;
+      const oversized = files.filter(f => f.size > MAX_BYTES);
+      if (oversized.length) {
+        removeTyping(typingId);
+        appendMessage('error', `File(s) too large (max 5MB): ${oversized.map(f => f.name + ' (' + formatFileSize(f.size) + ')').join(', ')}. Upload them manually to Google Drive instead.`, true);
+        return;
+      }
+
+      try {
+        const uploaded = await uploadFilesToDrive(files) || [];
+        removeTyping(typingId);
+        if (!uploaded.length) {
+          appendMessage('error', 'No files were uploaded. Check your Drive connection.', true);
+          return;
+        }
+
+        // Build file display
+        const fileHTML = buildFileMessageHTML(uploaded);
+        const successful = uploaded.filter(f => !f.error);
+        const failed = uploaded.filter(f => f.error);
+
+        // Show file cards in a user message
+        const fileDisplayText = successful.map(f => `📎 ${f.name}`).join('\n');
+        appendMessage('user', fileHTML, true, true);
+
+        // Create message content with file context
+        const fileContext = successful.map(f =>
+          `[Uploaded file: "${f.name}" (${formatFileSize(f.size)}, ${f.mimeType}) — Drive ID: ${f.fileId}${f.webViewLink ? ', View: ' + f.webViewLink : ''}]`
+        ).join('\n');
+
+        // Push to chat history
+        window._nexus.chatHistory.push({ role: 'user', content: `📎 Uploaded ${successful.length} file(s) to Drive\n${fileContext}` });
+
+        // If any failed, show error
+        if (failed.length) {
+          const errMsg = `Failed to upload: ${failed.map(f => f.name + ': ' + f.error).join('; ')}`;
+          appendMessage('error', errMsg, true);
+        }
+
+        // Auto-send a message prompting the LLM to analyze
+        if (successful.length) {
+          const analysisPrompt = `I've uploaded ${successful.length} file(s) to Google Drive for analysis:\n${fileContext}\n\nPlease read and analyze the uploaded file(s).`;
+          document.getElementById('userInput').value = analysisPrompt;
+          try { sendMessage(); } catch (sendErr) {
+            console.error('Auto-send after upload failed:', sendErr);
+          }
+        }
+      } catch (err) {
+        removeTyping(typingId);
+        console.error('Upload error:', err);
+        appendMessage('error', 'Upload failed: ' + handleDriveError(err.message || err), true);
+      }
+    });
+
+    // Disable upload for anonymous users
+    function updateUploadBtn() {
+      const user = window._nexus.currentUser;
+      btn.disabled = !user || user.isAnonymous || !window._nexus.driveConnected;
+      btn.title = btn.disabled
+        ? 'Connect Google Drive to upload files'
+        : 'Upload file to Google Drive';
+    }
+    updateUploadBtn();
+    const origUpdateUi = window.updateDriveUi;
+    window.updateDriveUi = function() {
+      if (typeof origUpdateUi === 'function') origUpdateUi();
+      updateUploadBtn();
+    };
+  }
 
   // ── GLOBAL SVG ICONS ──
   const SVG_SEND = '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="currentColor"><path d="M120-160v-640l760 320-760 320Zm80-120 474-200-474-200v140l240 60-240 60v140Zm0 0v-400 400Z"/></svg>';
@@ -1342,10 +1912,6 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
   const SVG_ROBOT = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg>';
 
 
-
-  // ── DEBATE STATE ──
-  let debateActive = false;
-  let debateCancelRequested = false;
 
   // ── CORE APP ──
   window._nexus = {
@@ -1376,7 +1942,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         this.activeResearchReport = session.researchReport;
         this.activeResearchTopic = session.researchTopic || 'Research Report';
         document.getElementById('artifactTopic').textContent = this.activeResearchTopic;
-        document.getElementById('artifactBody').innerHTML = sanitizeHTML(marked.parse(formatResearchMarkdown(session.researchReport)));
+        document.getElementById('artifactBody').innerHTML = formatResearchMarkdown(marked.parse(session.researchReport));
         openArtifactPanel();
       } else {
         this.activeResearchReport = null;
@@ -1420,11 +1986,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
   function escapeHTML(s) {
     if (!s) return '';
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/\n/g,'<br>');
-  }
-  function escapeAttr(s) {
-    if (!s) return '';
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/\n/g,' ');
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
   }
 
   function appendMessage(role, content, animate, noEscape) {
@@ -1437,11 +1999,14 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     const user = window._nexus.currentUser;
     const avatarSrc = user?.photoURL || 'https://ui-avatars.com/api/?name=U&background=7c3aed&color=fff';
     const avatar = role === 'user'
-      ? `<img src="${escapeAttr(avatarSrc)}" class="msg-avatar">`
+      ? `<img src="${avatarSrc}" class="msg-avatar">`
       : `<div class="msg-avatar agent-avatar">${agentEmoji(window._nexus.selectedAgent)}</div>`;
-    const rendered = noEscape ? safeContent : ((role === 'user' || role === 'error') ? escapeHTML(safeContent) : (safeContent ? sanitizeHTML(typeof marked?.parse === 'function' ? marked.parse(safeContent) : safeContent) : ''));
+    const rendered = noEscape ? safeContent : ((role === 'user' || role === 'error') ? escapeHTML(safeContent) : (safeContent ? marked.parse(safeContent) : ''));
+    const driveBtn = (role === 'assistant' && window._nexus.driveConnected && window._nexus.driveToken)
+      ? `<button class="copy-btn" onclick="saveMessageToDrive(this)" title="Save as Markdown to Google Drive">📄 Save</button>`
+      : '';
     const buttonHTML = role === 'assistant' 
-      ? `<button class="tts-listen-btn" onclick="ttsController.speak(this)" title="Listen to this response"><span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>${SVG_SPEAKER} Listen</button><button class="copy-btn" onclick="copyMsg(this)">⎘ Copy</button>`
+      ? `<button class="tts-listen-btn" onclick="ttsController.speak(this)" title="Listen to this response"><span class="tts-btn-waves"><span></span><span></span><span></span><span></span><span></span></span>${SVG_SPEAKER} Listen</button><button class="copy-btn" onclick="copyMsg(this)">⎘ Copy</button>${driveBtn}`
       : (role === 'user' ? `<button class="copy-btn user-copy-btn" onclick="copyMsg(this)">⎘ Copy</button>` : '');
     wrap.innerHTML = `${role !== 'error' ? avatar : ''}
       <div class="message-bubble ${role}">
@@ -1452,7 +2017,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     container.appendChild(wrap);
     container.scrollTop = container.scrollHeight;
     if (role === 'assistant') {
-      if (typeof hljs?.highlightElement === 'function') wrap.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
+      wrap.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
       const bubble = wrap.querySelector('.message-bubble');
       if (bubble) injectFileDownloads(bubble, safeContent);
     }
@@ -1550,11 +2115,10 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
   async function enhancePrompt(prompt, targetAgent) {
     try {
-      const res  = await fetch(`${BACKEND}/api/enhance`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ prompt, targetAgent: agentName(targetAgent) }), signal: aborter(15000) });
-      if (!res.ok) { console.warn("Enhance API returned", res.status); return prompt; }
+      const res  = await fetch(`${BACKEND}/api/enhance`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ prompt, targetAgent: agentName(targetAgent) }) });
       const data = await res.json();
       return (typeof data.result === 'string' && data.result.trim()) ? data.result : prompt;
-    } catch (err) { console.warn("Enhance failed:", err.message); return prompt; }
+    } catch { return prompt; }
   }
 
   const BASE_SYSTEM_PROMPT = "You are NEXUS AI, a helpful, advanced AI assistant with live web search capabilities. When web search results are provided below the user's message, you MUST synthesize BOTH your training knowledge AND the web data to produce the best possible answer. Use real-time numbers, figures, and information from the web to make your response accurate and current, while also leveraging your training knowledge to provide context, trends across years, and deeper understanding. Cite web sources by number like [1]. When no web results are provided, answer from your training knowledge only. IMPORTANT: Always use proper punctuation (periods, commas, question marks, etc.) in every response. Structure your response using clear bullet points or numbered lists where appropriate, keeping paragraphs short and highly structured so that new users see an appealing, readable, and structured output. Do not output raw walls of text.";
@@ -1564,18 +2128,23 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     const userMsg = { role: 'user', content: prompt };
     let messages, promptWithContext = prompt;
     
+    let sysContent = BASE_SYSTEM_PROMPT;
+    if (window._nexus.driveConnected && window._nexus.driveToken) {
+      sysContent += DRIVE_SYSTEM_PROMPT;
+    }
+
     if (memories.length > 0) {
       const memLines   = memories.map(m => `• ${m.content}`).join('\n');
-      let sysContent = BASE_SYSTEM_PROMPT + `\n\nAdditionally, here is relevant context about the user, learned from previous conversations:\n${memLines}\n\nUse this context naturally and helpfully when relevant. Do not explicitly tell the user that you have a stored memory system — just respond in a personalized, aware way.`;
-      messages = [{ role: 'system', content: sysContent }, ...recentHistory, userMsg];
-    } else {
-      messages = [{ role: 'system', content: BASE_SYSTEM_PROMPT }, ...recentHistory, userMsg];
+      sysContent += `\n\nAdditionally, here is relevant context about the user, learned from previous conversations:\n${memLines}\n\nUse this context naturally and helpfully when relevant. Do not explicitly tell the user that you have a stored memory system — just respond in a personalized, aware way.`;
     }
+    
+    messages = [{ role: 'system', content: sysContent }, ...recentHistory, userMsg];
     
     const memPrefix = memories.length > 0
       ? `[User background: ${memories.map(m=>m.content).join('. ')}]\n\n`
       : '';
-    promptWithContext = `[System Instruction: ${BASE_SYSTEM_PROMPT}]\n\n${memPrefix}${prompt}`;
+    const drivePrompt = (window._nexus.driveConnected && window._nexus.driveToken) ? '\n\n' + DRIVE_SYSTEM_PROMPT : '';
+    promptWithContext = `[System Instruction: ${BASE_SYSTEM_PROMPT}]\n\n${memPrefix}${prompt}${drivePrompt}`;
 
     const map = {
       openai:         { url:`${BACKEND}/api/openai`,         body:{ messages } },
@@ -1589,7 +2158,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     };
     const target = map[agent];
     if (!target) throw new Error('Unknown agent.');
-    const r = await fetch(target.url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(target.body), signal: aborter(120000) });
+    const r = await fetch(target.url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(target.body) });
     const contentType = r.headers.get('content-type') || '';
     let d;
     if (!r.ok) {
@@ -1677,15 +2246,14 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       const res = await fetch(`${BACKEND}/api/search`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query, service: 'auto' }),
-        signal: aborter(20000)
+        body: JSON.stringify({ query, service: 'auto' })
       });
       if (!res.ok) return null;
       const data = await res.json();
       if (!data.success || !data.results?.length) return null;
       _webSearchCache[cacheKey] = data;
       return data;
-    } catch (err) { console.warn("Web search failed:", err.message); return null; }
+    } catch { return null; }
   }
 
   // Clear search cache on new chat
@@ -1693,8 +2261,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
   if (_origNewChat) {
     window._nexus.newChat = function() {
       for (const k in _webSearchCache) delete _webSearchCache[k];
-      cleanupAborters();
-      return _origNewChat.call(window._nexus);
+      return _origNewChat.apply(this, arguments);
     };
   }
 
@@ -1798,18 +2365,15 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
   // ══════════════════════════════════════════════════════════
 
 
-  let _sending = false;
   async function sendMessage() {
-    if (_sending) return;
-    _sending = true;
     const input     = document.getElementById('userInput');
     const rawPrompt = input.value.trim();
-    if (!rawPrompt) { _sending = false; return; }
+    if (!rawPrompt) return;
     input.value = ''; autoResize(input);
 
     if (document.getElementById('debateToggle')?.checked) {
       await runDebate(rawPrompt);
-      _sending = false; return;
+      return;
     }
 
     if (document.getElementById('researchToggle')?.checked) {
@@ -1817,7 +2381,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         ? await enhancePrompt(rawPrompt, window._nexus.selectedAgent)
         : rawPrompt;
       await runDeepResearch(finalPrompt, window._nexus.selectedAgent);
-      _sending = false; return;
+      return;
     }
 
     const nx    = window._nexus;
@@ -1865,9 +2429,24 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         : finalPrompt;
 
       const response = await callAgent(agent, promptWithWeb, nx.chatHistory.slice(-10), activeMemories);
+      // Process any Drive operations the LLM requested (keep typing indicator alive through this)
+      let finalResponse = response;
+      const hasDriveOps = parseDriveOps(response).length;
+      const hasDriveBlock = /```drive\s*{/i.test(response);
+      if (window._nexus.driveConnected && window._nexus.driveToken && hasDriveOps) {
+        const ops = parseDriveOps(response);
+        const opLabels = ops.map(o => o.action === 'markdown' ? '📄 Creating Markdown…' : o.action === 'write' ? '📝 Writing file…' : o.action === 'read' ? '📖 Reading file…' : o.action === 'list' ? '📂 Listing files…' : o.action === 'delete' ? '🗑️ Deleting…' : o.action === 'search' ? '🔍 Searching…' : o.action === 'mkdir' ? '📁 Creating folder…' : o.action === 'copy' ? '📋 Copying…' : '📁 Drive ' + o.action + '…');
+        const statusText = ops.length > 1 ? '📁 ' + ops.length + ' Drive operations…' : opLabels[0] || '📁 Drive operation…';
+        updateTyping(typingId, statusText);
+        finalResponse = await processDriveResponse(agent, response, nx.chatHistory, activeMemories, typingId);
+      } else if (window._nexus.driveConnected && hasDriveBlock && !hasDriveOps) {
+        // Drive block present but JSON couldn't be parsed
+        finalResponse = response.replace(/```drive\s*{[\s\S]*?```/g, '').trim() || response;
+        finalResponse += '\n\n⚠️ **Drive operation detected but the JSON block was invalid. Make sure to use valid JSON like {"action":"markdown","name":"file"} and write the content as normal text after the block.**';
+      }
       removeTyping(typingId);
 
-      const safeResponse = (typeof response === 'string' && response.trim()) ? response : '_(No response returned)_';
+      const safeResponse = (typeof finalResponse === 'string' && finalResponse.trim()) ? finalResponse : '_(No response returned)_';
       const msgWrap = appendMessage('assistant', safeResponse, true);
 
       if (webAttempted) {
@@ -1898,18 +2477,20 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       maybeExtractMemories();
     } catch (err) {
       removeTyping(typingId);
-      appendMessage('error', '⚠ ' + (err?.message || String(err)), true);
+      appendMessage('error', '⚠ ' + err.message, true);
     }
-    _sending = false;
   }
 
   function toggleSidebar() {
     const sb = document.getElementById('sidebar'), ov = document.getElementById('sidebarOverlay');
-    if (!sb || !ov) return;
     if (sb.classList.contains('open')) closeSidebar();
     else { sb.classList.add('open'); ov.classList.add('show'); document.body.style.overflow='hidden'; }
   }
-  function closeSidebar() { document.getElementById('sidebar')?.classList.remove('open'); document.getElementById('sidebarOverlay')?.classList.remove('show'); document.body.style.overflow=''; }
+  function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebarOverlay').classList.remove('show'); document.body.style.overflow=''; }
+
+  // ── DEBATE STATE ──
+  let debateActive = false;
+  let debateCancelRequested = false;
 
   function selectAgent(id, el) {
     const isDebate = document.getElementById('debateToggle')?.checked;
@@ -1957,8 +2538,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       const res  = await fetch(BACKEND + '/');
       const data = await res.json();
       const memCount = Object.keys(window._nexus.memories || {}).length;
-      body.innerHTML = `<div style="color:var(--c-neon-green);margin-bottom:16px">✅ ${escapeHTML(data.status)}</div>
-        <div style="color:var(--c-muted);font-size:0.8rem">Version: ${escapeHTML(data.version)}</div>
+      body.innerHTML = `<div style="color:var(--c-neon-green);margin-bottom:16px">✅ ${data.status}</div>
+        <div style="color:var(--c-muted);font-size:0.8rem">Version: ${data.version}</div>
         <div style="margin-top:12px;font-size:0.82rem;color:var(--c-text)">All AI agents are powered by the secure backend.</div>
         <div style="margin-top:8px;font-size:0.8rem;color:var(--c-neon-cyan)">🧠 ${memCount} memor${memCount===1?'y':'ies'} loaded in this session.</div>`;
     } catch {
@@ -1990,7 +2571,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     let processed = md;
     const regex = /### Detailed Reasoning([\s\S]*?)(?=### Key Findings & Analytical Synthesis)/g;
     processed = processed.replace(regex, (match, cotContent) => {
-      const parsedContent = sanitizeHTML(marked.parse(cotContent.trim()));
+      const parsedContent = marked.parse(cotContent.trim());
       return `<details class="cot-accordion"><summary>🧠 View Detailed Reasoning</summary><div class="cot-content">${parsedContent}</div></details>\n\n`;
     });
     return processed;
@@ -2058,8 +2639,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       const res = await fetch(`${BACKEND}/api/deep-research`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, agent }),
-        signal: aborter(300000)
+        body: JSON.stringify({ prompt, agent })
       });
 
       if (!res.ok) {
@@ -2067,16 +2647,14 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         throw new Error(errData.error || `Server responded with ${res.status}`);
       }
 
-      if (!res.body) throw new Error('Research requires a stream-capable backend (missing response body)');
       const reader  = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer    = "";
       let plan = null;
       let completedBranches = 0, totalBranches = 0;
-      let researchCompleted = false;
+      let webSearchesDone   = 0;  // running count across all branches
 
       while (true) {
-        if (!wrap.isConnected) { reader.cancel(); return; }
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
@@ -2149,8 +2727,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
             const wsEl  = treeContainer.querySelector(`#websrch_${sid}`);
             const statEl = treeContainer.querySelector(`#status_${sid}`);
             if (event.found) {
-              webSearchesCompleted++;
-              updateWebCounter(webSearchesCompleted);
+              webSearchesDone++;
+              updateWebCounter(webSearchesDone);
               const icon  = event.icon  || '🌐';
               const svc   = event.service || 'Web';
               const count = event.count || 0;
@@ -2169,8 +2747,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
           // ── SYNTHESIS SEARCH END (new event from server) ──
           } else if (event.type === 'synthesis_search_end') {
             if (event.found) {
-              webSearchesCompleted++;
-              updateWebCounter(webSearchesCompleted);
+              webSearchesDone++;
+              updateWebCounter(webSearchesDone);
               const svc = event.service || 'Web';
               synthRow.innerHTML = `<div class="synthesis-search-row" style="background:rgba(0,255,157,0.04);border-color:rgba(0,255,157,0.2);color:var(--c-neon-green)"><span style="width:7px;height:7px;border-radius:50%;background:var(--c-neon-green);flex-shrink:0;box-shadow:0 0 5px var(--c-neon-green)"></span>✓ Synthesis grounded with live ${svc} data</div>`;
             } else {
@@ -2193,7 +2771,6 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
           // ── COMPLETED ──
           } else if (event.type === 'completed') {
-            researchCompleted = true;
             progressBar.style.width = '100%';
             statusText.textContent  = 'Research Completed!';
             statusText.style.color  = 'var(--c-neon-green)';
@@ -2203,15 +2780,15 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
             const processedMd = formatResearchMarkdown(event.result);
             document.getElementById('artifactTopic').textContent = plan ? plan.topic : 'Research Report';
-            document.getElementById('artifactBody').innerHTML     = sanitizeHTML(marked.parse(processedMd));
-            if (typeof hljs?.highlightElement === 'function') document.querySelectorAll('#artifactBody pre code').forEach(block => hljs.highlightElement(block));
+            document.getElementById('artifactBody').innerHTML     = marked.parse(processedMd);
+            document.querySelectorAll('#artifactBody pre code').forEach(block => hljs.highlightElement(block));
             openArtifactPanel();
 
             const summaryP = document.createElement('p');
             summaryP.style.marginTop = '15px';
             summaryP.style.color     = 'var(--c-neon-green)';
-            const webNote = webSearchesCompleted > 0
-              ? ` Grounded with <strong style="color:var(--c-neon-cyan)">${webSearchesCompleted} live web search${webSearchesCompleted>1?'es':''}</strong>.`
+            const webNote = webSearchesDone > 0
+              ? ` Grounded with <strong style="color:var(--c-neon-cyan)">${webSearchesDone} live web search${webSearchesDone>1?'es':''}</strong>.`
               : '';
             summaryP.innerHTML = `🔬 <strong>Deep Research Successful!</strong>${webNote} <a href="javascript:void(0)" onclick="openArtifactPanel()" style="color:var(--c-neon-cyan);text-decoration:underline;">Open the Research Panel →</a>`;
             wrap.querySelector('.message-bubble').appendChild(summaryP);
@@ -2232,16 +2809,12 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
           }
         }
       }
-      if (!researchCompleted) {
-        throw new Error('Research stream ended without completion event. Backend may have crashed or timed out.');
-      }
     } catch (err) {
       console.error("Deep Research execution error:", err);
-      const errMsg = err?.message || String(err);
-      statusText.textContent = `❌ Research Failed: ${errMsg}`;
+      statusText.textContent = `❌ Research Failed: ${err.message}`;
       statusText.style.color = 'var(--c-neon-pink)';
       if (spinner) { spinner.className = ''; spinner.style.width = '24px'; spinner.style.height = '24px'; spinner.innerHTML = '⚠️'; spinner.style.fontSize = '1.2rem'; }
-      appendMessage('error', `Research execution failed: ${errMsg}`, true);
+      appendMessage('error', `Research execution failed: ${err.message}`, true);
     }
   }
 
@@ -2365,8 +2938,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       const res = await fetch(`${BACKEND}/api/debate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: finalTopic, agents, rounds, webContext }),
-        signal: aborter(300000)
+        body: JSON.stringify({ topic: finalTopic, agents, rounds, webContext })
       });
 
       if (!res.ok) {
@@ -2374,18 +2946,14 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         throw new Error(errData.error || `Server responded with ${res.status}`);
       }
 
-      if (!res.body) throw new Error('Debate requires a stream-capable backend (missing response body)');
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
       let totalTurns = 0;
       let completedTurns = 0;
       let consensusHtml = null;
-      let debateCompleted = false;
 
       while (true) {
-        if (!wrap.isConnected) { reader.cancel(); debateActive = false; return; }
-
         if (debateCancelRequested) {
           reader.cancel();
           statusText.textContent = '⏹️ Debate cancelled.';
@@ -2417,7 +2985,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
               return `<span class="debate-participant-pill" style="border-color:${color};color:${color};background:${color}11;">
                 <span style="width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0;"></span>
                 ${escapeHTML(p.name)}
-                <span style="opacity:0.6">· ${escapeHTML(p.persona?.role || '')}</span>
+                <span style="opacity:0.6">· ${p.persona.role}</span>
               </span>`;
             }).join('');
             totalTurns = participants.length * rounds;
@@ -2427,7 +2995,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
             statusText.textContent = event.message;
 
           } else if (event.type === 'speaker_start') {
-            statusText.textContent = `💬 ${event.name} (${event.persona?.role || ''}) is speaking...`;
+            statusText.textContent = `💬 ${event.name} (${event.persona.role}) is speaking...`;
             const pct = 2 + Math.floor((completedTurns / totalTurns) * 90);
             progressBar.style.width = `${pct}%`;
             container.scrollTop = container.scrollHeight;
@@ -2440,27 +3008,37 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
                 <div class="debate-turn-header">
                   <span style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></span>
                   <span class="debate-turn-name" style="color:${color}">${escapeHTML(event.name)}</span>
-                  <span class="debate-turn-persona">${escapeHTML(event.persona?.role || '')}</span>
+                  <span class="debate-turn-persona">${escapeHTML(event.persona.role)}</span>
                   <span class="debate-turn-round">Round ${event.round}</span>
                 </div>
-                <div class="debate-turn-content">${event.error ? escapeHTML(event.content) : sanitizeHTML(marked.parse(event.content))}</div>
-
+                <div class="debate-turn-content">${event.error ? escapeHTML(event.content) : marked.parse(event.content)}</div>
               </div>`;
             transcriptEl.insertAdjacentHTML('beforeend', turnHtml);
+            const pct = 2 + Math.floor((completedTurns / totalTurns) * 90);
+            progressBar.style.width = `${pct}%`;
             container.scrollTop = container.scrollHeight;
 
+            // Persist turn to chat history so it survives session reload
+            nx.chatHistory.push({
+              role: 'assistant',
+              content: `**${event.name}** (${event.persona.role}, Round ${event.round}):\n\n${event.content}`
+            });
+
           } else if (event.type === 'completed') {
-            debateCompleted = true;
             progressBar.style.width = '100%';
-            statusText.textContent = '✅ Debate Complete!';
+            statusText.textContent = '✅ Debate concluded!';
             statusText.style.color = 'var(--c-neon-green)';
-            if (spinner) { spinner.className = ''; spinner.innerHTML = '✓'; spinner.style.fontSize = '1.2rem'; }
+            if (spinner) { spinner.className = 'debate-spinner-done'; spinner.innerHTML = '✓'; }
 
-            if (event.result && consensusEl) {
-              consensusEl.innerHTML = `<div class="debate-consensus">${sanitizeHTML(marked.parse(event.result))}</div>`;
-            }
+            const consensusHtml = `
+              <div class="debate-consensus">
+                <div class="debate-consensus-header">🏁 Final Consensus</div>
+                <div class="debate-consensus-content">${marked.parse(event.result)}</div>
+              </div>`;
+            consensusEl.innerHTML = consensusHtml;
+            container.scrollTop = container.scrollHeight;
 
-            nx.chatHistory.push({ role: 'assistant', content: event.result || '[Debate completed]' });
+            nx.chatHistory.push({ role: 'assistant', content: `[Debate Conclusion] ${event.result}` });
             if (nx.currentUser && nx.currentSessionId && typeof window._saveSession === 'function') {
               const title = nx.chatHistory[0]?.content?.slice(0, 60) || 'Debate: ' + finalTopic.slice(0, 40);
               window._saveSession(nx.currentUser.uid, nx.currentSessionId, {
@@ -2473,15 +3051,12 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
           }
         }
       }
-      if (!debateCompleted) {
-        throw new Error('Debate stream ended without completion event. Backend may have crashed or timed out.');
-      }
     } catch (err) {
       console.error("Debate execution error:", err);
-      const debateErrMsg = err?.message || String(err);
-      statusText.textContent = `❌ Debate Failed: ${debateErrMsg}`;
+      statusText.textContent = `❌ Debate Failed: ${err.message}`;
       statusText.style.color = 'var(--c-neon-pink)';
-      appendMessage('error', `Debate failed: ${debateErrMsg}`, true);
+      if (spinner) { spinner.className = ''; spinner.innerHTML = '⚠️'; spinner.style.fontSize = '1.2rem'; }
+      appendMessage('error', `Debate failed: ${err.message}`, true);
     } finally {
       debateActive = false;
       const dt = document.getElementById('debateToggle');
@@ -2546,8 +3121,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     }
 
     function restoreTtsPlayerPosition(player) {
-      let stored;
-      try { stored = localStorage.getItem('ttsPlayerPos'); } catch {}
+      const stored = localStorage.getItem('ttsPlayerPos');
       if (stored) {
         try {
           const pos = JSON.parse(stored);
@@ -2628,7 +3202,6 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text }),
-            signal: aborter(30000),
           });
 
           if (res.ok) return res;
@@ -2925,7 +3498,6 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
     // ── TTS Player Drag ──
     const ttsPlayer = document.getElementById('ttsPlayer');
-    if (!ttsPlayer) return;
     let dragState = null;
     function dragStart(e) {
       if (e.target.closest('button,select')) return;
@@ -2953,7 +3525,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       dragState = null;
       ttsPlayer.style.transition = '';
       ttsPlayer.classList.remove('dragging');
-      try { localStorage.setItem('ttsPlayerPos', JSON.stringify({ x: parseInt(ttsPlayer.style.left), y: parseInt(ttsPlayer.style.bottom) })); } catch {}
+      localStorage.setItem('ttsPlayerPos', JSON.stringify({ x: parseInt(ttsPlayer.style.left), y: parseInt(ttsPlayer.style.bottom) }));
     }
     ttsPlayer.addEventListener('mousedown', dragStart);
     document.addEventListener('mousemove', dragMove);
@@ -2962,6 +3534,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     document.addEventListener('touchmove', dragMove, { passive: false });
     document.addEventListener('touchend', dragEnd);
 
+    initFileUpload();
   });
 </script>
 </body>
