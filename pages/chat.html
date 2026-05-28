@@ -2073,6 +2073,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       let buffer    = "";
       let plan = null;
       let completedBranches = 0, totalBranches = 0;
+      let researchCompleted = false;
 
       while (true) {
         if (!wrap.isConnected) { reader.cancel(); return; }
@@ -2192,6 +2193,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
           // ── COMPLETED ──
           } else if (event.type === 'completed') {
+            researchCompleted = true;
             progressBar.style.width = '100%';
             statusText.textContent  = 'Research Completed!';
             statusText.style.color  = 'var(--c-neon-green)';
@@ -2229,6 +2231,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
             throw new Error(event.message);
           }
         }
+      if (!researchCompleted) {
+        throw new Error('Research stream ended without completion event. Backend may have crashed or timed out.');
       }
     } catch (err) {
       console.error("Deep Research execution error:", err);
@@ -2376,6 +2380,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       let totalTurns = 0;
       let completedTurns = 0;
       let consensusHtml = null;
+      let debateCompleted = false;
 
       while (true) {
         if (!wrap.isConnected) { reader.cancel(); debateActive = false; return; }
@@ -2444,6 +2449,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
             container.scrollTop = container.scrollHeight;
 
           } else if (event.type === 'completed') {
+            debateCompleted = true;
             progressBar.style.width = '100%';
             statusText.textContent = '✅ Debate Complete!';
             statusText.style.color = 'var(--c-neon-green)';
@@ -2465,6 +2471,9 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
             throw new Error(event.message);
           }
         }
+      }
+      if (!debateCompleted) {
+        throw new Error('Debate stream ended without completion event. Backend may have crashed or timed out.');
       }
     } catch (err) {
       console.error("Debate execution error:", err);
