@@ -1512,9 +1512,32 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
   }
 
   function normalizeArtifactName(name) {
-    return String(name || '')
+    let value = String(name || '')
       .replace(/^(?:file(?:name)?|path)\s*[:=]\s*/i, '')
-      .trim()
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;|&apos;/g, "'")
+      .trim();
+
+    const standalone = value
+      .replace(/^[`*_[({<"'\s]+/, '')
+      .replace(/[`*_\])}>"'\s:;,]+$/, '')
+      .trim();
+    if (/^[A-Za-z0-9][\w./ -]*\.[A-Za-z][A-Za-z0-9]{0,7}$/i.test(standalone)) return standalone;
+
+    const codedName = value.match(/<code[^>]*>\s*([^<]*?\.[A-Za-z][A-Za-z0-9]{0,7})\s*<\/code>/i)
+      || value.match(/`([^`]*?\.[A-Za-z][A-Za-z0-9]{0,7})`/);
+    if (codedName) value = codedName[1];
+    else {
+      const plain = value.replace(/<[^>]+>/g, ' ');
+      const explicitName = plain.match(/(?:file(?:name)?|path)\s*[:=]\s*["'`]?((?:[A-Za-z0-9_-]+[\\/])*[A-Za-z0-9][A-Za-z0-9_.-]*\.[A-Za-z][A-Za-z0-9]{0,7})/i);
+      const looseName = plain.match(/(?:^|[\s"'`(<[{])((?:[A-Za-z0-9_-]+[\\/])*[A-Za-z0-9][A-Za-z0-9_.-]*\.[A-Za-z][A-Za-z0-9]{0,7})(?=$|[\s"'`)>}\],:;])/i);
+      if (explicitName || looseName) value = (explicitName || looseName)[1];
+    }
+
+    return value
       .replace(/^[`*_[({<"'\s]+/, '')
       .replace(/[`*_\])}>"'\s:;,]+$/, '')
       .trim();
@@ -1534,9 +1557,9 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       files.push({ filename: cleanName, language: inferLanguage(cleanName, language), content: text });
     };
 
-    const headingFence = /(?:^|\n)#{1,6}\s*[*_`"'[(<]*\s*(?:(?:file(?:name)?|path)\s*[:\-]\s*)?[*_`"'[(<]*\s*([A-Za-z0-9][\w./ -]*\.[A-Za-z0-9]{1,8})\s*[*_`"'\])>]*[^\n]*\n(?:[ \t]*\n)*[ \t]*```([A-Za-z0-9_+#.-]*)[^\n]*\n([\s\S]*?)```/gi;
+    const headingFence = /(?:^|\n)(?:#{1,6}\s*([^\n]+)|<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>)[^\n]*\n(?:[ \t]*\n)*[ \t]*```([A-Za-z0-9_+#.-]*)[^\n]*\n([\s\S]*?)```/gi;
     let match;
-    while ((match = headingFence.exec(content)) !== null) addFile(match[1], match[2], match[3]);
+    while ((match = headingFence.exec(content)) !== null) addFile(match[1] || match[2], match[3], match[4]);
 
     const labelFence = /(?:^|\n)(?:file(?:name)?|path)\s*[:\-]\s*[*_`"']*\s*([A-Za-z0-9][\w./ -]*\.[A-Za-z0-9]{1,8})\s*[*_`"']*[^\n]*\n(?:[ \t]*\n)*[ \t]*```([A-Za-z0-9_+#.-]*)[^\n]*\n([\s\S]*?)```/gi;
     while ((match = labelFence.exec(content)) !== null) addFile(match[1], match[2], match[3]);
