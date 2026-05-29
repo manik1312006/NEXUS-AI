@@ -1467,7 +1467,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     if (role === 'assistant') {
       wrap.querySelectorAll('pre code').forEach(b => hljs.highlightElement(b));
       const bubble = wrap.querySelector('.message-bubble');
-      if (bubble) injectFileDownloads(bubble, safeContent);
+      if (bubble) injectFileDownloads(bubble, safeContent, { autoOpen: !!animate });
     }
     return wrap;
   }
@@ -1504,14 +1504,20 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
   }
 
   function inferLanguage(filename, fallback) {
-    if (fallback && fallback !== 'artifact') return fallback;
+    const cleanFallback = String(fallback || '').trim().toLowerCase();
+    if (cleanFallback && !['artifact', 'file', 'text', 'txt'].includes(cleanFallback)) return cleanFallback;
     const ext = (filename.split('.').pop() || '').toLowerCase();
-    const map = { html:'html', css:'css', js:'javascript', jsx:'jsx', ts:'typescript', tsx:'tsx', json:'json', md:'markdown', py:'python', yml:'yaml', yaml:'yaml', sql:'sql', sh:'bash' };
+    const map = { html:'html', css:'css', js:'javascript', mjs:'javascript', cjs:'javascript', jsx:'jsx', ts:'typescript', tsx:'tsx', json:'json', md:'markdown', py:'python', yml:'yaml', yaml:'yaml', sql:'sql', sh:'bash' };
     return map[ext] || 'text';
   }
 
   function normalizeArtifactName(name) {
-    return String(name || '').replace(/^file:\s*/i, '').replace(/["'`]/g, '').trim();
+    return String(name || '')
+      .replace(/^(?:file(?:name)?|path)\s*[:=]\s*/i, '')
+      .trim()
+      .replace(/^[`*_[({<"'\s]+/, '')
+      .replace(/[`*_\])}>"'\s:;,]+$/, '')
+      .trim();
   }
 
   function extractArtifacts(content) {
@@ -1520,27 +1526,34 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     const addFile = (filename, language, body) => {
       const cleanName = normalizeArtifactName(filename);
       const text = String(body || '').replace(/^\n+|\n+$/g, '');
-      if (!cleanName || !/\.[a-z0-9]{1,8}$/i.test(cleanName) || !text.trim()) return;
+      const ext = cleanName.split('.').pop() || '';
+      if (!cleanName || !/\.[a-z0-9]{1,8}$/i.test(cleanName) || !/[a-z]/i.test(ext) || !text.trim()) return;
       const key = cleanName.toLowerCase();
       if (seen.has(key)) return;
       seen.add(key);
       files.push({ filename: cleanName, language: inferLanguage(cleanName, language), content: text });
     };
 
-    const headingFence = /###\s*(?:[^\w\n`]*\s*)?([A-Za-z0-9][\w./ -]*\.[A-Za-z0-9]{1,8})\s*\n```([A-Za-z0-9_-]*)[^\n]*\n([\s\S]*?)```/g;
+    const headingFence = /(?:^|\n)#{1,6}\s*[*_`"'[(<]*\s*(?:(?:file(?:name)?|path)\s*[:\-]\s*)?[*_`"'[(<]*\s*([A-Za-z0-9][\w./ -]*\.[A-Za-z0-9]{1,8})\s*[*_`"'\])>]*[^\n]*\n(?:[ \t]*\n)*[ \t]*```([A-Za-z0-9_+#.-]*)[^\n]*\n([\s\S]*?)```/gi;
     let match;
     while ((match = headingFence.exec(content)) !== null) addFile(match[1], match[2], match[3]);
 
-    const artifactFence = /```artifact:([^\n`]+)\n([\s\S]*?)```/g;
+    const labelFence = /(?:^|\n)(?:file(?:name)?|path)\s*[:\-]\s*[*_`"']*\s*([A-Za-z0-9][\w./ -]*\.[A-Za-z0-9]{1,8})\s*[*_`"']*[^\n]*\n(?:[ \t]*\n)*[ \t]*```([A-Za-z0-9_+#.-]*)[^\n]*\n([\s\S]*?)```/gi;
+    while ((match = labelFence.exec(content)) !== null) addFile(match[1], match[2], match[3]);
+
+    const artifactFence = /```artifact(?::|\s+)([^\n`]+)\n([\s\S]*?)```/gi;
     while ((match = artifactFence.exec(content)) !== null) addFile(match[1], '', match[2]);
 
-    const namedFence = /```([A-Za-z0-9_-]+)\s+(?:file=|filename=)?([A-Za-z0-9][\w./ -]*\.[A-Za-z0-9]{1,8})\n([\s\S]*?)```/g;
-    while ((match = namedFence.exec(content)) !== null) addFile(match[2], match[1], match[3]);
+    const namedFence = /```([A-Za-z0-9_+#.-]+)(?:[^\n`]*?\s(?:file(?:name)?|path)=?|\s+)(["'`]?)([A-Za-z0-9][\w./ -]*\.[A-Za-z0-9]{1,8})\2[^\n]*\n([\s\S]*?)```/gi;
+    while ((match = namedFence.exec(content)) !== null) addFile(match[3], match[1], match[4]);
+
+    const commentFence = /```([A-Za-z0-9_+#.-]+)[^\n`]*\n\s*(?:(?:\/\/|#|--)\s*(?:file(?:name)?|path)?\s*[:\-]?\s*([A-Za-z0-9][\w./ -]*\.[A-Za-z0-9]{1,8})|\/\*\s*(?:file(?:name)?|path)?\s*[:\-]?\s*([A-Za-z0-9][\w./ -]*\.[A-Za-z0-9]{1,8})\s*\*\/|<!--\s*(?:file(?:name)?|path)?\s*[:\-]?\s*([A-Za-z0-9][\w./ -]*\.[A-Za-z0-9]{1,8})\s*-->)[^\n]*\n([\s\S]*?)```/gi;
+    while ((match = commentFence.exec(content)) !== null) addFile(match[2] || match[3] || match[4], match[1], match[5]);
 
     return files;
   }
 
-  function injectFileDownloads(bubbleEl, content) {
+  function injectFileDownloads(bubbleEl, content, options = {}) {
     const files = extractArtifacts(content);
     if (!files.length) return;
 
@@ -1557,11 +1570,13 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     label.textContent = 'Artifacts';
     btnWrap.appendChild(label);
 
+    let firstArtifactId = null;
     files.forEach((file, index) => {
       const id = bundleId + '_' + index;
       const artifact = { ...file, id, bundleId };
       nx.artifacts[id] = artifact;
       nx.artifactBundles[bundleId].files.push(artifact);
+      if (!firstArtifactId) firstArtifactId = id;
 
       const btn = document.createElement('button');
       btn.className = 'artifact-file-btn';
@@ -1572,6 +1587,9 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     });
 
     bubbleEl.appendChild(btnWrap);
+    if (options.autoOpen && firstArtifactId) {
+      setTimeout(() => openCodeArtifactPanel(firstArtifactId), 0);
+    }
   }
 
   function getActiveArtifactBundle() {
@@ -1814,7 +1832,8 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     } catch { return prompt; }
   }
 
-  const BASE_SYSTEM_PROMPT = "You are NEXUS AI, a helpful, advanced AI assistant with live web search capabilities. When web search results are provided below the user's message, you MUST synthesize BOTH your training knowledge AND the web data to produce the best possible answer. Use real-time numbers, figures, and information from the web to make your response accurate and current, while also leveraging your training knowledge to provide context, trends across years, and deeper understanding. Cite web sources by number like [1]. When no web results are provided, answer from your training knowledge only. IMPORTANT: Always use proper punctuation (periods, commas, question marks, etc.) in every response. Structure your response using clear bullet points or numbered lists where appropriate, keeping paragraphs short and highly structured so that new users see an appealing, readable, and structured output. Do not output raw walls of text.";
+  const CODE_ARTIFACT_SYSTEM_PROMPT = " For coding or file-generation requests, when you provide complete file contents, output each file as a UI artifact using exactly this format: `### filename.ext` on its own line, followed by a fenced code block with the language and complete file content. Use this artifact format only for files the user should be able to open or download, not for tiny illustrative snippets.";
+  const BASE_SYSTEM_PROMPT = "You are NEXUS AI, a helpful, advanced AI assistant with live web search capabilities. When web search results are provided below the user's message, you MUST synthesize BOTH your training knowledge AND the web data to produce the best possible answer. Use real-time numbers, figures, and information from the web to make your response accurate and current, while also leveraging your training knowledge to provide context, trends across years, and deeper understanding. Cite web sources by number like [1]. When no web results are provided, answer from your training knowledge only. IMPORTANT: Always use proper punctuation (periods, commas, question marks, etc.) in every response. Structure your response using clear bullet points or numbered lists where appropriate, keeping paragraphs short and highly structured so that new users see an appealing, readable, and structured output. Do not output raw walls of text." + CODE_ARTIFACT_SYSTEM_PROMPT;
 
   async function callAgent(agent, prompt, history, memories = [], skillContext = '') {
     const recentHistory = history.slice(-8).filter(m => m.role !== 'system');
