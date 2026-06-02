@@ -6,7 +6,7 @@ A web-based chat platform that lets you talk to multiple AI models from a single
 
 ## Features
 
-- **8 AI Agents** — GPT-OSS 120B (NVIDIA NIM), LLaMA 3.3 70B (NVIDIA NIM), Kimi K2.6 (NVIDIA NIM), Gemma 4 31B IT (NVIDIA NIM), Gemini Flash, Mistral Large, LLaMA 3.3 (via Groq), and Cohere Command R+
+- **9 AI Agents** — GPT-OSS 120B (NVIDIA NIM), LLaMA 3.3 70B (NVIDIA NIM), Kimi K2.6 (NVIDIA NIM), Gemma 4 31B IT (NVIDIA NIM), Gemini Flash, Mistral Large, Codestral, LLaMA 3.3 (via Groq), and Cohere Command R+
 - **Structured Pointwise Responses** — all AI agents are instructed to format responses in clear, readable bullet points or numbered lists, keeping paragraphs short and highly structured
 - **Prompt Enhancer** — automatically rewrites your prompt using LLaMA (free) before sending it to the chosen agent
 - **Smart Web Grounding** — comprehensive regular-expression-based checker matching temporal indicators, comparisons, explicit search commands, and factual question formats to automatically fetch live context
@@ -60,7 +60,7 @@ nexus-ai/
 | Backend | Node.js + Express, hosted on Render |
 | Auth | Firebase Authentication (Google + Anonymous) |
 | Database | Firebase Realtime Database (chat history + memories) |
-| AI APIs | NVIDIA NIM (OpenAI-compat), Google Gemini, Mistral, Groq, Cohere |
+| AI APIs | NVIDIA NIM (OpenAI-compat), Google Gemini, Mistral, Codestral, Groq, Cohere |
 | Markdown | marked.js + highlight.js |
 | Theme | CSS custom properties + `localStorage` persistence |
 
@@ -83,6 +83,7 @@ NVIDIA_KEY_LLAMA=...
 NVIDIA_KEY_DEEPSEEK=...
 GEMINI_API_KEY=AIza...
 MISTRAL_API_KEY=...
+CODESTRAL_API_KEY=...
 GROQ_API_KEY=gsk_...
 COHERE_API_KEY=...
 PORT=4000
@@ -131,6 +132,7 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 | POST | `/api/gemma4` | Gemma 4 31B IT (NVIDIA NIM) | Requires `{ messages }` |
 | POST | `/api/gemini` | Gemini Flash | Requires `{ prompt }` |
 | POST | `/api/mistral` | Mistral Large | Requires `{ messages }` |
+| POST | `/api/codestral` | Codestral | Requires `{ messages }` |
 | POST | `/api/groq` | LLaMA 3.3 (Groq) | Requires `{ messages }` |
 | POST | `/api/cohere` | Command R+ | Requires `{ prompt }` |
 | POST | `/api/enhance` | LLaMA 3.3 (Groq) | Prompt enhancer, falls back to OpenAI |
@@ -153,6 +155,7 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 | NVIDIA NIM (Kimi K2.6) | ✅ Trial credits | Requires `NVIDIA_KEY_KIMI` on the backend |
 | NVIDIA NIM (Gemma 4 31B IT) | ✅ Trial credits | Requires `NVIDIA_KEY_GEMMA4` on the backend |
 | Mistral Large | ✅ Trial credits | Free trial on sign-up |
+| Codestral | ✅ Separate key | Uses `CODESTRAL_API_KEY` and `https://codestral.mistral.ai/v1/chat/completions` |
 | Cohere Command R+ | ✅ Trial credits | v2/chat API |
 | Gemini Flash | ⚠️ Daily quota | Free via AI Studio key; quota resets daily |
 
@@ -168,6 +171,7 @@ Drop the `index.html` and `pages/` folder into [netlify.com](https://netlify.com
 | `NVIDIA_KEY_GEMMA4` | [build.nvidia.com](https://build.nvidia.com) |
 | `GEMINI_API_KEY` | [aistudio.google.com](https://aistudio.google.com) |
 | `MISTRAL_API_KEY` | [console.mistral.ai](https://console.mistral.ai) |
+| `CODESTRAL_API_KEY` | [console.mistral.ai](https://console.mistral.ai) / Codestral API key |
 | `GROQ_API_KEY` | [console.groq.com](https://console.groq.com) |
 | `COHERE_API_KEY` | [dashboard.cohere.com](https://dashboard.cohere.com) |
 

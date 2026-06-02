@@ -784,6 +784,9 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
           <button class="agent-btn" onclick="selectAgent('mistral',this)">
             <span class="a-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg></span><span class="a-name">Mistral</span>
           </button>
+          <button class="agent-btn" onclick="selectAgent('codestral',this)">
+            <span class="a-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg></span><span class="a-name">Codestral</span>
+          </button>
           <button class="agent-btn" onclick="selectAgent('groq',this)">
             <span class="a-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg></span><span class="a-name">LLaMA<br>Groq</span>
           </button>
@@ -1429,9 +1432,9 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     } catch { btn.classList.remove('deleting'); btn.innerHTML = `⚠ Failed — try again`; }
   }
 
-  const AGENT_NAMES = { openai:'GPT-OSS 120B', gemini:'Gemini Flash', mistral:'Mistral Large', cohere:'Cohere R+', groq:'LLaMA 3.3', 'nvidia-llama':'LLaMA 3.3 70B', deepseek: 'Kimi K2.6', gemma4: 'Gemma 4 31B IT' };
+  const AGENT_NAMES = { openai:'GPT-OSS 120B', gemini:'Gemini Flash', mistral:'Mistral Large', codestral:'Codestral', cohere:'Cohere R+', groq:'LLaMA 3.3', 'nvidia-llama':'LLaMA 3.3 70B', deepseek: 'Kimi K2.6', gemma4: 'Gemma 4 31B IT' };
   function agentName(a) { return AGENT_NAMES[a] || a; }
-  const AGENT_EMOJI = { openai: SVG_ROBOT, gemini: SVG_ROBOT, mistral: SVG_ROBOT, cohere: SVG_ROBOT, groq: SVG_ROBOT, 'nvidia-llama': SVG_ROBOT, deepseek: SVG_ROBOT, gemma4: SVG_ROBOT };
+  const AGENT_EMOJI = { openai: SVG_ROBOT, gemini: SVG_ROBOT, mistral: SVG_ROBOT, codestral: SVG_ROBOT, cohere: SVG_ROBOT, groq: SVG_ROBOT, 'nvidia-llama': SVG_ROBOT, deepseek: SVG_ROBOT, gemma4: SVG_ROBOT };
 
   function agentEmoji(a) { return AGENT_EMOJI[a] || SVG_ROBOT; }
 
@@ -1888,6 +1891,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       gemma4:         { url:`${BACKEND}/api/gemma4`,         body:{ messages } },
       gemini:         { url:`${BACKEND}/api/gemini`,         body:{ prompt: promptWithContext } },
       mistral:        { url:`${BACKEND}/api/mistral`,        body:{ messages } },
+      codestral:      { url:`${BACKEND}/api/codestral`,      body:{ messages } },
       cohere:         { url:`${BACKEND}/api/cohere`,         body:{ prompt: promptWithContext } },
       groq:           { url:`${BACKEND}/api/groq`,           body:{ messages } },
     };
