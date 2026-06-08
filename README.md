@@ -7,7 +7,7 @@ A web-based chat platform that lets you talk to multiple AI models from a single
 ## Features
 
 - **9 AI Agents** — GPT-OSS 120B (NVIDIA NIM), LLaMA 3.3 70B (NVIDIA NIM), Kimi K2.6 (NVIDIA NIM), Gemma 4 31B IT (NVIDIA NIM), Gemini Flash, Mistral Large, Codestral, LLaMA 3.3 (via Groq), and Cohere Command R+
-- **Structured Pointwise Responses** — all AI agents are instructed to format responses in clear, readable bullet points or numbered lists, keeping paragraphs short and highly structured
+- **Concise Structured Responses** — all AI agents are instructed to answer briefly by default with focused bullets or compact paragraphs, while still expanding when the task requires depth
 - **Prompt Enhancer** — automatically rewrites your prompt using LLaMA (free) before sending it to the chosen agent
 - **Smart Web Grounding** — comprehensive regular-expression-based checker matching temporal indicators, comparisons, explicit search commands, and factual question formats to automatically fetch live context
 - **Organic DDG Scraper** — a custom backend organic HTML DuckDuckGo scraper that retrieves true URLs and rich snippets without API keys or rate limits
