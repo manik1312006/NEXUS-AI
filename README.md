@@ -1,5 +1,7 @@
 # NEXUS AI — Multi-Agent Intelligence Hub
 
+Live app: https://nexusai.manikmehta.workers.dev/
+
 A web-based chat platform that lets you talk to multiple AI models from a single interface, with a built-in Prompt Enhancer that rewrites your queries before sending them for better results.
 
 ---

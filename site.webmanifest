@@ -1,0 +1,18 @@
+{
+  "name": "NEXUS AI",
+  "short_name": "NEXUS AI",
+  "description": "Free multi-agent AI chat with prompt enhancement, web search, deep research, voice input, and chat history.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#050510",
+  "theme_color": "#050510",
+  "icons": [
+    {
+      "src": "/Nexus_AI_logo%20.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

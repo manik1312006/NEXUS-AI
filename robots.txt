@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://nexusai.manikmehta.workers.dev/sitemap.xml
