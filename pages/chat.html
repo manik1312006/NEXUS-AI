@@ -269,7 +269,11 @@
     .agent-btn.nvidia-agent { border-color:rgba(118,185,0,0.3); }
     .agent-btn.nvidia-agent.active { border-color:#76b900; color:#76b900; background:rgba(118,185,0,0.08); box-shadow:0 0 12px rgba(118,185,0,0.2); }
     .agent-btn.nvidia-agent:hover { border-color:rgba(118,185,0,0.5); color:#76b900; }
+    .agent-btn.image-agent { border-color:rgba(0,255,157,0.28); }
+    .agent-btn.image-agent.active { border-color:var(--c-neon-green); color:var(--c-neon-green); background:rgba(0,255,157,0.08); box-shadow:0 0 12px rgba(0,255,157,0.16); }
+    .agent-btn.image-agent:hover { border-color:rgba(0,255,157,0.5); color:var(--c-neon-green); }
     .nvidia-tag { display:inline-block; font-size:0.55rem; background:rgba(118,185,0,0.15); color:#76b900; border:1px solid rgba(118,185,0,0.3); border-radius:3px; padding:0 3px; margin-top:2px; letter-spacing:0.04em; }
+    .image-tag { display:inline-block; font-size:0.55rem; background:rgba(0,255,157,0.12); color:var(--c-neon-green); border:1px solid rgba(0,255,157,0.3); border-radius:3px; padding:0 3px; margin-top:2px; letter-spacing:0.04em; }
     .enhance-section { padding:14px 16px; border-bottom:1px solid var(--c-border); }
     .enhance-row { display:flex; align-items:center; justify-content:space-between; }
     .enhance-info { flex:1; }
@@ -420,6 +424,9 @@
     .message-content h1,.message-content h2,.message-content h3 { font-family:'Syne',sans-serif; margin:12px 0 6px; }
     .message-content ul,.message-content ol { padding-left:20px; margin:6px 0; }
     .message-content li { margin:4px 0; }
+    .generated-image-frame { margin:10px 0 4px; border:1px solid rgba(0,245,255,0.18); border-radius:12px; overflow:hidden; background:rgba(0,0,0,0.22); }
+    .generated-image-frame img { display:block; width:100%; max-width:min(640px, 72vw); height:auto; object-fit:contain; }
+    .generated-image-caption { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:7px 10px; color:var(--c-muted); font-family:'Space Mono',monospace; font-size:0.66rem; border-top:1px solid rgba(255,255,255,0.06); }
     .copy-btn { margin-top:10px; padding:4px 12px; border-radius:6px; border:1px solid var(--c-border); background:transparent; color:var(--c-muted); font-size:0.72rem; cursor:pointer; transition:all 0.2s; font-family:'Space Mono',monospace; }
     .copy-btn:hover { color:var(--c-neon-cyan); border-color:var(--c-neon-cyan); }
     .copy-btn + .copy-btn { margin-left: 6px; }
@@ -803,6 +810,9 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
           </button>
           <button class="agent-btn" onclick="selectAgent('gemini',this)">
             <span class="a-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg></span><span class="a-name">Gemini</span>
+          </button>
+          <button class="agent-btn image-agent" onclick="selectAgent('gemini-image',this)">
+            <span class="a-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Z"/></svg></span><span class="a-name">Gemini<br>Image</span><span class="image-tag">IMAGE</span>
           </button>
           <button class="agent-btn" onclick="selectAgent('mistral',this)">
             <span class="a-emoji"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg></span><span class="a-name">Mistral</span>
@@ -1401,6 +1411,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
   const SVG_STOP = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20px" height="20px" fill="currentColor"><path d="M320-320h320v-320H320v320ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Z"/></svg>';
   const SVG_REFRESH = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="20px" height="20px" fill="currentColor"><path d="M480-160q-134 0-227-93t-93-227q0-134 93-227t227-93q69 0 132 28.5T720-690v-110h80v280H520v-80h168q-32-56-87.5-88T480-720q-100 0-170 70t-70 170q0 100 70 170t170 70q77 0 139-44t87-116h84q-28 106-114 173t-196 67Z"/></svg>';
   const SVG_ROBOT = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M323-160q-11 0-20.5-5.5T288-181l-78-139h58l40 80h92v-40h-68l-40-80H188l-57-100q-2-5-3.5-10t-1.5-10q0-4 5-20l57-100h104l40-80h68v-40h-92l-40 80h-58l78-139q5-10 14.5-15.5T323-800h97q17 0 28.5 11.5T460-760v160h-60l-40 40h100v120h-88l-40-80h-92l-40 40h108l40 80h112v200q0 17-11.5 28.5T420-160h-97Zm217 0q-17 0-28.5-11.5T500-200v-200h112l40-80h108l-40-40h-92l-40 80h-88v-120h100l-40-40h-60v-160q0-17 11.5-28.5T540-800h97q11 0 20.5 5.5T672-779l78 139h-58l-40-80h-92v40h68l40 80h104l57 100q2 5 3.5 10t1.5 10q0 4-5 20l-57 100H668l-40 80h-68v40h92l40-80h58l-78 139q-5 10-14.5 15.5T637-160h-97Z"/></svg>';
+  const SVG_IMAGE = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24px" height="24px" fill="currentColor"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm40-80h480L570-480 450-320l-90-120-120 160Zm-40 80v-560 560Z"/></svg>';
 
 
 
@@ -1469,15 +1480,31 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
     } catch { btn.classList.remove('deleting'); btn.innerHTML = `⚠ Failed — try again`; }
   }
 
-  const AGENT_NAMES = { openai:'GPT-OSS 120B', gemini:'Gemini Flash', mistral:'Mistral Large', codestral:'Codestral', cohere:'Cohere R+', groq:'LLaMA 3.3', 'nvidia-llama':'LLaMA 3.3 70B', deepseek: 'Kimi K2.6', gemma4: 'Gemma 4 31B IT' };
+  const AGENT_NAMES = { openai:'GPT-OSS 120B', gemini:'Gemini Flash', 'gemini-image':'Gemini 2.5 Flash Image', mistral:'Mistral Large', codestral:'Codestral', cohere:'Cohere R+', groq:'LLaMA 3.3', 'nvidia-llama':'LLaMA 3.3 70B', deepseek: 'Kimi K2.6', gemma4: 'Gemma 4 31B IT' };
   function agentName(a) { return AGENT_NAMES[a] || a; }
-  const AGENT_EMOJI = { openai: SVG_ROBOT, gemini: SVG_ROBOT, mistral: SVG_ROBOT, codestral: SVG_ROBOT, cohere: SVG_ROBOT, groq: SVG_ROBOT, 'nvidia-llama': SVG_ROBOT, deepseek: SVG_ROBOT, gemma4: SVG_ROBOT };
+  const AGENT_EMOJI = { openai: SVG_ROBOT, gemini: SVG_ROBOT, 'gemini-image': SVG_IMAGE, mistral: SVG_ROBOT, codestral: SVG_ROBOT, cohere: SVG_ROBOT, groq: SVG_ROBOT, 'nvidia-llama': SVG_ROBOT, deepseek: SVG_ROBOT, gemma4: SVG_ROBOT };
 
   function agentEmoji(a) { return AGENT_EMOJI[a] || SVG_ROBOT; }
 
   function escapeHTML(s) {
     if (!s) return '';
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');
+  }
+
+  function renderImageResponse(payload) {
+    const images = Array.isArray(payload?.images) ? payload.images : [];
+    const text = typeof payload?.text === 'string' && payload.text.trim()
+      ? payload.text.trim()
+      : 'Generated image.';
+    const frames = images.map((img, idx) => {
+      const mime = /^image\/(png|jpe?g|webp|gif)$/i.test(img.mimeType || '') ? img.mimeType : 'image/png';
+      const data = String(img.data || '').replace(/\s/g, '');
+      return `<figure class="generated-image-frame"><img src="data:${escapeHTML(mime)};base64,${escapeHTML(data)}" alt="Generated image ${idx + 1}" loading="lazy"><figcaption class="generated-image-caption"><span>Gemini 2.5 Flash Image</span><span>${idx + 1}/${images.length}</span></figcaption></figure>`;
+    }).join('');
+    return {
+      html: `<p>${escapeHTML(text)}</p>${frames}`,
+      markdown: `${text}\n\n${images.map((img, idx) => `![Generated image ${idx + 1}](data:${img.mimeType || 'image/png'};base64,${String(img.data || '').replace(/\s/g, '')})`).join('\n\n')}`.trim()
+    };
   }
 
   function appendMessage(role, content, animate, noEscape) {
@@ -1989,6 +2016,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       deepseek:       { url:`${BACKEND}/api/deepseek`,       body:{ messages, lowLatency } },
       gemma4:         { url:`${BACKEND}/api/gemma4`,         body:{ messages, lowLatency } },
       gemini:         { url:`${BACKEND}/api/gemini`,         body:{ prompt: promptWithContext, lowLatency } },
+      'gemini-image': { url:`${BACKEND}/api/gemini-image`,   body:{ prompt } },
       mistral:        { url:`${BACKEND}/api/mistral`,        body:{ messages, lowLatency } },
       codestral:      { url:`${BACKEND}/api/codestral`,      body:{ messages, lowLatency } },
       cohere:         { url:`${BACKEND}/api/cohere`,         body:{ prompt: promptWithContext, lowLatency } },
@@ -2011,6 +2039,10 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       throw new Error('Non-JSON response from backend: ' + (text ? text.slice(0,1200) : ''));
     }
     if (d.error) throw new Error(typeof d.error === 'string' ? d.error : JSON.stringify(d.error));
+    if (agent === 'gemini-image') {
+      if (!Array.isArray(d.images) || d.images.length === 0) throw new Error('Image agent returned no image.');
+      return { type: 'image', text: d.text || d.result || '', images: d.images };
+    }
     if (typeof d.result !== 'string') throw new Error('Agent returned no content.');
     return d.result;
   }
@@ -2226,8 +2258,9 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
 
     const nx    = window._nexus;
     const agent = nx.selectedAgent;
+    const isImageAgent = agent === 'gemini-image';
     const enhance    = !lowLatency && document.getElementById('enhanceToggle').checked;
-    const webEnabled = document.getElementById('webSearchToggle')?.checked;
+    const webEnabled = !isImageAgent && document.getElementById('webSearchToggle')?.checked;
 
     let finalPrompt = rawPrompt;
     const userBubbleNode = appendMessage('user', rawPrompt, true);
@@ -2253,12 +2286,12 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         webData = await fetchWebContext(rawPrompt);
       }
 
-      if (!lowLatency) updateTyping(typingId, 'Selecting skill sets...');
-      const skillData = lowLatency ? { selected: [], context: '' } : await fetchSkillContext(finalPrompt);
+      if (!lowLatency && !isImageAgent) updateTyping(typingId, 'Selecting skill sets...');
+      const skillData = (lowLatency || isImageAgent) ? { selected: [], context: '' } : await fetchSkillContext(finalPrompt);
       const activeSkills = skillData?.selected || [];
       updateSkillBadge(activeSkills);
 
-      const activeMemories = getActiveMemories();
+      const activeMemories = isImageAgent ? [] : getActiveMemories();
       const memLabel = activeMemories.length > 0
         ? `🧠 Using ${activeMemories.length} memor${activeMemories.length === 1 ? 'y' : 'ies'}…`
         : '';
@@ -2267,12 +2300,16 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         ? `Skills ${activeSkills.length}`
         : '';
 
-      updateTyping(typingId,
+      if (isImageAgent) {
+        updateTyping(typingId, 'Generating image with ' + agentName(agent) + '...');
+      } else {
+        updateTyping(typingId,
         (skillLabel ? skillLabel + ' · ' : '') +
         (memLabel ? memLabel + ' · ' : '') +
         (webData ? '🌐 Web-grounded · ' : '') +
         '🤖 Asking ' + agentName(agent) + '…'
-      );
+        );
+      }
 
       const promptWithWeb = webData
         ? finalPrompt + buildWebPromptContext(webData, rawPrompt)
@@ -2281,8 +2318,16 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
       const finalResponse = await callAgent(agent, promptWithWeb, nx.chatHistory.slice(-10), activeMemories, skillData?.context || '', lowLatency);
       removeTyping(typingId);
 
-      const safeResponse = (typeof finalResponse === 'string' && finalResponse.trim()) ? finalResponse : '_(No response returned)_';
-      const msgWrap = appendMessage('assistant', safeResponse, true);
+      let safeResponse;
+      let msgWrap;
+      if (finalResponse && finalResponse.type === 'image') {
+        const renderedImage = renderImageResponse(finalResponse);
+        safeResponse = renderedImage.markdown;
+        msgWrap = appendMessage('assistant', renderedImage.html, true, true);
+      } else {
+        safeResponse = (typeof finalResponse === 'string' && finalResponse.trim()) ? finalResponse : '_(No response returned)_';
+        msgWrap = appendMessage('assistant', safeResponse, true);
+      }
       appendSkillSources(msgWrap?.querySelector('.message-bubble'), activeSkills);
 
       if (webAttempted) {
@@ -2310,7 +2355,7 @@ html.light .debate-consensus { background: rgba(5,150,105,0.06); }
         });
       }
 
-      maybeExtractMemories();
+      if (!isImageAgent) maybeExtractMemories();
     } catch (err) {
       removeTyping(typingId);
       appendMessage('error', '⚠ ' + err.message, true);
